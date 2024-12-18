@@ -32,7 +32,7 @@ fn parser() -> impl Parser<char, Expr, Error = Simple<char>> {
             .map(|(f, args)| Expr::Call(f, args));
 
         let atom = int
-            .or(expr.delimited_by(just('('), just(')')))
+            .or(expr.clone().delimited_by(just('('), just(')')))
             .or(call)
             .or(ident.map(Expr::Var));
 
