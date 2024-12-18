@@ -65,12 +65,23 @@ fn parser() -> impl Parser<char, Expr, Error = Simple<char>> {
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        sum
+        let ternary = sum
+            .clone()
+            .then_ignore(just('?'))
+            .then(expr.clone())
+            .then_ignore(just(':'))
+            .then(expr)
+            .map(|((cond, then), els)| Expr::If {
+                cond: Box::new(cond),
+                then: Box::new(then),
+                els: Box::new(els),
+            });
+
+        ternary.or(sum).padded()
     });
 
     let decl = recursive(|decl| {
-        let r#let = text::keyword("let")
-            .ignore_then(ident)
+        let r#let = ident
             .then_ignore(just('='))
             .then(expr.clone())
             .then_ignore(just(';'))
@@ -112,18 +123,26 @@ enum Expr {
     Mul(Box<Expr>, Box<Expr>),
     Div(Box<Expr>, Box<Expr>),
 
-    Call(String, Vec<Expr>),
+    If {
+        cond: Box<Expr>,
+        then: Box<Expr>,
+        els: Box<Expr>,
+    },
+
     Let {
         name: String,
         rhs: Box<Expr>,
         then: Box<Expr>,
     },
+
     Fn {
         name: String,
         args: Vec<String>,
         body: Box<Expr>,
         then: Box<Expr>,
     },
+
+    Call(String, Vec<Expr>),
 }
 
 fn eval<'a>(
@@ -189,6 +208,13 @@ fn eval<'a>(
             let output = eval(then, vars, funcs);
             funcs.pop();
             output
+        }
+        Expr::If { cond, then, els } => {
+            if eval(cond, vars, funcs)? != 0.0 {
+                eval(then, vars, funcs)
+            } else {
+                eval(els, vars, funcs)
+            }
         }
     }
 }
