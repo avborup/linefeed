@@ -1,75 +1,129 @@
 use crate::ast::Expr;
 
-pub fn eval<'a>(
-    expr: &'a Expr,
-    vars: &mut Vec<(&'a String, f64)>,
-    funcs: &mut Vec<(&'a String, &'a [String], &'a Expr)>,
-) -> Result<f64, String> {
-    match expr {
-        Expr::Num(x) => Ok(*x),
-        Expr::Neg(a) => Ok(-eval(a, vars, funcs)?),
-        Expr::Add(a, b) => Ok(eval(a, vars, funcs)? + eval(b, vars, funcs)?),
-        Expr::Sub(a, b) => Ok(eval(a, vars, funcs)? - eval(b, vars, funcs)?),
-        Expr::Mul(a, b) => Ok(eval(a, vars, funcs)? * eval(b, vars, funcs)?),
-        Expr::Div(a, b) => Ok(eval(a, vars, funcs)? / eval(b, vars, funcs)?),
-        Expr::Var(name) => {
-            if let Some((_, val)) = vars.iter().rev().find(|(var, _)| *var == name) {
-                Ok(*val)
-            } else {
-                Err(format!("Cannot find variable `{}` in scope", name))
-            }
-        }
-        Expr::Let { name, rhs, then } => {
-            let rhs = eval(rhs, vars, funcs)?;
-            vars.push((name, rhs));
-            let output = eval(then, vars, funcs);
-            vars.pop();
-            output
-        }
-        Expr::Call(name, args) => {
-            if let Some((_, arg_names, body)) =
-                funcs.iter().rev().find(|(var, _, _)| *var == name).copied()
-            {
-                if arg_names.len() == args.len() {
-                    let mut args = args
-                        .iter()
-                        .map(|arg| eval(arg, vars, funcs))
-                        .zip(arg_names.iter())
-                        .map(|(val, name)| Ok((name, val?)))
-                        .collect::<Result<_, String>>()?;
-                    vars.append(&mut args);
-                    let output = eval(body, vars, funcs);
-                    vars.truncate(vars.len() - args.len());
-                    output
-                } else {
-                    Err(format!(
-                        "Wrong number of arguments for function `{}`: expected {}, found {}",
-                        name,
-                        arg_names.len(),
-                        args.len(),
-                    ))
-                }
-            } else {
-                Err(format!("Cannot find function `{}` in scope", name))
-            }
-        }
-        Expr::Fn {
-            name,
-            args,
-            body,
-            then,
-        } => {
-            funcs.push((name, args, body));
-            let output = eval(then, vars, funcs);
-            funcs.pop();
-            output
-        }
-        Expr::If { cond, then, els } => {
-            if eval(cond, vars, funcs)? != 0.0 {
-                eval(then, vars, funcs)
-            } else {
-                eval(els, vars, funcs)
-            }
+use std::collections::HashMap;
+
+use crate::ast::{BinaryOp, Func, Value};
+use crate::lexer::{Span, Spanned};
+
+pub struct Error {
+    pub span: Span,
+    pub msg: String,
+}
+
+impl Value {
+    fn num(self, span: Span) -> Result<f64, Error> {
+        if let Value::Num(x) = self {
+            Ok(x)
+        } else {
+            Err(Error {
+                span,
+                msg: format!("'{}' is not a number", self),
+            })
         }
     }
+}
+
+pub fn eval_expr(
+    expr: &Spanned<Expr>,
+    funcs: &HashMap<String, Func>,
+    stack: &mut Vec<(String, Value)>,
+) -> Result<Value, Error> {
+    Ok(match &expr.0 {
+        Expr::Error => unreachable!(), // Error expressions only get created by parser errors, so cannot exist in a valid AST
+        Expr::Value(val) => val.clone(),
+        Expr::List(items) => Value::List(
+            items
+                .iter()
+                .map(|item| eval_expr(item, funcs, stack))
+                .collect::<Result<_, _>>()?,
+        ),
+        Expr::Local(name) => stack
+            .iter()
+            .rev()
+            .find(|(l, _)| l == name)
+            .map(|(_, v)| v.clone())
+            .or_else(|| Some(Value::Func(name.clone())).filter(|_| funcs.contains_key(name)))
+            .ok_or_else(|| Error {
+                span: expr.1.clone(),
+                msg: format!("No such variable '{}' in scope", name),
+            })?,
+        Expr::Let(local, val, body) => {
+            let val = eval_expr(val, funcs, stack)?;
+            stack.push((local.clone(), val));
+            let res = eval_expr(body, funcs, stack)?;
+            stack.pop();
+            res
+        }
+        Expr::Then(a, b) => {
+            eval_expr(a, funcs, stack)?;
+            eval_expr(b, funcs, stack)?
+        }
+        Expr::Binary(a, BinaryOp::Add, b) => Value::Num(
+            eval_expr(a, funcs, stack)?.num(a.1.clone())?
+                + eval_expr(b, funcs, stack)?.num(b.1.clone())?,
+        ),
+        Expr::Binary(a, BinaryOp::Sub, b) => Value::Num(
+            eval_expr(a, funcs, stack)?.num(a.1.clone())?
+                - eval_expr(b, funcs, stack)?.num(b.1.clone())?,
+        ),
+        Expr::Binary(a, BinaryOp::Mul, b) => Value::Num(
+            eval_expr(a, funcs, stack)?.num(a.1.clone())?
+                * eval_expr(b, funcs, stack)?.num(b.1.clone())?,
+        ),
+        Expr::Binary(a, BinaryOp::Div, b) => Value::Num(
+            eval_expr(a, funcs, stack)?.num(a.1.clone())?
+                / eval_expr(b, funcs, stack)?.num(b.1.clone())?,
+        ),
+        Expr::Binary(a, BinaryOp::Eq, b) => {
+            Value::Bool(eval_expr(a, funcs, stack)? == eval_expr(b, funcs, stack)?)
+        }
+        Expr::Binary(a, BinaryOp::NotEq, b) => {
+            Value::Bool(eval_expr(a, funcs, stack)? != eval_expr(b, funcs, stack)?)
+        }
+        Expr::Call(func, args) => {
+            let f = eval_expr(func, funcs, stack)?;
+            match f {
+                Value::Func(name) => {
+                    let f = &funcs[&name];
+                    let mut stack = if f.args.len() != args.len() {
+                        return Err(Error {
+                            span: expr.1.clone(),
+                            msg: format!("'{}' called with wrong number of arguments (expected {}, found {})", name, f.args.len(), args.len()),
+                        });
+                    } else {
+                        f.args
+                            .iter()
+                            .zip(args.iter())
+                            .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, funcs, stack)?)))
+                            .collect::<Result<_, _>>()?
+                    };
+                    eval_expr(&f.body, funcs, &mut stack)?
+                }
+                f => {
+                    return Err(Error {
+                        span: func.1.clone(),
+                        msg: format!("'{:?}' is not callable", f),
+                    })
+                }
+            }
+        }
+        Expr::If(cond, a, b) => {
+            let c = eval_expr(cond, funcs, stack)?;
+            match c {
+                Value::Bool(true) => eval_expr(a, funcs, stack)?,
+                Value::Bool(false) => eval_expr(b, funcs, stack)?,
+                c => {
+                    return Err(Error {
+                        span: cond.1.clone(),
+                        msg: format!("Conditions must be booleans, found '{:?}'", c),
+                    })
+                }
+            }
+        }
+        Expr::Print(a) => {
+            let val = eval_expr(a, funcs, stack)?;
+            println!("{}", val);
+            val
+        }
+    })
 }

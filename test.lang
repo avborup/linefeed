@@ -2,5 +2,6 @@ fn add(a, b) {
   a + b
 }
 
-wuttt = if add(1, -1) then 2 else 3;
-wuttt * -1
+fn main() {
+  add(1,5)
+}

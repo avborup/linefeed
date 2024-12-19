@@ -1,32 +1,65 @@
+use crate::lexer::Span;
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Value {
+    Null,
+    Bool(bool),
+    Num(f64),
+    Str(String),
+    List(Vec<Value>),
+    Func(String),
+}
+
+impl std::fmt::Display for Value {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Self::Null => write!(f, "null"),
+            Self::Bool(x) => write!(f, "{}", x),
+            Self::Num(x) => write!(f, "{}", x),
+            Self::Str(x) => write!(f, "{}", x),
+            Self::List(xs) => write!(
+                f,
+                "[{}]",
+                xs.iter()
+                    .map(|x| x.to_string())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            ),
+            Self::Func(name) => write!(f, "<function: {}>", name),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    NotEq,
+}
+
+pub type Spanned<T> = (T, Span);
+
+// An expression node in the AST. Children are spanned so we can generate useful runtime errors.
 #[derive(Debug)]
 pub enum Expr {
-    Num(f64),
-    Var(String),
+    Error,
+    Value(Value),
+    List(Vec<Spanned<Self>>),
+    Local(String),
+    Let(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Then(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
+    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
+    If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Print(Box<Spanned<Self>>),
+}
 
-    Neg(Box<Expr>),
-    Add(Box<Expr>, Box<Expr>),
-    Sub(Box<Expr>, Box<Expr>),
-    Mul(Box<Expr>, Box<Expr>),
-    Div(Box<Expr>, Box<Expr>),
-
-    If {
-        cond: Box<Expr>,
-        then: Box<Expr>,
-        els: Box<Expr>,
-    },
-
-    Let {
-        name: String,
-        rhs: Box<Expr>,
-        then: Box<Expr>,
-    },
-
-    Fn {
-        name: String,
-        args: Vec<String>,
-        body: Box<Expr>,
-        then: Box<Expr>,
-    },
-
-    Call(String, Vec<Expr>),
+// A function node in the AST.
+#[derive(Debug)]
+pub struct Func {
+    pub args: Vec<String>,
+    pub body: Spanned<Expr>,
 }
