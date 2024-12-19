@@ -1,7 +1,10 @@
-fn add(a, b) {
-  a + b
+fn foo(n) {
+  print(n);
+  if n == 10 {
+    n
+  } else {
+    foo(n+1)
+  }
 }
 
-fn main() {
-  add(1,5)
-}
+foo(1)

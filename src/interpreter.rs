@@ -91,14 +91,17 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                 });
             }
 
-            let mut stack = func
+            let extend = func
                 .args
                 .iter()
                 .zip(args.iter())
                 .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?)))
-                .collect::<Result<_, _>>()?;
+                .collect::<Result<Vec<_>, _>>()?;
 
-            eval_expr(&func.body, &mut stack)?
+            stack.extend(extend);
+            let res = eval_expr(&func.body, stack)?;
+            stack.truncate(stack.len() - func.args.len());
+            res
         }
         Expr::If(cond, a, b) => {
             let c = eval_expr(cond, stack)?;
