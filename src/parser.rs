@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use chumsky::prelude::*;
 
@@ -168,8 +168,58 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 })
         });
 
+        let ident = filter_map(|span, tok| match tok {
+            Token::Ident(ident) => Ok(ident.clone()),
+            _ => Err(Simple::expected_input_found(span, Vec::new(), Some(tok))),
+        });
+
+        // Argument lists are just identifiers separated by commas, surrounded by parentheses
+        let args = ident
+            .separated_by(just(Token::Ctrl(',')))
+            .allow_trailing()
+            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+            .labelled("function args");
+
+        let func = just(Token::Fn)
+            .ignore_then(
+                ident
+                    .map_with_span(|name, span| (name, span))
+                    .labelled("function name"),
+            )
+            .then(args)
+            .then(
+                block
+                    .clone()
+                    // Attempt to recover anything that looks like a function body but contains errors
+                    .recover_with(nested_delimiters(
+                        Token::Ctrl('{'),
+                        Token::Ctrl('}'),
+                        [
+                            (Token::Ctrl('('), Token::Ctrl(')')),
+                            (Token::Ctrl('['), Token::Ctrl(']')),
+                        ],
+                        |span| (Expr::Error, span),
+                    )),
+            )
+            .then(expr.clone())
+            .map(|(((name, args), body), ex)| {
+                let range = name.1.start..body.1.end;
+
+                let val = (
+                    Expr::Value(Value::Func(Rc::new(Func {
+                        name: name.0.clone(),
+                        args,
+                        body: Rc::new(body),
+                    }))),
+                    range.clone(),
+                );
+
+                (Expr::Let(name.0, Box::new(val), Box::new(ex)), range)
+            })
+            .labelled("function");
+
         // Both blocks and `if` are 'block expressions' and can appear in the place of statements
-        let block_expr = block.or(if_).labelled("block");
+        let block_expr = block.clone().or(if_).or(func).labelled("block");
 
         let block_chain = block_expr
             .clone()
@@ -201,58 +251,5 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 )
             })
     })
-}
-
-pub fn funcs_parser() -> impl Parser<Token, HashMap<String, Func>, Error = Simple<Token>> + Clone {
-    let ident = filter_map(|span, tok| match tok {
-        Token::Ident(ident) => Ok(ident.clone()),
-        _ => Err(Simple::expected_input_found(span, Vec::new(), Some(tok))),
-    });
-
-    // Argument lists are just identifiers separated by commas, surrounded by parentheses
-    let args = ident
-        .clone()
-        .separated_by(just(Token::Ctrl(',')))
-        .allow_trailing()
-        .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-        .labelled("function args");
-
-    let func = just(Token::Fn)
-        .ignore_then(
-            ident
-                .map_with_span(|name, span| (name, span))
-                .labelled("function name"),
-        )
-        .then(args)
-        .then(
-            expr_parser()
-                .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
-                // Attempt to recover anything that looks like a function body but contains errors
-                .recover_with(nested_delimiters(
-                    Token::Ctrl('{'),
-                    Token::Ctrl('}'),
-                    [
-                        (Token::Ctrl('('), Token::Ctrl(')')),
-                        (Token::Ctrl('['), Token::Ctrl(']')),
-                    ],
-                    |span| (Expr::Error, span),
-                )),
-        )
-        .map(|((name, args), body)| (name, Func { args, body }))
-        .labelled("function");
-
-    func.repeated()
-        .try_map(|fs, _| {
-            let mut funcs = HashMap::new();
-            for ((name, name_span), f) in fs {
-                if funcs.insert(name.clone(), f).is_some() {
-                    return Err(Simple::custom(
-                        name_span.clone(),
-                        format!("Function '{}' already exists", name),
-                    ));
-                }
-            }
-            Ok(funcs)
-        })
-        .then_ignore(end())
+    .then_ignore(end())
 }

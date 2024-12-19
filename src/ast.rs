@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use crate::lexer::Span;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -7,7 +9,7 @@ pub enum Value {
     Num(f64),
     Str(String),
     List(Vec<Value>),
-    Func(String),
+    Func(Rc<Func>),
 }
 
 impl std::fmt::Display for Value {
@@ -25,7 +27,7 @@ impl std::fmt::Display for Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Self::Func(name) => write!(f, "<function: {}>", name),
+            Self::Func(func) => write!(f, "<function: {}>", func.name),
         }
     }
 }
@@ -58,8 +60,15 @@ pub enum Expr {
 }
 
 // A function node in the AST.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Func {
+    pub name: String,
     pub args: Vec<String>,
-    pub body: Spanned<Expr>,
+    pub body: Rc<Spanned<Expr>>,
+}
+
+impl PartialEq for Func {
+    fn eq(&self, _: &Self) -> bool {
+        false
+    }
 }

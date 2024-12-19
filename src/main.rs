@@ -1,6 +1,6 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
-use custom_lang::{interpreter::eval_expr, lexer::lexer, parser::funcs_parser};
+use custom_lang::{interpreter::eval_expr, lexer::lexer, parser::expr_parser};
 
 fn main() {
     let filename = std::env::args().nth(1).unwrap();
@@ -12,17 +12,14 @@ fn main() {
         //dbg!(tokens);
         let len = src.chars().count();
         let (ast, parse_errs) =
-            funcs_parser().parse_recovery(Stream::from_iter(len..len + 1, tokens.into_iter()));
+            expr_parser().parse_recovery(Stream::from_iter(len..len + 1, tokens.into_iter()));
 
-        if let Some(funcs) = ast.filter(|_| errs.len() + parse_errs.len() == 0) {
-            if let Some(main) = funcs.get("main") {
-                assert_eq!(main.args.len(), 0);
-                match eval_expr(&main.body, &funcs, &mut Vec::new()) {
-                    Ok(val) => println!("Return value: {}", val),
-                    Err(e) => errs.push(Simple::custom(e.span, e.msg)),
-                }
-            } else {
-                panic!("No main function!");
+        dbg!(&ast);
+
+        if let Some(expr) = ast {
+            match eval_expr(&expr, &mut Vec::new()) {
+                Ok(val) => println!("Return value: {}", val),
+                Err(e) => errs.push(Simple::custom(e.span, e.msg)),
             }
         }
 
