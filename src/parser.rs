@@ -82,10 +82,8 @@ pub fn parser() -> impl Parser<char, Expr, Error = Simple<char>> {
 
         let r#fn = text::keyword("fn")
             .ignore_then(ident)
-            .then(ident.repeated())
-            .then_ignore(just('='))
-            .then(expr.clone())
-            .then_ignore(just(';'))
+            .then(ident.repeated().delimited_by(just('('), just(')')).padded())
+            .then(expr.clone().delimited_by(just('{'), just('}')))
             .then(decl)
             .map(|(((name, args), body), then)| Expr::Fn {
                 name,

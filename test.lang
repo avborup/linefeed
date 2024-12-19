@@ -1,4 +1,3 @@
-let five = 5;
-let eight = 3 + five;
-fn add x y = x + y;
-add(five, eight)
+fn add(a b) { a + b }
+five = if 1 + -2 then 2 else 3;
+five * -1
