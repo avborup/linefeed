@@ -1,3 +1,6 @@
-fn add(a b) { a + b }
-five = if 1 + -2 then 2 else 3;
-five * -1
+fn add(a, b) {
+  a + b
+}
+
+wuttt = if add(1, -1) then 2 else 3;
+wuttt * -1
