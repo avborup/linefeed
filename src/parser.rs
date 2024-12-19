@@ -53,11 +53,11 @@ pub fn parser() -> impl Parser<char, Expr, Error = Simple<char>> {
             )
             .foldl(|lhs, (op, rhs)| op(Box::new(lhs), Box::new(rhs)));
 
-        let ternary = sum
-            .clone()
-            .then_ignore(just('?'))
+        let ternary = text::keyword("if")
+            .ignore_then(expr.clone())
+            .then_ignore(text::keyword("then"))
             .then(expr.clone())
-            .then_ignore(just(':'))
+            .then_ignore(text::keyword("else"))
             .then(expr)
             .map(|((cond, then), els)| Expr::If {
                 cond: Box::new(cond),
