@@ -1,5 +1,3 @@
-use std::iter;
-
 use crate::ast::Expr;
 
 use crate::ast::{BinaryOp, Value};
@@ -17,7 +15,7 @@ impl Value {
         } else {
             Err(Error {
                 span,
-                msg: format!("'{}' is not a number", self),
+                msg: format!("'{self}' is not a number"),
             })
         }
     }
@@ -85,21 +83,19 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                 return Err(Error {
                     span: func_expr.1.clone(),
                     msg: format!(
-                        "'{}' called with wrong number of arguments (expected {}, found {})",
-                        func.name,
+                        "function called with wrong number of arguments (expected {}, found {})",
                         func.args.len(),
                         args.len()
                     ),
                 });
             };
 
-            let mut stack = iter::once(Ok((func.name.clone(), Value::Func(func.clone()))))
-                .chain(
-                    func.args
-                        .iter()
-                        .zip(args.iter())
-                        .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?))),
-                )
+            // TODO: re-add recursion here
+            let mut stack = func
+                .args
+                .iter()
+                .zip(args.iter())
+                .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?)))
                 .collect::<Result<Vec<_>, _>>()?;
 
             eval_expr(&func.body, &mut stack)?

@@ -13,7 +13,7 @@ pub enum Token {
     Op(String),
     Ctrl(char),
     Ident(String),
-    Fn,
+    Arrow,
     Print,
     If,
     Else,
@@ -29,7 +29,7 @@ impl fmt::Display for Token {
             Token::Op(s) => write!(f, "{}", s),
             Token::Ctrl(c) => write!(f, "{}", c),
             Token::Ident(s) => write!(f, "{}", s),
-            Token::Fn => write!(f, "fn"),
+            Token::Arrow => write!(f, "->"),
             Token::Print => write!(f, "print"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
@@ -55,10 +55,11 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Op);
 
+    let arrow = just("->").map(|_| Token::Arrow);
+
     let ctrl = one_of("()[]{};,").map(Token::Ctrl);
 
     let ident = text::ident().map(|ident: String| match ident.as_str() {
-        "fn" => Token::Fn,
         "print" => Token::Print,
         "if" => Token::If,
         "else" => Token::Else,
@@ -70,6 +71,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 
     let token = num
         .or(str_)
+        .or(arrow)
         .or(op)
         .or(ctrl)
         .or(ident)

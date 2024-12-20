@@ -27,7 +27,7 @@ impl std::fmt::Display for Value {
                     .collect::<Vec<_>>()
                     .join(", ")
             ),
-            Self::Func(func) => write!(f, "<function: {}>", func.name),
+            Self::Func(func) => write!(f, "<function, {} args>", func.args.len()),
         }
     }
 }
@@ -62,7 +62,6 @@ pub enum Expr {
 // A function node in the AST.
 #[derive(Debug, Clone)]
 pub struct Func {
-    pub name: String,
     pub args: Vec<String>,
     pub body: Rc<Spanned<Expr>>,
 }

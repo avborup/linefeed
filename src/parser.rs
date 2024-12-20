@@ -7,6 +7,49 @@ use crate::lexer::{Span, Spanned, Token};
 
 pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>> + Clone {
     recursive(|expr| {
+        // Blocks are expressions but delimited with braces
+        let block = expr
+            .clone()
+            .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
+            // Attempt to recover anything that looks like a block but contains errors
+            .recover_with(nested_delimiters(
+                Token::Ctrl('{'),
+                Token::Ctrl('}'),
+                [
+                    (Token::Ctrl('('), Token::Ctrl(')')),
+                    (Token::Ctrl('['), Token::Ctrl(']')),
+                ],
+                |span| (Expr::Error, span),
+            ));
+
+        let if_ = recursive(|if_| {
+            just(Token::If)
+                .ignore_then(expr.clone())
+                .then(block.clone())
+                .then(
+                    just(Token::Else)
+                        .ignore_then(block.clone().or(if_))
+                        .or_not(),
+                )
+                .map_with_span(|((cond, a), b), span: Span| {
+                    (
+                        Expr::If(
+                            Box::new(cond),
+                            Box::new(a),
+                            Box::new(match b {
+                                Some(b) => b,
+                                // If an `if` expression has no trailing `else` block, we magic up one that just produces null
+                                None => (Expr::Value(Value::Null), span.clone()),
+                            }),
+                        ),
+                        span,
+                    )
+                })
+        });
+
+        // Both blocks and `if` are 'block expressions' and can appear in the place of statements
+        let block_expr = block.clone().or(if_).labelled("block");
+
         let raw_expr = recursive(|raw_expr| {
             let val = select! {
                 Token::Null => Expr::Value(Value::Null),
@@ -24,10 +67,42 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing();
 
+            // Argument lists are just identifiers separated by commas, surrounded by parentheses
+            let args = ident
+                .separated_by(just(Token::Ctrl(',')))
+                .allow_trailing()
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+                .labelled("function args");
+
+            let func = args
+                .then_ignore(just(Token::Arrow))
+                .then(
+                    block_expr
+                        .clone()
+                        // Attempt to recover anything that looks like a function body but contains errors
+                        .recover_with(nested_delimiters(
+                            Token::Ctrl('{'),
+                            Token::Ctrl('}'),
+                            [
+                                (Token::Ctrl('('), Token::Ctrl(')')),
+                                (Token::Ctrl('['), Token::Ctrl(']')),
+                            ],
+                            |span| (Expr::Error, span),
+                        ))
+                        .or(raw_expr.clone()),
+                )
+                .map(|(args, body)| {
+                    Expr::Value(Value::Func(Rc::new(Func {
+                        args,
+                        body: Rc::new(body),
+                    })))
+                })
+                .labelled("function");
+
             // Variable assignment
             let let_ = ident
                 .then_ignore(just(Token::Op("=".to_string())))
-                .then(raw_expr)
+                .then(raw_expr.clone().or(block_expr.clone()))
                 .then_ignore(just(Token::Ctrl(';')))
                 .then(expr.clone())
                 .map(|((name, val), body)| Expr::Let(name, Box::new(val), Box::new(body)));
@@ -39,6 +114,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
+                .or(func)
                 .or(let_)
                 .or(ident.map(Expr::Local))
                 .or(list)
@@ -126,99 +202,6 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             compare
         });
-
-        // Blocks are expressions but delimited with braces
-        let block = expr
-            .clone()
-            .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
-            // Attempt to recover anything that looks like a block but contains errors
-            .recover_with(nested_delimiters(
-                Token::Ctrl('{'),
-                Token::Ctrl('}'),
-                [
-                    (Token::Ctrl('('), Token::Ctrl(')')),
-                    (Token::Ctrl('['), Token::Ctrl(']')),
-                ],
-                |span| (Expr::Error, span),
-            ));
-
-        let if_ = recursive(|if_| {
-            just(Token::If)
-                .ignore_then(expr.clone())
-                .then(block.clone())
-                .then(
-                    just(Token::Else)
-                        .ignore_then(block.clone().or(if_))
-                        .or_not(),
-                )
-                .map_with_span(|((cond, a), b), span: Span| {
-                    (
-                        Expr::If(
-                            Box::new(cond),
-                            Box::new(a),
-                            Box::new(match b {
-                                Some(b) => b,
-                                // If an `if` expression has no trailing `else` block, we magic up one that just produces null
-                                None => (Expr::Value(Value::Null), span.clone()),
-                            }),
-                        ),
-                        span,
-                    )
-                })
-        });
-
-        let ident = filter_map(|span, tok| match tok {
-            Token::Ident(ident) => Ok(ident.clone()),
-            _ => Err(Simple::expected_input_found(span, Vec::new(), Some(tok))),
-        });
-
-        // Argument lists are just identifiers separated by commas, surrounded by parentheses
-        let args = ident
-            .separated_by(just(Token::Ctrl(',')))
-            .allow_trailing()
-            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-            .labelled("function args");
-
-        let func = just(Token::Fn)
-            .ignore_then(
-                ident
-                    .map_with_span(|name, span| (name, span))
-                    .labelled("function name"),
-            )
-            .then(args)
-            .then(
-                block
-                    .clone()
-                    // Attempt to recover anything that looks like a function body but contains errors
-                    .recover_with(nested_delimiters(
-                        Token::Ctrl('{'),
-                        Token::Ctrl('}'),
-                        [
-                            (Token::Ctrl('('), Token::Ctrl(')')),
-                            (Token::Ctrl('['), Token::Ctrl(']')),
-                        ],
-                        |span| (Expr::Error, span),
-                    )),
-            )
-            .then(expr.clone())
-            .map(|(((name, args), body), ex)| {
-                let range = name.1.start..body.1.end;
-
-                let val = (
-                    Expr::Value(Value::Func(Rc::new(Func {
-                        name: name.0.clone(),
-                        args,
-                        body: Rc::new(body),
-                    }))),
-                    range.clone(),
-                );
-
-                (Expr::Let(name.0, Box::new(val), Box::new(ex)), range)
-            })
-            .labelled("function");
-
-        // Both blocks and `if` are 'block expressions' and can appear in the place of statements
-        let block_expr = block.clone().or(if_).or(func).labelled("block");
 
         let block_chain = block_expr
             .clone()
