@@ -1,5 +1,8 @@
 # idkkk
+idk = 0;
+
 factorial = (x) -> {
+    print(idk);
     if x == 0 { 1 } else { x * factorial(x-1) }
 };
 

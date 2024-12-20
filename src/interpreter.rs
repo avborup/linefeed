@@ -1,4 +1,4 @@
-use crate::ast::{Expr, UnaryOp};
+use crate::ast::{Expr, Func, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
 use crate::lexer::{Span, Spanned};
@@ -103,18 +103,23 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                 });
             };
 
-            // TODO: re-add recursion here
-            let extend = func
-                .args
-                .iter()
-                .zip(args.iter())
-                .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?)))
-                .collect::<Result<Vec<_>, _>>()?;
+            let mut substack = Vec::new();
 
-            stack.extend(extend);
-            let res = eval_expr(&func.body, stack)?;
-            stack.truncate(stack.len() - func.args.len());
-            res
+            for required_var in Func::analyze_captures(&func.args, &func.body.0) {
+                if let Some(val) = stack.iter().rev().find(|(name, _)| name == &required_var) {
+                    substack.push(val.clone());
+                }
+            }
+
+            substack.extend(
+                func.args
+                    .iter()
+                    .zip(args.iter())
+                    .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?)))
+                    .collect::<Result<Vec<_>, _>>()?,
+            );
+
+            eval_expr(&func.body, &mut substack)?
         }
         Expr::If(cond, a, b) => {
             let c = eval_expr(cond, stack)?;
