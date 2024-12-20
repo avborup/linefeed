@@ -1,6 +1,10 @@
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
-use linefeed::{interpreter::eval_expr, lexer::lexer, parser::expr_parser};
+use linefeed::{
+    interpreter::{eval_expr, VarStore},
+    lexer::lexer,
+    parser::expr_parser,
+};
 
 fn main() {
     let filename = std::env::args().nth(1).unwrap();
@@ -17,7 +21,7 @@ fn main() {
         dbg!(&ast);
 
         if let Some(expr) = ast {
-            match eval_expr(&expr, &mut Vec::new()) {
+            match eval_expr(&expr, &mut VarStore::new()) {
                 Ok(val) => println!("Return value: {}", val),
                 Err(e) => errs.push(Simple::custom(e.span, e.msg)),
             }

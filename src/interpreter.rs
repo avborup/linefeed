@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::ast::{Expr, Func, UnaryOp};
+use crate::ast::{Expr, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
 use crate::lexer::{Span, Spanned};
@@ -92,19 +92,14 @@ pub fn eval_expr(expr: &Spanned<Expr>, vars: &mut VarStore) -> Result<Value, Err
                 });
             };
 
-            let mut func_scope = VarStore::new();
-
-            for required_var in Func::analyze_captures(&func.args, &func.body.0) {
-                if let Some(val) = vars.get(&required_var) {
-                    func_scope.set(required_var, val.clone());
-                }
-            }
-
+            vars.start_scope();
             for (name, arg) in func.args.iter().zip(args.iter()) {
-                func_scope.set(name.clone(), eval_expr(arg, vars)?);
+                let arg_val = eval_expr(arg, vars)?;
+                vars.set_local(name.clone(), arg_val);
             }
-
-            eval_expr(&func.body, &mut func_scope)?
+            let res = eval_expr(&func.body, vars)?;
+            vars.pop_scope();
+            res
         }
         Expr::If(cond, a, b) => {
             let c = eval_expr(cond, vars)?;
@@ -168,10 +163,21 @@ impl VarStore {
         self.scopes.iter().rev().find_map(|scope| scope.get(name))
     }
 
-    fn set(&mut self, name: String, val: Value) {
+    fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
         self.scopes
-            .last_mut()
-            .expect("No scope to set variable in")
-            .insert(name, val);
+            .iter_mut()
+            .rev()
+            .find_map(|scope| scope.get_mut(name))
+    }
+
+    fn set(&mut self, name: String, val: Value) {
+        match self.get_mut(&name) {
+            Some(existing) => *existing = val,
+            None => self.set_local(name, val),
+        }
+    }
+
+    fn set_local(&mut self, name: String, val: Value) {
+        self.scopes.last_mut().unwrap().insert(name, val);
     }
 }
