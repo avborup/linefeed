@@ -56,14 +56,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "custom-lang"
-version = "0.1.0"
-dependencies = [
- "ariadne",
- "chumsky",
-]
-
-[[package]]
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -78,6 +70,14 @@ name = "libc"
 version = "0.2.168"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aaeb2981e0606ca11d79718f8bb01164f1d6ed75080182d3abf017e6d244b6d"
+
+[[package]]
+name = "linefeed"
+version = "0.1.0"
+dependencies = [
+ "ariadne",
+ "chumsky",
+]
 
 [[package]]
 name = "once_cell"
