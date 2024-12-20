@@ -1,3 +1,5 @@
+use std::iter;
+
 use crate::ast::Expr;
 
 use crate::ast::{BinaryOp, Value};
@@ -89,19 +91,18 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                         args.len()
                     ),
                 });
-            }
+            };
 
-            let extend = func
-                .args
-                .iter()
-                .zip(args.iter())
-                .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?)))
+            let mut stack = iter::once(Ok((func.name.clone(), Value::Func(func.clone()))))
+                .chain(
+                    func.args
+                        .iter()
+                        .zip(args.iter())
+                        .map(|(name, arg)| Ok((name.clone(), eval_expr(arg, stack)?))),
+                )
                 .collect::<Result<Vec<_>, _>>()?;
 
-            stack.extend(extend);
-            let res = eval_expr(&func.body, stack)?;
-            stack.truncate(stack.len() - func.args.len());
-            res
+            eval_expr(&func.body, &mut stack)?
         }
         Expr::If(cond, a, b) => {
             let c = eval_expr(cond, stack)?;

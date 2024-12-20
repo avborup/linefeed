@@ -1,10 +1,15 @@
-fn foo(n) {
-  print(n);
-  if n == 10 {
-    n
-  } else {
-    foo(n+1)
-  }
+fn factorial(x) {
+    if x == 0 {
+        1
+    } else {
+        x * factorial(x - 1)
+    }
 }
 
-foo(1)
+if 12 == 42 {
+    print(meaning_of_life);
+} else {
+    print("...something we cannot know");
+    print("However, I can tell you that the factorial of 10 is...");
+    print(factorial(10));
+}
