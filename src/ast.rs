@@ -57,12 +57,13 @@ pub enum Expr {
     Value(Value),
     List(Vec<Spanned<Self>>),
     Local(String),
-    Let(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Then(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Let(String, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
     If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Block(Box<Spanned<Self>>),
+    Sequence(Vec<Spanned<Self>>),
     Print(Box<Spanned<Self>>),
 }
 
@@ -107,15 +108,10 @@ impl Func {
                         captures.push(name.clone());
                     }
                 }
-                Expr::Let(local, val, body) => {
+                Expr::Let(local, val) => {
                     stack.push(local.clone());
                     analyze_expr(&val.0, stack, captures);
-                    analyze_expr(&body.0, stack, captures);
                     stack.pop();
-                }
-                Expr::Then(a, b) => {
-                    analyze_expr(&a.0, stack, captures);
-                    analyze_expr(&b.0, stack, captures);
                 }
                 Expr::Unary(_, a) => {
                     analyze_expr(&a.0, stack, captures);
@@ -134,6 +130,14 @@ impl Func {
                     analyze_expr(&cond.0, stack, captures);
                     analyze_expr(&a.0, stack, captures);
                     analyze_expr(&b.0, stack, captures);
+                }
+                Expr::Block(inside) => {
+                    analyze_expr(&inside.0, stack, captures);
+                }
+                Expr::Sequence(exprs) => {
+                    for expr in exprs {
+                        analyze_expr(&expr.0, stack, captures);
+                    }
                 }
                 Expr::Print(a) => {
                     analyze_expr(&a.0, stack, captures);

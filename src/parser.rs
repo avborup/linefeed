@@ -11,6 +11,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
         let block = expr
             .clone()
             .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
+            .map_with_span(|expr, span| (Expr::Block(Box::new(expr)), span))
             // Attempt to recover anything that looks like a block but contains errors
             .recover_with(nested_delimiters(
                 Token::Ctrl('{'),
@@ -103,9 +104,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
             let let_ = ident
                 .then_ignore(just(Token::Op("=".to_string())))
                 .then(raw_expr.clone().or(block_expr.clone()))
-                .then_ignore(just(Token::Ctrl(';')))
-                .then(expr.clone())
-                .map(|((name, val), body)| Expr::Let(name, Box::new(val), Box::new(body)));
+                .map(|(name, val)| Expr::Let(name, Box::new(val)));
 
             let list = items
                 .clone()
@@ -225,31 +224,28 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
         let block_chain = block_expr
             .clone()
             .then(block_expr.clone().repeated())
-            .foldl(|a, b| {
-                let span = a.1.start..b.1.end;
-                (Expr::Then(Box::new(a), Box::new(b)), span)
+            .map_with_span(|(a, mut b), span: Span| {
+                let e = if b.is_empty() {
+                    a
+                } else {
+                    b.insert(0, a);
+                    (Expr::Sequence(b), span.clone())
+                };
+                (Expr::Block(Box::new(e)), span)
             });
 
         block_chain
             // Expressions, chained by semicolons, are statements
             .or(raw_expr.clone())
             .then(just(Token::Ctrl(';')).ignore_then(expr.or_not()).repeated())
-            .foldl(|a, b| {
-                // This allows creating a span that covers the entire Then expression.
-                // b_end is the end of b if it exists, otherwise it is the end of a.
-                let a_start = a.1.start;
-                let b_end = b.as_ref().map(|b| b.1.end).unwrap_or(a.1.end);
-                (
-                    Expr::Then(
-                        Box::new(a),
-                        Box::new(match b {
-                            Some(b) => b,
-                            // Since there is no b expression then its span is empty.
-                            None => (Expr::Value(Value::Null), b_end..b_end),
-                        }),
-                    ),
-                    a_start..b_end,
-                )
+            .map_with_span(|(a, b), span: Span| {
+                if b.is_empty() {
+                    a
+                } else {
+                    let mut seq = vec![a];
+                    seq.extend(b.into_iter().flatten());
+                    (Expr::Sequence(seq), span.clone())
+                }
             })
     })
     .then_ignore(end())

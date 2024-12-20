@@ -51,16 +51,14 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                 span: expr.1.clone(),
                 msg: format!("No such variable '{}' in scope", name),
             })?,
-        Expr::Let(local, val, body) => {
+        Expr::Let(local, val) => {
             let val = eval_expr(val, stack)?;
-            stack.push((local.clone(), val));
-            let res = eval_expr(body, stack)?;
-            stack.pop();
-            res
-        }
-        Expr::Then(a, b) => {
-            eval_expr(a, stack)?;
-            eval_expr(b, stack)?
+            // TODO: assign to current scope
+            stack.push((local.clone(), val.clone()));
+            val
+            // let res = eval_expr(body, stack)?;
+            // stack.pop();
+            // res
         }
         Expr::Unary(UnaryOp::Neg, a) => Value::Num(-eval_expr(a, stack)?.num(a.1.clone())?),
         Expr::Unary(UnaryOp::Not, a) => Value::Bool(!eval_expr(a, stack)?.bool(a.1.clone())?),
@@ -134,6 +132,15 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
                 }
             }
         }
+        Expr::Block(sub_expr) => {
+            // TODO: do some logic for variable scoping here
+            eval_expr(sub_expr, stack)?
+        }
+        Expr::Sequence(exprs) => exprs
+            .iter()
+            .map(|expr| eval_expr(expr, stack))
+            .last()
+            .unwrap_or(Ok(Value::Null))?,
         Expr::Print(a) => {
             let val = eval_expr(a, stack)?;
             println!("{}", val);
