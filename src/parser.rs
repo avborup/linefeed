@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use chumsky::prelude::*;
 
-use crate::ast::{BinaryOp, Expr, Func, Value};
+use crate::ast::{BinaryOp, Expr, Func, UnaryOp, Value};
 use crate::lexer::{Span, Spanned, Token};
 
 pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>> + Clone {
@@ -153,6 +153,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             // Function calls have very high precedence so we prioritise them
             let call = atom
+                .clone()
                 .then(
                     items
                         .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
@@ -165,12 +166,30 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 });
 
             // Product ops (multiply and divide) have equal precedence
-            let op = just(Token::Op("*".to_string()))
+            let prod_op = just(Token::Op("*".to_string()))
                 .to(BinaryOp::Mul)
                 .or(just(Token::Op("/".to_string())).to(BinaryOp::Div));
+
+            let neg = just(Token::Op("-".to_string()))
+                .repeated()
+                .then(atom.clone())
+                .foldr(|_op, rhs| {
+                    let range = rhs.1.clone();
+                    (Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
+                });
+            let not = just(Token::Op("!".to_string()))
+                .repeated()
+                .then(atom.clone())
+                .foldr(|_op, rhs| {
+                    let range = rhs.1.clone();
+                    (Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
+                });
+            let unary = neg.or(not);
+
             let product = call
                 .clone()
-                .then(op.then(call).repeated())
+                .or(unary)
+                .then(prod_op.then(call).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     (Expr::Binary(Box::new(a), op, Box::new(b)), span)

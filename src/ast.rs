@@ -42,6 +42,12 @@ pub enum BinaryOp {
     NotEq,
 }
 
+#[derive(Clone, Debug)]
+pub enum UnaryOp {
+    Neg,
+    Not,
+}
+
 pub type Spanned<T> = (T, Span);
 
 // An expression node in the AST. Children are spanned so we can generate useful runtime errors.
@@ -53,6 +59,7 @@ pub enum Expr {
     Local(String),
     Let(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Then(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
     If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),

@@ -1,4 +1,4 @@
-use crate::ast::Expr;
+use crate::ast::{Expr, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
 use crate::lexer::{Span, Spanned};
@@ -17,6 +17,17 @@ impl Value {
                 span,
                 msg: format!("'{self}' is not a number"),
             })
+        }
+    }
+
+    fn bool(self, span: Span) -> Result<bool, Error> {
+        match self {
+            Value::Bool(x) => Ok(x),
+            Value::Null => Ok(false),
+            _ => Err(Error {
+                span,
+                msg: format!("'{self}' cannot be treated as a boolean"),
+            }),
         }
     }
 }
@@ -51,6 +62,8 @@ pub fn eval_expr(expr: &Spanned<Expr>, stack: &mut Vec<(String, Value)>) -> Resu
             eval_expr(a, stack)?;
             eval_expr(b, stack)?
         }
+        Expr::Unary(UnaryOp::Neg, a) => Value::Num(-eval_expr(a, stack)?.num(a.1.clone())?),
+        Expr::Unary(UnaryOp::Not, a) => Value::Bool(!eval_expr(a, stack)?.bool(a.1.clone())?),
         Expr::Binary(a, BinaryOp::Add, b) => Value::Num(
             eval_expr(a, stack)?.num(a.1.clone())? + eval_expr(b, stack)?.num(b.1.clone())?,
         ),
