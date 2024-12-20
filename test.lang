@@ -6,7 +6,8 @@ fn factorial(x) {
     }
 }
 
-if 12 == 42 {
+meaning_of_life = "idk man";
+if 42 == 42 {
     print(meaning_of_life);
 } else {
     print("...something we cannot know");

@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::rc::Rc;
 
 use chumsky::prelude::*;
 
@@ -24,9 +24,8 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing();
 
-            // A let expression
-            let let_ = just(Token::Let)
-                .ignore_then(ident)
+            // Variable assignment
+            let let_ = ident
                 .then_ignore(just(Token::Op("=".to_string())))
                 .then(raw_expr)
                 .then_ignore(just(Token::Ctrl(';')))
@@ -40,8 +39,8 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
-                .or(ident.map(Expr::Local))
                 .or(let_)
+                .or(ident.map(Expr::Local))
                 .or(list)
                 // In Nano Rust, `print` is just a keyword, just like Python 2, for simplicity
                 .or(just(Token::Print)

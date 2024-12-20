@@ -14,7 +14,6 @@ pub enum Token {
     Ctrl(char),
     Ident(String),
     Fn,
-    Let,
     Print,
     If,
     Else,
@@ -31,7 +30,6 @@ impl fmt::Display for Token {
             Token::Ctrl(c) => write!(f, "{}", c),
             Token::Ident(s) => write!(f, "{}", s),
             Token::Fn => write!(f, "fn"),
-            Token::Let => write!(f, "let"),
             Token::Print => write!(f, "print"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
@@ -61,7 +59,6 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 
     let ident = text::ident().map(|ident: String| match ident.as_str() {
         "fn" => Token::Fn,
-        "let" => Token::Let,
         "print" => Token::Print,
         "if" => Token::If,
         "else" => Token::Else,
