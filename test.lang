@@ -1,4 +1,7 @@
-factorial = (x) -> if x == 0 { 1 } else { x };
+# idkkk
+factorial = (x) -> {
+    if x == 0 { 1 } else { x * factorial(x-1) }
+};
 
 meaning_of_life = factorial(10);
 if true {
