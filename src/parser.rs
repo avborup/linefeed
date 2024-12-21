@@ -220,17 +220,15 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             let and_op = just(Token::And).to(BinaryOp::And);
             let or_op = just(Token::Or).to(BinaryOp::Or);
-            let logical_op = and_op.or(or_op); // TODO: Make and have higher precedence than or
+            let logical_op = or_op.or(and_op);
 
-            let logical = compare
+            compare
                 .clone()
                 .then(logical_op.then(compare).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-                });
-
-            logical
+                })
         });
 
         let block_chain = block_expr
