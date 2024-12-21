@@ -206,13 +206,16 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let equality_op = just(Token::Op("==".to_string()))
-                .to(BinaryOp::Eq)
-                .or(just(Token::Op("!=".to_string())).to(BinaryOp::NotEq));
+            let cmp_op = (just(Token::Op("==".to_string())).to(BinaryOp::Eq))
+                .or(just(Token::Op("!=".to_string())).to(BinaryOp::NotEq))
+                .or(just(Token::Op("<".to_string())).to(BinaryOp::Less))
+                .or(just(Token::Op("<=".to_string())).to(BinaryOp::LessEq))
+                .or(just(Token::Op(">".to_string())).to(BinaryOp::Greater))
+                .or(just(Token::Op(">=".to_string())).to(BinaryOp::GreaterEq));
 
             let compare = sum
                 .clone()
-                .then(equality_op.then(sum).repeated())
+                .then(cmp_op.then(sum).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)

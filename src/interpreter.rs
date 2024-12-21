@@ -70,6 +70,19 @@ impl<O: Write, E: Write> Interpreter<O, E> {
             Expr::Binary(a, BinaryOp::NotEq, b) => {
                 Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?)
             }
+            Expr::Binary(a, BinaryOp::Less, b) => {
+                Value::Bool(self.eval_num(a)? < self.eval_num(b)?)
+            }
+            Expr::Binary(a, BinaryOp::LessEq, b) => {
+                Value::Bool(self.eval_num(a)? <= self.eval_num(b)?)
+            }
+            Expr::Binary(a, BinaryOp::Greater, b) => {
+                Value::Bool(self.eval_num(a)? > self.eval_num(b)?)
+            }
+            Expr::Binary(a, BinaryOp::GreaterEq, b) => {
+                Value::Bool(self.eval_num(a)? >= self.eval_num(b)?)
+            }
+
             Expr::Binary(a, BinaryOp::Or, b) => {
                 Value::Bool(self.eval_bool(a)? || self.eval_bool(b)?)
             }
