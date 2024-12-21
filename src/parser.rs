@@ -225,13 +225,20 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
             let or_op = just(Token::Or).to(BinaryOp::Or);
             let logical_op = or_op.or(and_op);
 
-            compare
+            let logical = compare
                 .clone()
                 .then(logical_op.then(compare).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-                })
+                });
+
+            let return_ = just(Token::Return)
+                .ignore_then(raw_expr.clone().or(block_expr.clone()))
+                .map_with_span(|expr, span| Spanned(Expr::Return(Box::new(expr)), span))
+                .labelled("return");
+
+            logical.or(return_)
         });
 
         let block_chain = block_expr

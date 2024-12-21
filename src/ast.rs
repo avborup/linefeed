@@ -72,6 +72,7 @@ pub enum Expr {
     Block(Box<Spanned<Self>>),
     Sequence(Vec<Spanned<Self>>),
     Print(Box<Spanned<Self>>),
+    Return(Box<Spanned<Self>>),
 }
 
 // A function node in the AST.

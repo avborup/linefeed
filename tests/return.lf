@@ -1,0 +1,10 @@
+rate = |hotness| {
+  if hotness >= 10 {
+    return "damn you hot boy";
+  };
+
+  "you aint hot boy"
+};
+
+print(rate(10));
+print(rate(9));

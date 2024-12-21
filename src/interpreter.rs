@@ -28,8 +28,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
     }
 
     pub fn run(&mut self, expr: &Spanned<Expr>) -> Result<Value, Simple<String>> {
-        self.eval_expr(expr)
-            .map_err(|e| Simple::custom(e.span, e.msg))
+        self.eval_expr(expr).map_err(|e| e.simple())
     }
 
     pub fn eval_expr(&mut self, expr: &Spanned<Expr>) -> Result<Value, Error> {
@@ -45,7 +44,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     .collect::<Result<_, _>>()?,
             ),
 
-            Expr::Local(name) => self.vars.get(name).cloned().ok_or_else(|| Error {
+            Expr::Local(name) => self.vars.get(name).cloned().ok_or_else(|| Error::Simple {
                 span: expr.1.clone(),
                 msg: format!("No such variable '{}' in scope", name),
             })?,
@@ -90,18 +89,24 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 Value::Bool(self.eval_bool(a)? && self.eval_bool(b)?)
             }
 
+            Expr::Return(val) => {
+                return Err(Error::Return {
+                    val: self.eval_expr(val)?,
+                })
+            }
+
             Expr::Call(func_expr, args) => {
                 let func_val = self.eval_expr(func_expr)?;
 
                 let Value::Func(func) = func_val else {
-                    return Err(Error {
+                    return Err(Error::Simple {
                         span: func_expr.1.clone(),
                         msg: format!("'{func_val}' is not callable"),
                     });
                 };
 
                 if func.args.len() != args.len() {
-                    return Err(Error {
+                    return Err(Error::Simple {
                         span: func_expr.1.clone(),
                         msg: format!(
                             "function called with wrong number of arguments (expected {}, found {})",
@@ -116,9 +121,14 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     let arg_val = self.eval_expr(arg)?;
                     self.vars.set_local(name.clone(), arg_val);
                 }
-                let res = self.eval_expr(&func.body)?;
+                let res = self.eval_expr(&func.body);
                 self.vars.pop_scope();
-                res
+
+                match res {
+                    Ok(val) => val,
+                    Err(Error::Return { val }) => val,
+                    Err(e) => return Err(e),
+                }
             }
 
             Expr::If(cond, a, b) => {
@@ -127,7 +137,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     Value::Bool(true) => self.eval_expr(a)?,
                     Value::Bool(false) => self.eval_expr(b)?,
                     c => {
-                        return Err(Error {
+                        return Err(Error::Simple {
                             span: cond.1.clone(),
                             msg: format!("Conditions must be booleans, found '{:?}'", c),
                         })
@@ -164,9 +174,21 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 }
 
 #[derive(Debug)]
-pub struct Error {
-    pub span: Span,
-    pub msg: String,
+pub enum Error {
+    Simple { span: Span, msg: String },
+    Return { val: Value },
+}
+
+impl Error {
+    pub fn simple(self) -> Simple<String> {
+        match self {
+            Error::Simple { span, msg } => Simple::custom(span, msg),
+            Error::Return { val } => Simple::custom(
+                Span::default(),
+                format!("illegal return outside of function: {val}"),
+            ),
+        }
+    }
 }
 
 impl Value {
@@ -174,7 +196,7 @@ impl Value {
         if let Value::Num(x) = self {
             Ok(x)
         } else {
-            Err(Error {
+            Err(Error::Simple {
                 span,
                 msg: format!("'{self}' is not a number"),
             })
@@ -188,7 +210,7 @@ impl Value {
             Value::Num(x) => Ok(x != 0.0),
             Value::List(items) => Ok(!items.is_empty()),
             Value::Str(s) => Ok(!s.is_empty()),
-            _ => Err(Error {
+            _ => Err(Error::Simple {
                 span,
                 msg: format!("'{self}' cannot be treated as a boolean"),
             }),
