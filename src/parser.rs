@@ -126,7 +126,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                             .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))),
                     )
                     .map(|expr| Expr::Print(Box::new(expr))))
-                .map_with_span(|expr, span| Spanned(expr, span))
+                .map_with_span(Spanned)
                 // Atoms can also just be normal expressions, but surrounded with parentheses
                 .or(expr
                     .clone()

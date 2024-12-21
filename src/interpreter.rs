@@ -6,35 +6,6 @@ use crate::ast::{Expr, Span, Spanned, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
 
-pub struct Error {
-    pub span: Span,
-    pub msg: String,
-}
-
-impl Value {
-    fn num(self, span: Span) -> Result<f64, Error> {
-        if let Value::Num(x) = self {
-            Ok(x)
-        } else {
-            Err(Error {
-                span,
-                msg: format!("'{self}' is not a number"),
-            })
-        }
-    }
-
-    fn bool(self, span: Span) -> Result<bool, Error> {
-        match self {
-            Value::Bool(x) => Ok(x),
-            Value::Null => Ok(false),
-            _ => Err(Error {
-                span,
-                msg: format!("'{self}' cannot be treated as a boolean"),
-            }),
-        }
-    }
-}
-
 pub struct Interpreter<O: Write = std::io::Stdout, E: Write = std::io::Stderr> {
     pub stdout: O,
     pub stderr: E,
@@ -89,19 +60,14 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 
             Expr::Unary(UnaryOp::Not, a) => Value::Bool(!self.eval_expr(a)?.bool(a.1.clone())?),
 
-            Expr::Binary(a, op, b) => {
-                let a_val = self.eval_expr(a)?;
-                let b_val = self.eval_expr(b)?;
-
-                match op {
-                    BinaryOp::Add => Value::Num(a_val.num(a.1.clone())? + b_val.num(b.1.clone())?),
-                    BinaryOp::Sub => Value::Num(a_val.num(a.1.clone())? - b_val.num(b.1.clone())?),
-                    BinaryOp::Mul => Value::Num(a_val.num(a.1.clone())? * b_val.num(b.1.clone())?),
-                    BinaryOp::Div => Value::Num(a_val.num(a.1.clone())? / b_val.num(b.1.clone())?),
-                    BinaryOp::Eq => Value::Bool(a_val == b_val),
-                    BinaryOp::NotEq => Value::Bool(a_val != b_val),
-                }
-            }
+            Expr::Binary(a, op, b) => match op {
+                BinaryOp::Add => Value::Num(self.eval_num(a)? + self.eval_num(b)?),
+                BinaryOp::Sub => Value::Num(self.eval_num(a)? - self.eval_num(b)?),
+                BinaryOp::Mul => Value::Num(self.eval_num(a)? * self.eval_num(b)?),
+                BinaryOp::Div => Value::Num(self.eval_num(a)? / self.eval_num(b)?),
+                BinaryOp::Eq => Value::Bool(self.eval_expr(a)? == self.eval_expr(b)?),
+                BinaryOp::NotEq => Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?),
+            },
 
             Expr::Call(func_expr, args) => {
                 let func_val = self.eval_expr(func_expr)?;
@@ -167,6 +133,43 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 val
             }
         })
+    }
+
+    pub fn eval_num(&mut self, expr: &Spanned<Expr>) -> Result<f64, Error> {
+        self.eval_expr(expr)?.num(expr.1.clone())
+    }
+
+    pub fn eval_bool(&mut self, expr: &Spanned<Expr>) -> Result<bool, Error> {
+        self.eval_expr(expr)?.bool(expr.1.clone())
+    }
+}
+
+pub struct Error {
+    pub span: Span,
+    pub msg: String,
+}
+
+impl Value {
+    fn num(self, span: Span) -> Result<f64, Error> {
+        if let Value::Num(x) = self {
+            Ok(x)
+        } else {
+            Err(Error {
+                span,
+                msg: format!("'{self}' is not a number"),
+            })
+        }
+    }
+
+    fn bool(self, span: Span) -> Result<bool, Error> {
+        match self {
+            Value::Bool(x) => Ok(x),
+            Value::Null => Ok(false),
+            _ => Err(Error {
+                span,
+                msg: format!("'{self}' cannot be treated as a boolean"),
+            }),
+        }
     }
 }
 
