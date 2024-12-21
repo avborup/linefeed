@@ -20,6 +20,12 @@ pub enum Token {
     Not,
 }
 
+impl Token {
+    pub fn op(s: impl Into<String>) -> Token {
+        Token::Op(s.into())
+    }
+}
+
 impl fmt::Display for Token {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {

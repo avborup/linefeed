@@ -101,7 +101,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             // Variable assignment
             let let_ = ident
-                .then_ignore(just(Token::Op("=".to_string())))
+                .then_ignore(just(Token::op("=")))
                 .then(raw_expr.clone().or(block_expr.clone()))
                 .map(|(name, val)| Expr::Let(name, Box::new(val)));
 
@@ -163,11 +163,11 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Call(Box::new(f), args.0), span)
                 });
 
-            let prod_op = just(Token::Op("*".to_string()))
-                .to(BinaryOp::Mul)
-                .or(just(Token::Op("/".to_string())).to(BinaryOp::Div));
+            let mul_op = just(Token::op("*")).to(BinaryOp::Mul);
+            let div_op = just(Token::op("/")).to(BinaryOp::Div);
+            let prod_op = mul_op.or(div_op);
 
-            let neg = just(Token::Op("-".to_string()))
+            let neg = just(Token::op("-"))
                 .repeated()
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
@@ -194,9 +194,9 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let op = just(Token::Op("+".to_string()))
+            let op = just(Token::op("+"))
                 .to(BinaryOp::Add)
-                .or(just(Token::Op("-".to_string())).to(BinaryOp::Sub));
+                .or(just(Token::op("-")).to(BinaryOp::Sub));
 
             let sum = product
                 .clone()
@@ -206,12 +206,12 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let cmp_op = (just(Token::Op("==".to_string())).to(BinaryOp::Eq))
-                .or(just(Token::Op("!=".to_string())).to(BinaryOp::NotEq))
-                .or(just(Token::Op("<".to_string())).to(BinaryOp::Less))
-                .or(just(Token::Op("<=".to_string())).to(BinaryOp::LessEq))
-                .or(just(Token::Op(">".to_string())).to(BinaryOp::Greater))
-                .or(just(Token::Op(">=".to_string())).to(BinaryOp::GreaterEq));
+            let cmp_op = (just(Token::op("==")).to(BinaryOp::Eq))
+                .or(just(Token::op("!=")).to(BinaryOp::NotEq))
+                .or(just(Token::op("<")).to(BinaryOp::Less))
+                .or(just(Token::op("<=")).to(BinaryOp::LessEq))
+                .or(just(Token::op(">")).to(BinaryOp::Greater))
+                .or(just(Token::op(">=")).to(BinaryOp::GreaterEq));
 
             let compare = sum
                 .clone()
