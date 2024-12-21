@@ -56,18 +56,20 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 val // TODO: use Rc for values to avoid cloning
             }
 
-            Expr::Unary(UnaryOp::Neg, a) => Value::Num(-self.eval_expr(a)?.num(a.1.clone())?),
+            Expr::Unary(UnaryOp::Neg, a) => Value::Num(-self.eval_num(a)?),
+            Expr::Unary(UnaryOp::Not, a) => Value::Bool(!self.eval_bool(a)?),
 
-            Expr::Unary(UnaryOp::Not, a) => Value::Bool(!self.eval_expr(a)?.bool(a.1.clone())?),
+            Expr::Binary(a, BinaryOp::Add, b) => Value::Num(self.eval_num(a)? + self.eval_num(b)?),
+            Expr::Binary(a, BinaryOp::Sub, b) => Value::Num(self.eval_num(a)? - self.eval_num(b)?),
+            Expr::Binary(a, BinaryOp::Mul, b) => Value::Num(self.eval_num(a)? * self.eval_num(b)?),
+            Expr::Binary(a, BinaryOp::Div, b) => Value::Num(self.eval_num(a)? / self.eval_num(b)?),
 
-            Expr::Binary(a, op, b) => match op {
-                BinaryOp::Add => Value::Num(self.eval_num(a)? + self.eval_num(b)?),
-                BinaryOp::Sub => Value::Num(self.eval_num(a)? - self.eval_num(b)?),
-                BinaryOp::Mul => Value::Num(self.eval_num(a)? * self.eval_num(b)?),
-                BinaryOp::Div => Value::Num(self.eval_num(a)? / self.eval_num(b)?),
-                BinaryOp::Eq => Value::Bool(self.eval_expr(a)? == self.eval_expr(b)?),
-                BinaryOp::NotEq => Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?),
-            },
+            Expr::Binary(a, BinaryOp::Eq, b) => {
+                Value::Bool(self.eval_expr(a)? == self.eval_expr(b)?)
+            }
+            Expr::Binary(a, BinaryOp::NotEq, b) => {
+                Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?)
+            }
 
             Expr::Call(func_expr, args) => {
                 let func_val = self.eval_expr(func_expr)?;
