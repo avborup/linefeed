@@ -15,3 +15,25 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    recursive_fibonacci,
+    indoc! {r#"
+        fib = |n| {
+            if n <= 1 {
+                n
+            } else {
+                fib(n - 1) + fib(n - 2)
+            }
+        };
+        print(fib(4));
+        print(fib(5));
+        print(fib(6));
+    "#},
+    equals(indoc! {r#"
+        3
+        5
+        8
+    "#}),
+    empty()
+);
