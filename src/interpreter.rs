@@ -85,10 +85,10 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     return Err(Error {
                         span: func_expr.1.clone(),
                         msg: format!(
-                        "function called with wrong number of arguments (expected {}, found {})",
-                        func.args.len(),
-                        args.len()
-                    ),
+                            "function called with wrong number of arguments (expected {}, found {})",
+                            func.args.len(),
+                            args.len()
+                        )
                     });
                 };
 
@@ -125,9 +125,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 
             Expr::Sequence(exprs) => exprs
                 .iter()
-                .map(|expr| self.eval_expr(expr))
-                .last()
-                .unwrap_or(Ok(Value::Null))?,
+                .try_fold(Value::Null, |_, expr| self.eval_expr(expr))?,
 
             Expr::Print(a) => {
                 let val = self.eval_expr(a)?;
@@ -146,6 +144,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
     }
 }
 
+#[derive(Debug)]
 pub struct Error {
     pub span: Span,
     pub msg: String,
