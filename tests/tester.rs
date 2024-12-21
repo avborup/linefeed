@@ -19,3 +19,9 @@ macro_rules! eval_and_assert {
 }
 
 eval_and_assert!(test_factorial, include_str!("factorial.lf"), "3628800");
+
+eval_and_assert!(
+    test_function_oneliners,
+    include_str!("functions.lf"),
+    "2\n2\nyes"
+);

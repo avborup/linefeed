@@ -1,0 +1,14 @@
+# A one-liner with a simple expression
+foo = (x) -> x + 1;
+
+# Or a full block for the body
+bar = (x) -> {
+    x + 1
+};
+
+# Or with a block expression for the body
+baz = (x) -> if x == 1 { "yes" } else { "no" };
+
+print(foo(1)); # 2
+print(bar(1)); # 2
+print(baz(1)); # yes
