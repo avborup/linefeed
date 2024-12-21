@@ -9,6 +9,7 @@ pub struct Output {
 pub enum OutputAssertion {
     Equals(String),
     Contains(String),
+    Empty,
 }
 
 pub enum OutputSource {
@@ -44,6 +45,13 @@ impl Output {
                     format_failure(source_label, "contains", expected, actual)
                 );
             }
+            OutputAssertion::Empty => {
+                assert!(
+                    normalise_string(actual).is_empty(),
+                    "{}",
+                    format_failure(source_label, "empty", "", actual)
+                );
+            }
         }
 
         self
@@ -75,4 +83,8 @@ pub fn contains(expected: impl Into<String>) -> OutputAssertion {
 
 pub fn equals(expected: impl Into<String>) -> OutputAssertion {
     OutputAssertion::Equals(expected.into())
+}
+
+pub fn empty() -> OutputAssertion {
+    OutputAssertion::Empty
 }

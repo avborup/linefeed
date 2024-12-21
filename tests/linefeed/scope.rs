@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{contains, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -13,7 +13,7 @@ eval_and_assert!(
         overwritten
         overwritten
     "#}),
-    equals("")
+    empty()
 );
 
 eval_and_assert!(
@@ -30,7 +30,7 @@ eval_and_assert!(
         outer
         inner
     "#}),
-    equals("")
+    empty()
 );
 
 eval_and_assert!(
@@ -52,7 +52,7 @@ eval_and_assert!(
         2
         0
     "#}),
-    equals("")
+    empty()
 );
 
 eval_and_assert!(
