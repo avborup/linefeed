@@ -39,71 +39,70 @@ impl Value {
 pub struct Interpreter<O: Write = std::io::Stdout, E: Write = std::io::Stderr> {
     pub stdout: O,
     pub stderr: E,
-    // TODO: move vars in here
+    pub vars: VarStore,
 }
 
 impl Default for Interpreter<std::io::Stdout, std::io::Stderr> {
     fn default() -> Self {
-        Self {
-            stdout: std::io::stdout(),
-            stderr: std::io::stderr(),
-        }
+        Self::new_with_output(std::io::stdout(), std::io::stderr())
     }
 }
 
 impl<O: Write, E: Write> Interpreter<O, E> {
+    pub fn new_with_output(stdout: O, stderr: E) -> Self {
+        Self {
+            stdout,
+            stderr,
+            vars: VarStore::new(),
+        }
+    }
+
     pub fn run(&mut self, expr: &Spanned<Expr>) -> Result<Value, Simple<String>> {
-        self.eval_expr(expr, &mut VarStore::new())
+        self.eval_expr(expr)
             .map_err(|e| Simple::custom(e.span, e.msg))
     }
 
-    pub fn eval_expr(&mut self, expr: &Spanned<Expr>, vars: &mut VarStore) -> Result<Value, Error> {
+    pub fn eval_expr(&mut self, expr: &Spanned<Expr>) -> Result<Value, Error> {
         Ok(match &expr.0 {
             Expr::Error => unreachable!(), // Error expressions only get created by parser errors, so cannot exist in a valid AST
             Expr::Value(val) => val.clone(),
             Expr::List(items) => Value::List(
                 items
                     .iter()
-                    .map(|item| self.eval_expr(item, vars))
+                    .map(|item| self.eval_expr(item))
                     .collect::<Result<_, _>>()?,
             ),
-            Expr::Local(name) => vars.get(name).cloned().ok_or_else(|| Error {
+            Expr::Local(name) => self.vars.get(name).cloned().ok_or_else(|| Error {
                 span: expr.1.clone(),
                 msg: format!("No such variable '{}' in scope", name),
             })?,
             Expr::Let(local, val) => {
-                let val = self.eval_expr(val, vars)?;
-                vars.set(local.clone(), val.clone());
+                let val = self.eval_expr(val)?;
+                self.vars.set(local.clone(), val.clone());
                 val // TODO: use Rc for values to avoid cloning
             }
-            Expr::Unary(UnaryOp::Neg, a) => Value::Num(-self.eval_expr(a, vars)?.num(a.1.clone())?),
-            Expr::Unary(UnaryOp::Not, a) => {
-                Value::Bool(!self.eval_expr(a, vars)?.bool(a.1.clone())?)
-            }
+            Expr::Unary(UnaryOp::Neg, a) => Value::Num(-self.eval_expr(a)?.num(a.1.clone())?),
+            Expr::Unary(UnaryOp::Not, a) => Value::Bool(!self.eval_expr(a)?.bool(a.1.clone())?),
             Expr::Binary(a, BinaryOp::Add, b) => Value::Num(
-                self.eval_expr(a, vars)?.num(a.1.clone())?
-                    + self.eval_expr(b, vars)?.num(b.1.clone())?,
+                self.eval_expr(a)?.num(a.1.clone())? + self.eval_expr(b)?.num(b.1.clone())?,
             ),
             Expr::Binary(a, BinaryOp::Sub, b) => Value::Num(
-                self.eval_expr(a, vars)?.num(a.1.clone())?
-                    - self.eval_expr(b, vars)?.num(b.1.clone())?,
+                self.eval_expr(a)?.num(a.1.clone())? - self.eval_expr(b)?.num(b.1.clone())?,
             ),
             Expr::Binary(a, BinaryOp::Mul, b) => Value::Num(
-                self.eval_expr(a, vars)?.num(a.1.clone())?
-                    * self.eval_expr(b, vars)?.num(b.1.clone())?,
+                self.eval_expr(a)?.num(a.1.clone())? * self.eval_expr(b)?.num(b.1.clone())?,
             ),
             Expr::Binary(a, BinaryOp::Div, b) => Value::Num(
-                self.eval_expr(a, vars)?.num(a.1.clone())?
-                    / self.eval_expr(b, vars)?.num(b.1.clone())?,
+                self.eval_expr(a)?.num(a.1.clone())? / self.eval_expr(b)?.num(b.1.clone())?,
             ),
             Expr::Binary(a, BinaryOp::Eq, b) => {
-                Value::Bool(self.eval_expr(a, vars)? == self.eval_expr(b, vars)?)
+                Value::Bool(self.eval_expr(a)? == self.eval_expr(b)?)
             }
             Expr::Binary(a, BinaryOp::NotEq, b) => {
-                Value::Bool(self.eval_expr(a, vars)? != self.eval_expr(b, vars)?)
+                Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?)
             }
             Expr::Call(func_expr, args) => {
-                let func_val = self.eval_expr(func_expr, vars)?;
+                let func_val = self.eval_expr(func_expr)?;
 
                 let Value::Func(func) = func_val else {
                     return Err(Error {
@@ -123,20 +122,20 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     });
                 };
 
-                vars.start_scope();
+                self.vars.start_scope();
                 for (name, arg) in func.args.iter().zip(args.iter()) {
-                    let arg_val = self.eval_expr(arg, vars)?;
-                    vars.set_local(name.clone(), arg_val);
+                    let arg_val = self.eval_expr(arg)?;
+                    self.vars.set_local(name.clone(), arg_val);
                 }
-                let res = self.eval_expr(&func.body, vars)?;
-                vars.pop_scope();
+                let res = self.eval_expr(&func.body)?;
+                self.vars.pop_scope();
                 res
             }
             Expr::If(cond, a, b) => {
-                let c = self.eval_expr(cond, vars)?;
+                let c = self.eval_expr(cond)?;
                 match c {
-                    Value::Bool(true) => self.eval_expr(a, vars)?,
-                    Value::Bool(false) => self.eval_expr(b, vars)?,
+                    Value::Bool(true) => self.eval_expr(a)?,
+                    Value::Bool(false) => self.eval_expr(b)?,
                     c => {
                         return Err(Error {
                             span: cond.1.clone(),
@@ -146,18 +145,18 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 }
             }
             Expr::Block(sub_expr) => {
-                vars.start_scope();
-                let res = self.eval_expr(sub_expr, vars)?;
-                vars.pop_scope();
+                self.vars.start_scope();
+                let res = self.eval_expr(sub_expr)?;
+                self.vars.pop_scope();
                 res
             }
             Expr::Sequence(exprs) => exprs
                 .iter()
-                .map(|expr| self.eval_expr(expr, vars))
+                .map(|expr| self.eval_expr(expr))
                 .last()
                 .unwrap_or(Ok(Value::Null))?,
             Expr::Print(a) => {
-                let val = self.eval_expr(a, vars)?;
+                let val = self.eval_expr(a)?;
                 writeln!(self.stdout, "{val}").unwrap();
                 val
             }

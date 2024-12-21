@@ -5,10 +5,8 @@ macro_rules! eval_and_assert {
             let mut stdout = Vec::new();
             let mut stderr = Vec::new();
 
-            let interpreter = linefeed::interpreter::Interpreter {
-                stdout: &mut stdout,
-                stderr: &mut stderr,
-            };
+            let interpreter =
+                linefeed::interpreter::Interpreter::new_with_output(&mut stdout, &mut stderr);
 
             linefeed::run_with_interpreter(interpreter, $src);
             let stdout_str = std::str::from_utf8(&stdout).unwrap();
