@@ -72,10 +72,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
             let args = ident
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing()
-                .delimited_by(
-                    just(Token::Op('|'.to_string())),
-                    just(Token::Op('|'.to_string())),
-                )
+                .delimited_by(just(Token::Ctrl('|')), just(Token::Ctrl('|')))
                 .labelled("function args");
 
             let func = args
