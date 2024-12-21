@@ -259,6 +259,23 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 )
             });
 
+        let postfix_unless = raw_expr
+            .clone()
+            .then(just(Token::Unless).ignore_then(raw_expr.clone()))
+            .map_with_span(|(a, b), span: Span| {
+                Spanned(
+                    Expr::If(
+                        Box::new(Spanned(
+                            Expr::Unary(UnaryOp::Not, Box::new(b)),
+                            span.clone(),
+                        )),
+                        Box::new(a),
+                        Box::new(Spanned(Expr::Value(Value::Null), span.clone())),
+                    ),
+                    span,
+                )
+            });
+
         let block_chain = block_expr
             .clone()
             .then(block_expr.clone().repeated())
@@ -274,6 +291,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
         block_chain
             .or(postfix_if)
+            .or(postfix_unless)
             // Expressions, chained by semicolons, are statements
             .or(raw_expr.clone())
             .then(just(Token::Ctrl(';')).ignore_then(expr.or_not()).repeated())
