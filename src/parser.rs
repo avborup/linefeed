@@ -11,7 +11,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
         let block = expr
             .clone()
             .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
-            .map_with_span(|expr, span| (Expr::Block(Box::new(expr)), span))
+            .map_with_span(|expr, span| Spanned(Expr::Block(Box::new(expr)), span))
             // Attempt to recover anything that looks like a block but contains errors
             .recover_with(nested_delimiters(
                 Token::Ctrl('{'),
@@ -20,7 +20,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     (Token::Ctrl('('), Token::Ctrl(')')),
                     (Token::Ctrl('['), Token::Ctrl(']')),
                 ],
-                |span| (Expr::Error, span),
+                |span| Spanned(Expr::Error, span),
             ));
 
         let if_ = recursive(|if_| {
@@ -33,14 +33,14 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         .or_not(),
                 )
                 .map_with_span(|((cond, a), b), span: Span| {
-                    (
+                    Spanned(
                         Expr::If(
                             Box::new(cond),
                             Box::new(a),
                             Box::new(match b {
                                 Some(b) => b,
                                 // If an `if` expression has no trailing `else` block, we magic up one that just produces null
-                                None => (Expr::Value(Value::Null), span.clone()),
+                                None => Spanned(Expr::Value(Value::Null), span.clone()),
                             }),
                         ),
                         span,
@@ -90,7 +90,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                                 (Token::Ctrl('('), Token::Ctrl(')')),
                                 (Token::Ctrl('['), Token::Ctrl(']')),
                             ],
-                            |span| (Expr::Error, span),
+                            |span| Spanned(Expr::Error, span),
                         ))
                         .or(raw_expr.clone()),
                 )
@@ -126,7 +126,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                             .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))),
                     )
                     .map(|expr| Expr::Print(Box::new(expr))))
-                .map_with_span(|expr, span| (expr, span))
+                .map_with_span(|expr, span| Spanned(expr, span))
                 // Atoms can also just be normal expressions, but surrounded with parentheses
                 .or(expr
                     .clone()
@@ -139,7 +139,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         (Token::Ctrl('['), Token::Ctrl(']')),
                         (Token::Ctrl('{'), Token::Ctrl('}')),
                     ],
-                    |span| (Expr::Error, span),
+                    |span| Spanned(Expr::Error, span),
                 ))
                 // Attempt to recover anything that looks like a list but contains errors
                 .recover_with(nested_delimiters(
@@ -149,7 +149,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         (Token::Ctrl('('), Token::Ctrl(')')),
                         (Token::Ctrl('{'), Token::Ctrl('}')),
                     ],
-                    |span| (Expr::Error, span),
+                    |span| Spanned(Expr::Error, span),
                 ));
 
             // Function calls have very high precedence so we prioritise them
@@ -163,7 +163,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 )
                 .foldl(|f, args| {
                     let span = f.1.start..args.1.end;
-                    (Expr::Call(Box::new(f), args.0), span)
+                    Spanned(Expr::Call(Box::new(f), args.0), span)
                 });
 
             // Product ops (multiply and divide) have equal precedence
@@ -176,14 +176,14 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
                     let range = rhs.1.clone();
-                    (Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
+                    Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
                 });
             let not = just(Token::Op("!".to_string()))
                 .repeated()
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
                     let range = rhs.1.clone();
-                    (Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
+                    Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
                 });
             let unary = neg.or(not);
 
@@ -193,7 +193,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .then(prod_op.then(call).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
-                    (Expr::Binary(Box::new(a), op, Box::new(b)), span)
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
             // Sum ops (add and subtract) have equal precedence
@@ -205,7 +205,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .then(op.then(product).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
-                    (Expr::Binary(Box::new(a), op, Box::new(b)), span)
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
             // Comparison ops (equal, not-equal) have equal precedence
@@ -217,7 +217,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .then(op.then(sum).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
-                    (Expr::Binary(Box::new(a), op, Box::new(b)), span)
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
             compare
@@ -231,9 +231,9 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     a
                 } else {
                     b.insert(0, a);
-                    (Expr::Sequence(b), span.clone())
+                    Spanned(Expr::Sequence(b), span.clone())
                 };
-                (Expr::Block(Box::new(e)), span)
+                Spanned(Expr::Block(Box::new(e)), span)
             });
 
         block_chain
@@ -246,7 +246,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 } else {
                     let mut seq = vec![a];
                     seq.extend(b.into_iter().flatten());
-                    (Expr::Sequence(seq), span.clone())
+                    Spanned(Expr::Sequence(seq), span.clone())
                 }
             })
     })

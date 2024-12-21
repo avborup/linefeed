@@ -1,7 +1,9 @@
 use std::rc::Rc;
 
 pub type Span = std::ops::Range<usize>;
-pub type Spanned<T> = (T, Span);
+
+#[derive(Clone, Debug)]
+pub struct Spanned<T>(pub T, pub Span);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
