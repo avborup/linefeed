@@ -43,6 +43,8 @@ pub enum BinaryOp {
     Div,
     Eq,
     NotEq,
+    Or,
+    And,
 }
 
 #[derive(Clone, Debug)]

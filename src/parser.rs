@@ -163,7 +163,6 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Call(Box::new(f), args.0), span)
                 });
 
-            // Product ops (multiply and divide) have equal precedence
             let prod_op = just(Token::Op("*".to_string()))
                 .to(BinaryOp::Mul)
                 .or(just(Token::Op("/".to_string())).to(BinaryOp::Div));
@@ -175,13 +174,15 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     let range = rhs.1.clone();
                     Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
                 });
-            let not = just(Token::Op("!".to_string()))
+
+            let not = just(Token::Not)
                 .repeated()
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
                     let range = rhs.1.clone();
                     Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
                 });
+
             let unary = neg.or(not);
 
             let product = call
@@ -193,10 +194,10 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            // Sum ops (add and subtract) have equal precedence
             let op = just(Token::Op("+".to_string()))
                 .to(BinaryOp::Add)
                 .or(just(Token::Op("-".to_string())).to(BinaryOp::Sub));
+
             let sum = product
                 .clone()
                 .then(op.then(product).repeated())
@@ -205,19 +206,31 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            // Comparison ops (equal, not-equal) have equal precedence
-            let op = just(Token::Op("==".to_string()))
+            let equality_op = just(Token::Op("==".to_string()))
                 .to(BinaryOp::Eq)
                 .or(just(Token::Op("!=".to_string())).to(BinaryOp::NotEq));
+
             let compare = sum
                 .clone()
-                .then(op.then(sum).repeated())
+                .then(equality_op.then(sum).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            compare
+            let and_op = just(Token::And).to(BinaryOp::And);
+            let or_op = just(Token::Or).to(BinaryOp::Or);
+            let logical_op = and_op.or(or_op); // TODO: Make and have higher precedence than or
+
+            let logical = compare
+                .clone()
+                .then(logical_op.then(compare).repeated())
+                .foldl(|a, (op, b)| {
+                    let span = a.1.start..b.1.end;
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
+                });
+
+            logical
         });
 
         let block_chain = block_expr

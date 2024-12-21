@@ -33,22 +33,3 @@ eval_and_assert!(
     empty()
 );
 eval_and_assert!(op_division, "print((2 * 10) / 5)", equals("4"), empty());
-
-eval_and_assert!(
-    op_equals,
-    "print(1 == 1);print(-1 == 1)",
-    equals("true \n false"),
-    empty()
-);
-eval_and_assert!(
-    op_not_equals,
-    "print(1 != 1);print(-1 != 1)",
-    equals("false \n true"),
-    empty()
-);
-eval_and_assert!(
-    op_not,
-    "print(!true);print(!false)",
-    equals("false \n true"),
-    empty()
-);

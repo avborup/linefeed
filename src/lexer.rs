@@ -15,6 +15,9 @@ pub enum Token {
     Print,
     If,
     Else,
+    Or,
+    And,
+    Not,
 }
 
 impl fmt::Display for Token {
@@ -30,6 +33,9 @@ impl fmt::Display for Token {
             Token::Print => write!(f, "print"),
             Token::If => write!(f, "if"),
             Token::Else => write!(f, "else"),
+            Token::Or => write!(f, "or"),
+            Token::Not => write!(f, "not"),
+            Token::And => write!(f, "and"),
         }
     }
 }
@@ -46,7 +52,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Str);
 
-    let op = one_of("+-*/!=")
+    let op = one_of("+-*/!=<>")
         .repeated()
         .at_least(1)
         .collect::<String>()
@@ -60,6 +66,9 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         "else" => Token::Else,
         "true" => Token::Bool(true),
         "false" => Token::Bool(false),
+        "or" => Token::Or,
+        "and" => Token::And,
+        "not" => Token::Not,
         "null" => Token::Null,
         _ => Token::Ident(ident),
     });
