@@ -172,6 +172,9 @@ impl Value {
         match self {
             Value::Bool(x) => Ok(x),
             Value::Null => Ok(false),
+            Value::Num(x) => Ok(x != 0.0),
+            Value::List(items) => Ok(!items.is_empty()),
+            Value::Str(s) => Ok(!s.is_empty()),
             _ => Err(Error {
                 span,
                 msg: format!("'{self}' cannot be treated as a boolean"),
