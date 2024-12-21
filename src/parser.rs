@@ -2,8 +2,8 @@ use std::rc::Rc;
 
 use chumsky::prelude::*;
 
-use crate::ast::{BinaryOp, Expr, Func, UnaryOp, Value};
-use crate::lexer::{Span, Spanned, Token};
+use crate::ast::{BinaryOp, Expr, Func, Span, Spanned, UnaryOp, Value};
+use crate::lexer::Token;
 
 pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>> + Clone {
     recursive(|expr| {

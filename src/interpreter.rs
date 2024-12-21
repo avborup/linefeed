@@ -2,10 +2,9 @@ use std::{collections::HashMap, io::Write};
 
 use chumsky::error::Simple;
 
-use crate::ast::{Expr, UnaryOp};
+use crate::ast::{Expr, Span, Spanned, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
-use crate::lexer::{Span, Spanned};
 
 pub struct Error {
     pub span: Span,

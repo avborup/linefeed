@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
-use crate::lexer::Span;
+pub type Span = std::ops::Range<usize>;
+pub type Spanned<T> = (T, Span);
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -47,8 +48,6 @@ pub enum UnaryOp {
     Neg,
     Not,
 }
-
-pub type Spanned<T> = (T, Span);
 
 // An expression node in the AST. Children are spanned so we can generate useful runtime errors.
 #[derive(Debug)]

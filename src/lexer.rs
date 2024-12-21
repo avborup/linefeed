@@ -1,8 +1,7 @@
 use chumsky::prelude::*;
 use std::fmt;
 
-pub type Span = std::ops::Range<usize>;
-pub type Spanned<T> = (T, Span);
+use crate::ast::Span;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Token {
