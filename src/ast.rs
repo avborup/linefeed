@@ -5,7 +5,7 @@ pub type Span = std::ops::Range<usize>;
 #[derive(Clone, Debug)]
 pub struct Spanned<T>(pub T, pub Span);
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
     Null,
     Bool(bool),
@@ -84,5 +84,11 @@ pub struct Func {
 impl PartialEq for Func {
     fn eq(&self, _: &Self) -> bool {
         false
+    }
+}
+
+impl PartialOrd for Func {
+    fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
+        None
     }
 }
