@@ -1,16 +1,19 @@
-use crate::helpers::eval_and_assert;
+use crate::helpers::{
+    eval_and_assert,
+    output::{contains, equals},
+};
 
 use indoc::indoc;
 
 eval_and_assert!(
     scope_success,
     include_str!("../scope.lf"),
-    indoc! {r#"
+    equals(indoc! {r#"
         outer
         overwritten
         overwritten
-    "#},
-    ""
+    "#}),
+    equals("")
 );
 
 eval_and_assert!(
@@ -23,11 +26,11 @@ eval_and_assert!(
         };
         print(outer); # inner
     "#},
-    indoc! {r#"
+    equals(indoc! {r#"
         outer
         inner
-    "#},
-    ""
+    "#}),
+    equals("")
 );
 
 eval_and_assert!(
@@ -44,12 +47,12 @@ eval_and_assert!(
         foo(1); # 2
         print(x); # 0
     "#},
-    indoc! {r#"
+    equals(indoc! {r#"
         0
         2
         0
-    "#},
-    ""
+    "#}),
+    equals("")
 );
 
 eval_and_assert!(
@@ -63,6 +66,6 @@ eval_and_assert!(
         foo();
         print(x); # error
     "#},
-    "some value",
-    ""
+    equals("some value"),
+    contains("Error: No such variable 'x' in scope")
 );

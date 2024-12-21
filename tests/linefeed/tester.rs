@@ -1,31 +1,51 @@
 use indoc::indoc;
 
-use crate::helpers::eval_and_assert;
+use crate::helpers::{eval_and_assert, output::equals};
 
-eval_and_assert!(factorial, include_str!("../factorial.lf"), "3628800", "");
+eval_and_assert!(
+    factorial,
+    include_str!("../factorial.lf"),
+    equals("3628800"),
+    equals("")
+);
 
 eval_and_assert!(
     function_oneliners,
     include_str!("../functions.lf"),
-    indoc! {r#"
+    equals(indoc! {r#"
         2
         2
         yes
-    "#},
-    ""
+    "#}),
+    equals("")
 );
 
-eval_and_assert!(addition, "print(1 + 2)", "3", "");
-eval_and_assert!(subtraction, "print(1 - 2)", "-1", "");
-eval_and_assert!(negation, "print(-1 + 3)", "2", "");
-eval_and_assert!(multiplication, "print(3 * (1 + 3))", "12", "");
-eval_and_assert!(division, "print((2 * 10) / 5)", "4", "");
-
-eval_and_assert!(equals, "print(1 == 1);print(-1 == 1)", "true \n false", "");
+eval_and_assert!(op_addition, "print(1 + 2)", equals("3"), equals(""));
+eval_and_assert!(op_subtraction, "print(1 - 2)", equals("-1"), equals(""));
+eval_and_assert!(op_negation, "print(-1 + 3)", equals("2"), equals(""));
 eval_and_assert!(
-    not_equals,
-    "print(1 != 1);print(-1 != 1)",
-    "false \n true",
-    ""
+    op_multiplication,
+    "print(3 * (1 + 3))",
+    equals("12"),
+    equals("")
 );
-eval_and_assert!(not, "print(!true);print(!false)", "false \n true", "");
+eval_and_assert!(op_division, "print((2 * 10) / 5)", equals("4"), equals(""));
+
+eval_and_assert!(
+    op_equals,
+    "print(1 == 1);print(-1 == 1)",
+    equals("true \n false"),
+    equals("")
+);
+eval_and_assert!(
+    op_not_equals,
+    "print(1 != 1);print(-1 != 1)",
+    equals("false \n true"),
+    equals("")
+);
+eval_and_assert!(
+    op_not,
+    "print(!true);print(!false)",
+    equals("false \n true"),
+    equals("")
+);
