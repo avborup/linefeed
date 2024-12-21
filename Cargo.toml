@@ -8,4 +8,5 @@ ariadne = "0.3.0"
 chumsky = "0.9.3"
 
 [dev-dependencies]
+indoc = "2.0.5"
 strip-ansi-escapes = "0.2.0"

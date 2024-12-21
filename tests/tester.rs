@@ -1,3 +1,5 @@
+use indoc::indoc;
+
 macro_rules! eval_and_assert {
     ($name:ident, $src:expr, $expected_out:expr, $expected_err:expr) => {
         #[test]
@@ -51,6 +53,56 @@ eval_and_assert!(
     function_oneliners,
     include_str!("functions.lf"),
     "2 \n 2 \n yes",
+    ""
+);
+
+eval_and_assert!(
+    scope_success,
+    include_str!("scope.lf"),
+    indoc! {r#"
+        outer
+        overwritten
+        overwritten
+    "#},
+    ""
+);
+
+eval_and_assert!(
+    scope_block_overwrites_outer,
+    indoc! {r#"
+        outer = "outer";
+        {
+            print(outer); # outer
+            outer = "inner";
+        };
+        print(outer); # inner
+    "#},
+    indoc! {r#"
+        outer
+        inner
+    "#},
+    ""
+);
+
+eval_and_assert!(
+    scope_function_is_local,
+    indoc! {r#"
+        x = 0;
+
+        foo = |x| {
+            x = x + 1;
+            print(x);
+        };
+
+        print(x); # 0
+        foo(1); # 2
+        print(x); # 0
+    "#},
+    indoc! {r#"
+        0
+        2
+        0
+    "#},
     ""
 );
 

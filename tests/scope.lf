@@ -1,0 +1,15 @@
+# Scope rules are similar to Python:
+# - Functions declare new
+# - Inner scopes pull in variables from outer scope
+# - Assignment overwrites a variable if it already exists (even outside function scope)
+
+var = "outer";
+
+foo = |val| {
+  var = val;
+  print(var); # overwritten
+};
+
+print(var); # outer
+foo("overwritten");
+print(var); # overwritten
