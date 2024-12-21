@@ -65,42 +65,45 @@ impl<O: Write, E: Write> Interpreter<O, E> {
     pub fn eval_expr(&mut self, expr: &Spanned<Expr>) -> Result<Value, Error> {
         Ok(match &expr.0 {
             Expr::Error => unreachable!(), // Error expressions only get created by parser errors, so cannot exist in a valid AST
+
             Expr::Value(val) => val.clone(),
+
             Expr::List(items) => Value::List(
                 items
                     .iter()
                     .map(|item| self.eval_expr(item))
                     .collect::<Result<_, _>>()?,
             ),
+
             Expr::Local(name) => self.vars.get(name).cloned().ok_or_else(|| Error {
                 span: expr.1.clone(),
                 msg: format!("No such variable '{}' in scope", name),
             })?,
+
             Expr::Let(local, val) => {
                 let val = self.eval_expr(val)?;
                 self.vars.set(local.clone(), val.clone());
                 val // TODO: use Rc for values to avoid cloning
             }
+
             Expr::Unary(UnaryOp::Neg, a) => Value::Num(-self.eval_expr(a)?.num(a.1.clone())?),
+
             Expr::Unary(UnaryOp::Not, a) => Value::Bool(!self.eval_expr(a)?.bool(a.1.clone())?),
-            Expr::Binary(a, BinaryOp::Add, b) => Value::Num(
-                self.eval_expr(a)?.num(a.1.clone())? + self.eval_expr(b)?.num(b.1.clone())?,
-            ),
-            Expr::Binary(a, BinaryOp::Sub, b) => Value::Num(
-                self.eval_expr(a)?.num(a.1.clone())? - self.eval_expr(b)?.num(b.1.clone())?,
-            ),
-            Expr::Binary(a, BinaryOp::Mul, b) => Value::Num(
-                self.eval_expr(a)?.num(a.1.clone())? * self.eval_expr(b)?.num(b.1.clone())?,
-            ),
-            Expr::Binary(a, BinaryOp::Div, b) => Value::Num(
-                self.eval_expr(a)?.num(a.1.clone())? / self.eval_expr(b)?.num(b.1.clone())?,
-            ),
-            Expr::Binary(a, BinaryOp::Eq, b) => {
-                Value::Bool(self.eval_expr(a)? == self.eval_expr(b)?)
+
+            Expr::Binary(a, op, b) => {
+                let a_val = self.eval_expr(a)?;
+                let b_val = self.eval_expr(b)?;
+
+                match op {
+                    BinaryOp::Add => Value::Num(a_val.num(a.1.clone())? + b_val.num(b.1.clone())?),
+                    BinaryOp::Sub => Value::Num(a_val.num(a.1.clone())? - b_val.num(b.1.clone())?),
+                    BinaryOp::Mul => Value::Num(a_val.num(a.1.clone())? * b_val.num(b.1.clone())?),
+                    BinaryOp::Div => Value::Num(a_val.num(a.1.clone())? / b_val.num(b.1.clone())?),
+                    BinaryOp::Eq => Value::Bool(a_val == b_val),
+                    BinaryOp::NotEq => Value::Bool(a_val != b_val),
+                }
             }
-            Expr::Binary(a, BinaryOp::NotEq, b) => {
-                Value::Bool(self.eval_expr(a)? != self.eval_expr(b)?)
-            }
+
             Expr::Call(func_expr, args) => {
                 let func_val = self.eval_expr(func_expr)?;
 
@@ -131,6 +134,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 self.vars.pop_scope();
                 res
             }
+
             Expr::If(cond, a, b) => {
                 let c = self.eval_expr(cond)?;
                 match c {
@@ -144,17 +148,20 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     }
                 }
             }
+
             Expr::Block(sub_expr) => {
                 self.vars.start_scope();
                 let res = self.eval_expr(sub_expr)?;
                 self.vars.pop_scope();
                 res
             }
+
             Expr::Sequence(exprs) => exprs
                 .iter()
                 .map(|expr| self.eval_expr(expr))
                 .last()
                 .unwrap_or(Ok(Value::Null))?,
+
             Expr::Print(a) => {
                 let val = self.eval_expr(a)?;
                 writeln!(self.stdout, "{val}").unwrap();
