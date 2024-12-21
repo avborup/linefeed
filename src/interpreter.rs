@@ -1,5 +1,7 @@
 use std::{collections::HashMap, io::Write};
 
+use chumsky::error::Simple;
+
 use crate::ast::{Expr, UnaryOp};
 
 use crate::ast::{BinaryOp, Value};
@@ -34,20 +36,25 @@ impl Value {
     }
 }
 
-pub struct Interpreter<W: Write> {
-    pub output: W,
+pub struct Interpreter<O: Write = std::io::Stdout, E: Write = std::io::Stderr> {
+    pub stdout: O,
+    pub stderr: E,
     // TODO: move vars in here
 }
 
-impl Default for Interpreter<std::io::Stdout> {
+impl Default for Interpreter<std::io::Stdout, std::io::Stderr> {
     fn default() -> Self {
-        Self::new(std::io::stdout())
+        Self {
+            stdout: std::io::stdout(),
+            stderr: std::io::stderr(),
+        }
     }
 }
 
-impl<W: Write> Interpreter<W> {
-    pub fn new(output: W) -> Self {
-        Self { output }
+impl<O: Write, E: Write> Interpreter<O, E> {
+    pub fn run(&mut self, expr: &Spanned<Expr>) -> Result<Value, Simple<String>> {
+        self.eval_expr(expr, &mut VarStore::new())
+            .map_err(|e| Simple::custom(e.span, e.msg))
     }
 
     pub fn eval_expr(&mut self, expr: &Spanned<Expr>, vars: &mut VarStore) -> Result<Value, Error> {
@@ -151,7 +158,7 @@ impl<W: Write> Interpreter<W> {
                 .unwrap_or(Ok(Value::Null))?,
             Expr::Print(a) => {
                 let val = self.eval_expr(a, vars)?;
-                writeln!(self.output, "{val}").unwrap();
+                writeln!(self.stdout, "{val}").unwrap();
                 val
             }
         })

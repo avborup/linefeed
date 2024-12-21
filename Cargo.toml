@@ -6,3 +6,6 @@ edition = "2021"
 [dependencies]
 ariadne = "0.3.0"
 chumsky = "0.9.3"
+
+[dev-dependencies]
+strip-ansi-escapes = "0.2.0"

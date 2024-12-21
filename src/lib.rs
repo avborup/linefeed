@@ -4,7 +4,8 @@ use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
 
 use crate::{
-    interpreter::{Interpreter, VarStore},
+    ast::{Expr, Spanned},
+    interpreter::Interpreter,
     parser::expr_parser,
 };
 
@@ -17,15 +18,21 @@ pub fn run(src: impl AsRef<str>) {
     run_with_interpreter(Interpreter::default(), src);
 }
 
-pub fn run_with_output(src: impl AsRef<str>, sink: impl Write) {
-    let interpreter = Interpreter::new(sink);
-    run_with_interpreter(interpreter, src);
+pub fn run_with_interpreter(
+    mut interpreter: Interpreter<impl Write, impl Write>,
+    src: impl AsRef<str>,
+) {
+    let res = parse(src.as_ref()).and_then(|ast| interpreter.run(&ast).map_err(|e| vec![e]));
+
+    if let Err(errs) = res {
+        pretty_print_errors(interpreter.stderr, src, errs);
+    }
 }
 
-pub fn run_with_interpreter<W: Write>(mut interpreter: Interpreter<W>, src: impl AsRef<str>) {
+pub fn parse(src: impl AsRef<str>) -> Result<Spanned<Expr>, Vec<Simple<String>>> {
     let src = src.as_ref();
 
-    let (tokens, mut errs) = lexer::lexer().parse_recovery(src);
+    let (tokens, lexer_errs) = lexer::lexer().parse_recovery(src);
 
     let parse_errs = if let Some(tokens) = tokens {
         let len = src.chars().count();
@@ -35,12 +42,7 @@ pub fn run_with_interpreter<W: Write>(mut interpreter: Interpreter<W>, src: impl
         dbg!(&ast);
 
         if let Some(expr) = ast {
-            match interpreter.eval_expr(&expr, &mut VarStore::new()) {
-                Ok(v) => {
-                    dbg!(v);
-                }
-                Err(e) => errs.push(Simple::custom(e.span, e.msg)),
-            }
+            return Ok(expr);
         }
 
         parse_errs
@@ -48,73 +50,82 @@ pub fn run_with_interpreter<W: Write>(mut interpreter: Interpreter<W>, src: impl
         Vec::new()
     };
 
-    errs.into_iter()
+    let errs = lexer_errs
+        .into_iter()
         .map(|e| e.map(|c| c.to_string()))
-        .chain(parse_errs.into_iter().map(|e| e.map(|tok| tok.to_string())))
-        .for_each(|e| {
-            let report = Report::build(ReportKind::Error, (), e.span().start);
+        .chain(parse_errs.into_iter().map(|e| e.map(|tok| tok.to_string())));
 
-            let report = match e.reason() {
-                chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
-                    .with_message(format!(
-                        "Unclosed delimiter {}",
-                        delimiter.fg(Color::Yellow)
-                    ))
-                    .with_label(
-                        Label::new(span.clone())
-                            .with_message(format!(
-                                "Unclosed delimiter {}",
-                                delimiter.fg(Color::Yellow)
-                            ))
-                            .with_color(Color::Yellow),
-                    )
-                    .with_label(
-                        Label::new(e.span())
-                            .with_message(format!(
-                                "Must be closed before this {}",
-                                e.found()
-                                    .unwrap_or(&"end of file".to_string())
-                                    .fg(Color::Red)
-                            ))
-                            .with_color(Color::Red),
-                    ),
-                chumsky::error::SimpleReason::Unexpected => report
-                    .with_message(format!(
-                        "{}, expected {}",
-                        if e.found().is_some() {
-                            "Unexpected token in input"
-                        } else {
-                            "Unexpected end of input"
-                        },
-                        if e.expected().len() == 0 {
-                            "something else".to_string()
-                        } else {
-                            e.expected()
-                                .map(|expected| match expected {
-                                    Some(expected) => expected.to_string(),
-                                    None => "end of input".to_string(),
-                                })
-                                .collect::<Vec<_>>()
-                                .join(", ")
-                        }
-                    ))
-                    .with_label(
-                        Label::new(e.span())
-                            .with_message(format!(
-                                "Unexpected token {}",
-                                e.found()
-                                    .unwrap_or(&"end of file".to_string())
-                                    .fg(Color::Red)
-                            ))
-                            .with_color(Color::Red),
-                    ),
-                chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
+    Err(errs.collect())
+}
+
+pub fn pretty_print_errors(mut sink: impl Write, src: impl AsRef<str>, errs: Vec<Simple<String>>) {
+    errs.into_iter().for_each(|e| {
+        let report = Report::build(ReportKind::Error, (), e.span().start);
+
+        let report = match e.reason() {
+            chumsky::error::SimpleReason::Unclosed { span, delimiter } => report
+                .with_message(format!(
+                    "Unclosed delimiter {}",
+                    delimiter.fg(Color::Yellow)
+                ))
+                .with_label(
+                    Label::new(span.clone())
+                        .with_message(format!(
+                            "Unclosed delimiter {}",
+                            delimiter.fg(Color::Yellow)
+                        ))
+                        .with_color(Color::Yellow),
+                )
+                .with_label(
                     Label::new(e.span())
-                        .with_message(format!("{}", msg.fg(Color::Red)))
+                        .with_message(format!(
+                            "Must be closed before this {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
                         .with_color(Color::Red),
                 ),
-            };
+            chumsky::error::SimpleReason::Unexpected => report
+                .with_message(format!(
+                    "{}, expected {}",
+                    if e.found().is_some() {
+                        "Unexpected token in input"
+                    } else {
+                        "Unexpected end of input"
+                    },
+                    if e.expected().len() == 0 {
+                        "something else".to_string()
+                    } else {
+                        e.expected()
+                            .map(|expected| match expected {
+                                Some(expected) => expected.to_string(),
+                                None => "end of input".to_string(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    }
+                ))
+                .with_label(
+                    Label::new(e.span())
+                        .with_message(format!(
+                            "Unexpected token {}",
+                            e.found()
+                                .unwrap_or(&"end of file".to_string())
+                                .fg(Color::Red)
+                        ))
+                        .with_color(Color::Red),
+                ),
+            chumsky::error::SimpleReason::Custom(msg) => report.with_message(msg).with_label(
+                Label::new(e.span())
+                    .with_message(format!("{}", msg.fg(Color::Red)))
+                    .with_color(Color::Red),
+            ),
+        };
 
-            report.finish().print(Source::from(&src)).unwrap();
-        });
+        report
+            .finish()
+            .write(Source::from(&src), &mut sink)
+            .unwrap();
+    });
 }
