@@ -234,8 +234,12 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 });
 
             let return_ = just(Token::Return)
-                .ignore_then(raw_expr.clone().or(block_expr.clone()))
-                .map_with_span(|expr, span| Spanned(Expr::Return(Box::new(expr)), span))
+                .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
+                .map_with_span(|expr, span: Span| {
+                    let ret_expr =
+                        expr.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), span.clone()));
+                    Spanned(Expr::Return(Box::new(ret_expr)), span)
+                })
                 .labelled("return");
 
             logical.or(return_)

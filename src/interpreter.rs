@@ -92,6 +92,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
             Expr::Return(val) => {
                 return Err(Error::Return {
                     val: self.eval_expr(val)?,
+                    span: expr.1.clone(),
                 })
             }
 
@@ -126,7 +127,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 
                 match res {
                     Ok(val) => val,
-                    Err(Error::Return { val }) => val,
+                    Err(Error::Return { val, .. }) => val,
                     Err(e) => return Err(e),
                 }
             }
@@ -176,17 +177,16 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 #[derive(Debug)]
 pub enum Error {
     Simple { span: Span, msg: String },
-    Return { val: Value },
+    Return { span: Span, val: Value },
 }
 
 impl Error {
     pub fn simple(self) -> Simple<String> {
         match self {
             Error::Simple { span, msg } => Simple::custom(span, msg),
-            Error::Return { val } => Simple::custom(
-                Span::default(),
-                format!("illegal return outside of function: {val}"),
-            ),
+            Error::Return { span, .. } => {
+                Simple::custom(span, "illegal return outside of function")
+            }
         }
     }
 }

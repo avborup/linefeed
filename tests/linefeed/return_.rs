@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -31,3 +31,12 @@ eval_and_assert!(
     empty()
 );
 
+// TODO: Consider if this would actually be a neat feature. E.g. to early-exit the program.
+eval_and_assert!(
+    return_at_top_level_shows_error,
+    indoc! {r#"
+        return;
+    "#},
+    empty(),
+    contains("illegal return outside of function")
+);
