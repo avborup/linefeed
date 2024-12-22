@@ -11,6 +11,7 @@ use crate::{
 };
 
 pub mod ast;
+pub mod bytecode_interpreter;
 pub mod compiler;
 pub mod interpreter;
 pub mod lexer;
