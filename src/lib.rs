@@ -25,7 +25,7 @@ pub fn compile(src: impl AsRef<str>) {
     let mut compiler = Compiler::default();
 
     let res = parse(src.as_ref()).and_then(|ast| {
-        compiler.compile_expr(&ast).map_err(|e| {
+        compiler.compile(&ast).map_err(|e| {
             vec![match e {
                 CompileError::Spanned { span, msg } => chumsky::error::Simple::custom(span, msg),
                 CompileError::Plain(msg) => chumsky::error::Simple::custom(Span::default(), msg),

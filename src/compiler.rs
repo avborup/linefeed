@@ -21,6 +21,7 @@ pub enum Instruction {
     Div,
     Constant(isize),
     Not,
+    Stop,
 }
 
 use Instruction::*;
@@ -40,7 +41,13 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Vec<Instruction>, CompileError> {
+    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Vec<Instruction>, CompileError> {
+        let mut program = self.compile_expr(expr)?;
+        program.push(Stop);
+        Ok(program)
+    }
+
+    fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Vec<Instruction>, CompileError> {
         let instructions = match &expr.0 {
             Expr::Error => unreachable!(),
 
