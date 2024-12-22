@@ -13,6 +13,7 @@ pub mod ast;
 pub mod interpreter;
 pub mod lexer;
 pub mod parser;
+pub mod scoped_map;
 
 pub fn run(src: impl AsRef<str>) {
     run_with_interpreter(Interpreter::default(), src);

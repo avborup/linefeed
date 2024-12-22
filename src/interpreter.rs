@@ -1,8 +1,11 @@
-use std::{collections::HashMap, io::Write};
+use std::io::Write;
 
 use chumsky::error::Simple;
 
-use crate::ast::{Expr, Span, Spanned, UnaryOp};
+use crate::{
+    ast::{Expr, Span, Spanned, UnaryOp},
+    scoped_map::ScopedMap,
+};
 
 use crate::ast::{BinaryOp, Value};
 
@@ -218,51 +221,4 @@ impl Value {
     }
 }
 
-#[derive(Debug)]
-pub struct VarStore {
-    scopes: Vec<HashMap<String, Value>>,
-}
-
-impl Default for VarStore {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl VarStore {
-    pub fn new() -> Self {
-        let mut store = VarStore { scopes: Vec::new() };
-        store.start_scope();
-        store
-    }
-
-    fn start_scope(&mut self) {
-        self.scopes.push(HashMap::new());
-    }
-
-    fn pop_scope(&mut self) {
-        self.scopes.pop();
-    }
-
-    fn get(&self, name: &str) -> Option<&Value> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(name))
-    }
-
-    fn get_mut(&mut self, name: &str) -> Option<&mut Value> {
-        self.scopes
-            .iter_mut()
-            .rev()
-            .find_map(|scope| scope.get_mut(name))
-    }
-
-    fn set(&mut self, name: String, val: Value) {
-        match self.get_mut(&name) {
-            Some(existing) => *existing = val,
-            None => self.set_local(name, val),
-        }
-    }
-
-    fn set_local(&mut self, name: String, val: Value) {
-        self.scopes.last_mut().unwrap().insert(name, val);
-    }
-}
+pub type VarStore = ScopedMap<String, Value>;
