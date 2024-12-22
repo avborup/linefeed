@@ -1,18 +1,19 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
+use std::rc::Rc;
+
 use crate::{
-    ast::{Expr, Span, Spanned, UnaryOp, Value},
+    ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
     scoped_map::ScopedMap,
 };
 
 #[derive(Debug, Clone)]
-#[repr(u16)]
 pub enum Instruction {
     Load,
     Store,
     Address(usize),
     PrintValue,
-    Num(f64),
+    Value(RuntimeValue),
     GetBasePtr,
     Add,
     Sub,
@@ -23,6 +24,15 @@ pub enum Instruction {
 }
 
 use Instruction::*;
+
+#[derive(Debug, Clone)]
+pub enum RuntimeValue {
+    Null,
+    Bool(bool),
+    Num(f64),
+    Str(Rc<String>),
+    List(Rc<Vec<RuntimeValue>>),
+}
 
 #[derive(Default)]
 pub struct Compiler {
@@ -114,15 +124,49 @@ impl Compiler {
         Ok(store_instrs)
     }
 
-    fn compile_value(&mut self, val: &Value) -> Result<Vec<Instruction>, String> {
-        match val {
-            Value::Num(num) => Ok(vec![Num(*num)]),
-            val => Err(format!("Value '{val}' cannot be compiled")),
-        }
+    fn compile_value(&mut self, val: &AstValue) -> Result<Vec<Instruction>, String> {
+        let rt_val = RuntimeValue::try_from(val)?;
+        Ok(vec![Instruction::Value(rt_val)])
     }
 }
 
 pub enum CompileError {
     Spanned { span: Span, msg: String },
     Plain(String),
+}
+
+impl RuntimeValue {
+    pub fn kind_str(&self) -> &str {
+        match self {
+            RuntimeValue::Null => "null",
+            RuntimeValue::Bool(_) => "boolean",
+            RuntimeValue::Num(_) => "number",
+            RuntimeValue::Str(_) => "str",
+            RuntimeValue::List(_) => "list",
+        }
+    }
+}
+
+impl TryFrom<&AstValue> for RuntimeValue {
+    type Error = String;
+
+    fn try_from(val: &AstValue) -> Result<Self, Self::Error> {
+        let res = match val {
+            AstValue::Null => RuntimeValue::Null,
+            AstValue::Bool(b) => RuntimeValue::Bool(*b),
+            AstValue::Num(n) => RuntimeValue::Num(*n),
+            AstValue::Str(s) => RuntimeValue::Str(Rc::new(s.clone())),
+            AstValue::List(xs) => {
+                let items = xs
+                    .iter()
+                    .map(RuntimeValue::try_from)
+                    .collect::<Result<_, _>>()?;
+
+                RuntimeValue::List(Rc::new(items))
+            }
+            AstValue::Func(_) => return Err("Cannot compile function value".to_string()),
+        };
+
+        Ok(res)
+    }
 }
