@@ -53,4 +53,8 @@ where
     pub fn set_local(&mut self, name: K, val: V) {
         self.scopes.last_mut().unwrap().insert(name, val);
     }
+
+    pub fn cur_scope_len(&self) -> usize {
+        self.scopes.last().unwrap().len()
+    }
 }

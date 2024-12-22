@@ -1,15 +1,17 @@
-use std::io::Write;
+use std::io::{self, Write};
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
 
 use crate::{
-    ast::{Expr, Spanned},
+    ast::{Expr, Span, Spanned},
+    compiler::{CompileError, Compiler},
     interpreter::Interpreter,
     parser::expr_parser,
 };
 
 pub mod ast;
+pub mod compiler;
 pub mod interpreter;
 pub mod lexer;
 pub mod parser;
@@ -17,6 +19,25 @@ pub mod scoped_map;
 
 pub fn run(src: impl AsRef<str>) {
     run_with_interpreter(Interpreter::default(), src);
+}
+
+pub fn compile(src: impl AsRef<str>) {
+    let mut compiler = Compiler::default();
+
+    let res = parse(src.as_ref()).and_then(|ast| {
+        compiler.compile_expr(&ast).map_err(|e| {
+            vec![match e {
+                CompileError::Spanned { span, msg } => chumsky::error::Simple::custom(span, msg),
+                CompileError::Plain(msg) => chumsky::error::Simple::custom(Span::default(), msg),
+            }]
+        })
+    });
+
+    dbg!(&res);
+
+    if let Err(errs) = res {
+        pretty_print_errors(io::stderr(), src, errs);
+    }
 }
 
 pub fn run_with_interpreter(
