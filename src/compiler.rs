@@ -1,6 +1,6 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::rc::Rc;
+use std::{iter, rc::Rc};
 
 use crate::{
     ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
@@ -35,50 +35,78 @@ pub enum RuntimeValue {
     List(Rc<Vec<RuntimeValue>>),
 }
 
+#[derive(Debug, Default)]
+pub struct Program {
+    pub instructions: Vec<Instruction>,
+    pub source_map: Vec<Span>,
+}
+
 #[derive(Default)]
 pub struct Compiler {
     vars: ScopedMap<String, usize>,
 }
 
 impl Compiler {
-    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Vec<Instruction>, CompileError> {
+    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program, CompileError> {
         let mut program = self.compile_expr(expr)?;
-        program.push(Stop);
+
+        program.instructions.push(Stop);
+        program.source_map.push(expr.1.end..expr.1.end);
+
+        assert_eq!(program.instructions.len(), program.source_map.len());
+
         Ok(program)
     }
 
-    fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Vec<Instruction>, CompileError> {
+    fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Program, CompileError> {
         let instructions = match &expr.0 {
             Expr::Error => unreachable!(),
 
             Expr::Local(name) => {
-                self.compile_var_access(name)
-                    .map_err(|msg| CompileError::Spanned {
-                        span: expr.1.clone(),
-                        msg: format!("Failed to compile variable access to '{name}': {msg}"),
-                    })?
+                let instrs =
+                    self.compile_var_access(name)
+                        .map_err(|msg| CompileError::Spanned {
+                            span: expr.1.clone(),
+                            msg: format!("Failed to compile variable access to '{name}': {msg}"),
+                        })?;
+
+                Program {
+                    source_map: repeat_span(expr.1.clone(), instrs.len()),
+                    instructions: instrs,
+                }
             }
 
             Expr::Let(name, val) => self.compile_var_assign(name, val)?,
 
-            Expr::Value(val) => self
-                .compile_value(val)
-                .map_err(|msg| CompileError::Spanned {
-                    span: expr.1.clone(),
-                    msg,
-                })?,
+            Expr::Value(val) => {
+                let instrs = self
+                    .compile_value(val)
+                    .map_err(|msg| CompileError::Spanned {
+                        span: expr.1.clone(),
+                        msg,
+                    })?;
+
+                Program {
+                    source_map: repeat_span(expr.1.clone(), instrs.len()),
+                    instructions: instrs,
+                }
+            }
 
             Expr::Sequence(exprs) => exprs
                 .iter()
                 .map(|expr| self.compile_expr(expr))
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .flatten()
-                .collect(),
+                .fold(Program::default(), |mut program, sub_program| {
+                    program.instructions.extend(sub_program.instructions);
+                    program.source_map.extend(sub_program.source_map);
+                    program
+                }),
 
             Expr::Print(expr) => {
                 let mut instrs = self.compile_expr(expr)?;
-                instrs.push(PrintValue);
+                instrs.instructions.push(PrintValue);
+                instrs.source_map.push(expr.1.clone());
                 instrs
             }
 
@@ -87,10 +115,15 @@ impl Compiler {
             Expr::Unary(op, expr) => {
                 let mut instrs = self.compile_expr(expr)?;
 
-                match op {
-                    UnaryOp::Not => instrs.push(Not),
-                    UnaryOp::Neg => instrs.extend([ConstantInt(-1), Mul]),
-                }
+                let to_add = match op {
+                    UnaryOp::Not => vec![Not],
+                    UnaryOp::Neg => vec![ConstantInt(-1), Mul],
+                };
+
+                instrs
+                    .source_map
+                    .extend(repeat_span(expr.1.clone(), to_add.len()));
+                instrs.instructions.extend(to_add);
 
                 instrs
             }
@@ -117,24 +150,39 @@ impl Compiler {
         &mut self,
         name: &String,
         val: &Spanned<Expr>,
-    ) -> Result<Vec<Instruction>, CompileError> {
+    ) -> Result<Program, CompileError> {
         let addr = self.vars.get(name).cloned().unwrap_or_else(|| {
             let local_addr = self.vars.cur_scope_len();
             self.vars.set(name.clone(), local_addr);
             local_addr
         });
 
-        let mut store_instrs = vec![GetBasePtr, ConstantInt(addr as isize), Add];
-        store_instrs.extend(self.compile_expr(val)?);
-        store_instrs.push(Store);
+        let mut program = Program::default();
 
-        Ok(store_instrs)
+        let store_instrs = vec![GetBasePtr, ConstantInt(addr as isize), Add];
+        program
+            .source_map
+            .extend(repeat_span(val.1.clone(), store_instrs.len()));
+        program.instructions.extend(store_instrs);
+
+        let val_program = self.compile_expr(val)?;
+        program.instructions.extend(val_program.instructions);
+        program.source_map.extend(val_program.source_map);
+
+        program.instructions.push(Store);
+        program.source_map.push(val.1.clone());
+
+        Ok(program)
     }
 
     fn compile_value(&mut self, val: &AstValue) -> Result<Vec<Instruction>, String> {
         let rt_val = RuntimeValue::try_from(val)?;
         Ok(vec![Instruction::Value(rt_val)])
     }
+}
+
+fn repeat_span(span: Span, count: usize) -> Vec<Span> {
+    iter::repeat(span).take(count).collect()
 }
 
 pub enum CompileError {

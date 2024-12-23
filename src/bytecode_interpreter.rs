@@ -2,11 +2,11 @@ use std::io::Write;
 
 use crate::{
     ast::Span,
-    compiler::{Instruction, RuntimeValue},
+    compiler::{Instruction, Program, RuntimeValue},
 };
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
-    program: Vec<Instruction>,
+    program: Program,
     stack: Vec<RuntimeValue>,
     stdout: O,
     stderr: E,
@@ -15,7 +15,7 @@ pub struct BytecodeInterpreter<O: Write, E: Write> {
 }
 
 impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
-    pub fn new(program: Vec<Instruction>) -> Self {
+    pub fn new(program: Program) -> Self {
         Self {
             program,
             stack: vec![RuntimeValue::Null],
@@ -47,22 +47,24 @@ where
         }
     }
 
-    pub fn run(&mut self) -> Result<(), RuntimeError> {
-        let res = self.run_inner();
+    pub fn run(&mut self) -> Result<(), (Span, RuntimeError)> {
+        self.run_inner().map_err(|err| {
+            let source_span = self
+                .program
+                .source_map
+                .get(self.pc)
+                .cloned()
+                .unwrap_or_default();
 
-        if let Err(err) = &res {
-            // TODO: Attach span based on source code. Add a mapping from instruction to span in
-            // compiler.
-        }
-
-        res
+            (source_span, err)
+        })
     }
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
             // self.dbg_print();
 
-            let instr = &self.program[self.pc];
+            let instr = &self.program.instructions[self.pc];
             self.pc += 1;
 
             match instr {
@@ -127,7 +129,10 @@ where
         eprintln!("===== Bytecode Interpreter State =====");
         eprintln!("pc: {}", self.pc);
         eprintln!("bp: {}", self.bp);
-        eprintln!("Instruction: {:?}\n", self.program.get(self.pc));
+        eprintln!(
+            "Instruction: {:?}\n",
+            self.program.instructions.get(self.pc)
+        );
         eprintln!("Program: {:?}", self.program);
         eprintln!("Stack: {:?}", self.stack);
         eprintln!();
@@ -195,21 +200,16 @@ pub enum RuntimeError {
     InvalidAddress(RuntimeValue),
 }
 
-impl RuntimeError {
-    // FIXME: Use spans to provide location in source code.
-    pub fn to_chumsky(&self) -> chumsky::error::Simple<String> {
+impl std::fmt::Display for RuntimeError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
-            RuntimeError::StackUnderflow => {
-                chumsky::error::Simple::custom(Span::default(), "Stack underflow".to_string())
+            RuntimeError::StackUnderflow => write!(f, "Stack underflow"),
+            RuntimeError::NotImplemented(instr) => {
+                write!(f, "Instruction not implemented: {instr:?}")
             }
-            RuntimeError::NotImplemented(instr) => chumsky::error::Simple::custom(
-                Span::default(),
-                format!("Instruction not implemented: {instr:?}"),
-            ),
-            RuntimeError::InvalidAddress(val) => chumsky::error::Simple::custom(
-                Span::default(),
-                format!("Invalid address of type {}", val.kind_str()),
-            ),
+            RuntimeError::InvalidAddress(val) => {
+                write!(f, "Invalid address of type {}", val.kind_str())
+            }
         }
     }
 }

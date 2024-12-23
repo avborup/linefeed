@@ -35,17 +35,17 @@ pub fn compile_and_run(src: impl AsRef<str>) {
         })
     });
 
-    let instructions = match compile_res {
-        Ok(instructions) => instructions,
+    let program = match compile_res {
+        Ok(program) => program,
         Err(errs) => {
             pretty_print_errors(io::stderr(), src, errs);
             return;
         }
     };
 
-    let res = BytecodeInterpreter::new(instructions)
+    let res = BytecodeInterpreter::new(program)
         .run()
-        .map_err(|e| vec![e.to_chumsky()]);
+        .map_err(|(span, err)| vec![Simple::custom(span, err)]);
 
     if let Err(err) = res {
         pretty_print_errors(io::stderr(), src, err);
