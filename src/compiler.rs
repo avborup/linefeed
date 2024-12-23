@@ -40,10 +40,9 @@ pub struct Compiler {
 
 impl Compiler {
     pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program, CompileError> {
-        let mut program = self.compile_expr(expr)?;
-
-        program.instructions.push(Stop);
-        program.source_map.push(expr.1.end..expr.1.end);
+        let program = self
+            .compile_expr(expr)?
+            .then_instructions(vec![Stop], expr.1.end..expr.1.end);
 
         assert_eq!(program.instructions.len(), program.source_map.len());
 
@@ -62,10 +61,7 @@ impl Compiler {
                             msg: format!("Failed to compile variable access to '{name}': {msg}"),
                         })?;
 
-                Program {
-                    source_map: repeat_span(expr.1.clone(), instrs.len()),
-                    instructions: instrs,
-                }
+                Program::from_instructions(instrs, expr.1.clone())
             }
 
             Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
@@ -78,10 +74,7 @@ impl Compiler {
                         msg,
                     })?;
 
-                Program {
-                    source_map: repeat_span(expr.1.clone(), instrs.len()),
-                    instructions: instrs,
-                }
+                Program::from_instructions(instrs, expr.1.clone())
             }
 
             Expr::Sequence(exprs) => exprs
@@ -89,35 +82,23 @@ impl Compiler {
                 .map(|expr| self.compile_expr(expr))
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .fold(Program::default(), |mut program, sub_program| {
-                    program.instructions.extend(sub_program.instructions);
-                    program.source_map.extend(sub_program.source_map);
-                    program
-                }),
+                .fold(Program::default(), Program::then_program),
 
-            Expr::Print(expr) => {
-                let mut instrs = self.compile_expr(expr)?;
-                instrs.instructions.push(PrintValue);
-                instrs.source_map.push(expr.1.clone());
-                instrs
-            }
+            Expr::Print(sub_expr) => self
+                .compile_expr(sub_expr)?
+                .then_instructions(vec![PrintValue], expr.1.clone()),
 
-            Expr::Block(expr) => self.compile_expr(expr)?,
+            Expr::Block(sub_expr) => self.compile_expr(sub_expr)?,
 
-            Expr::Unary(op, expr) => {
-                let mut instrs = self.compile_expr(expr)?;
+            Expr::Unary(op, sub_expr) => {
+                let program = self.compile_expr(sub_expr)?;
 
                 let to_add = match op {
                     UnaryOp::Not => vec![Not],
                     UnaryOp::Neg => vec![ConstantInt(-1), Mul],
                 };
 
-                instrs
-                    .source_map
-                    .extend(repeat_span(expr.1.clone(), to_add.len()));
-                instrs.instructions.extend(to_add);
-
-                instrs
+                program.then_instructions(to_add, expr.1.clone())
             }
 
             _ => unimplemented!(),
@@ -150,20 +131,13 @@ impl Compiler {
             local_addr
         });
 
-        let mut program = Program::default();
-
-        let store_instrs = vec![GetBasePtr, ConstantInt(addr as isize), Add];
-        program
-            .source_map
-            .extend(repeat_span(expr.1.clone(), store_instrs.len()));
-        program.instructions.extend(store_instrs);
-
-        let val_program = self.compile_expr(val)?;
-        program.instructions.extend(val_program.instructions);
-        program.source_map.extend(val_program.source_map);
-
-        program.instructions.push(Store);
-        program.source_map.push(expr.1.clone());
+        let program = Program::default()
+            .then_instructions(
+                vec![GetBasePtr, ConstantInt(addr as isize), Add],
+                expr.1.clone(),
+            )
+            .then_program(self.compile_expr(val)?)
+            .then_instructions(vec![Store], expr.1.clone());
 
         Ok(program)
     }
@@ -185,6 +159,34 @@ impl Program {
             let range = format!("{:?}", span);
             println!("{:>20}  {:<8} {:?}", i, range, &src[span.start..span.end]);
         }
+    }
+
+    pub fn from_instructions(instrs: Vec<Instruction>, span: Span) -> Program {
+        Program {
+            source_map: repeat_span(span, instrs.len()),
+            instructions: instrs,
+        }
+    }
+
+    pub fn add_instructions(&mut self, instrs: Vec<Instruction>, span: Span) {
+        self.source_map.extend(repeat_span(span, instrs.len()));
+        self.instructions.extend(instrs);
+    }
+
+    pub fn then_instructions(mut self, instrs: Vec<Instruction>, span: Span) -> Program {
+        self.add_instructions(instrs, span);
+        self
+    }
+
+    pub fn extend(&mut self, other: Program) {
+        assert_eq!(self.instructions.len(), self.source_map.len());
+        self.instructions.extend(other.instructions);
+        self.source_map.extend(other.source_map);
+    }
+
+    pub fn then_program(mut self, other: Program) -> Program {
+        self.extend(other);
+        self
     }
 }
 
