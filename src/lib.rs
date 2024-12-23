@@ -46,6 +46,8 @@ pub fn compile_and_run(src: impl AsRef<str>) {
         }
     };
 
+    program.disassemble(src.as_ref());
+
     let res = BytecodeInterpreter::new(program)
         .with_output(&mut stdout, &mut stderr)
         .run()

@@ -178,6 +178,16 @@ fn repeat_span(span: Span, count: usize) -> Vec<Span> {
     iter::repeat(span).take(count).collect()
 }
 
+impl Program {
+    pub fn disassemble(&self, src: &str) {
+        for (instr, span) in self.instructions.iter().zip(&self.source_map) {
+            let i = format!("{:?}", instr);
+            let range = format!("{:?}", span);
+            println!("{:>20}  {:<8} {:?}", i, range, &src[span.start..span.end]);
+        }
+    }
+}
+
 pub enum CompileError {
     Spanned { span: Span, msg: String },
     Plain(String),
