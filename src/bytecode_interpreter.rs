@@ -58,7 +58,7 @@ where
         res
     }
 
-    pub fn run_inner(&mut self) -> Result<(), RuntimeError> {
+    fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
             let instr = &self.program[self.pc];
             self.pc += 1;
