@@ -11,7 +11,6 @@ use crate::{
 pub enum Instruction {
     Load,
     Store,
-    Address(usize),
     PrintValue,
     Value(RuntimeValue),
     GetBasePtr,
@@ -19,7 +18,7 @@ pub enum Instruction {
     Sub,
     Mul,
     Div,
-    Constant(isize),
+    ConstantInt(isize),
     Not,
     Stop,
 }
@@ -30,6 +29,7 @@ use Instruction::*;
 pub enum RuntimeValue {
     Null,
     Bool(bool),
+    Int(isize),
     Num(f64),
     Str(Rc<String>),
     List(Rc<Vec<RuntimeValue>>),
@@ -89,7 +89,7 @@ impl Compiler {
 
                 match op {
                     UnaryOp::Not => instrs.push(Not),
-                    UnaryOp::Neg => instrs.extend([Constant(-1), Mul]),
+                    UnaryOp::Neg => instrs.extend([ConstantInt(-1), Mul]),
                 }
 
                 instrs
@@ -109,7 +109,7 @@ impl Compiler {
             .get(name)
             .ok_or_else(|| format!("Variable {name} not found"))?;
 
-        Ok(vec![GetBasePtr, Address(*addr), Add, Load])
+        Ok(vec![GetBasePtr, ConstantInt(*addr as isize), Add, Load])
     }
 
     // FIXME: Same as above
@@ -124,7 +124,7 @@ impl Compiler {
             local_addr
         });
 
-        let mut store_instrs = vec![GetBasePtr, Address(addr), Add];
+        let mut store_instrs = vec![GetBasePtr, ConstantInt(addr as isize), Add];
         store_instrs.extend(self.compile_expr(val)?);
         store_instrs.push(Store);
 
@@ -147,6 +147,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::Null => "null",
             RuntimeValue::Bool(_) => "boolean",
+            RuntimeValue::Int(_) => "integer",
             RuntimeValue::Num(_) => "number",
             RuntimeValue::Str(_) => "str",
             RuntimeValue::List(_) => "list",
@@ -175,29 +176,5 @@ impl TryFrom<&AstValue> for RuntimeValue {
         };
 
         Ok(res)
-    }
-}
-
-impl std::fmt::Display for RuntimeValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            RuntimeValue::Null => write!(f, "null"),
-            RuntimeValue::Bool(b) => write!(f, "{b}"),
-            RuntimeValue::Num(n) => write!(f, "{n}"),
-            RuntimeValue::Str(s) => write!(f, "{s:?}"),
-            RuntimeValue::List(xs) => {
-                write!(f, "[")?;
-                let mut first = true;
-                for x in xs.iter() {
-                    if !first {
-                        write!(f, ", ")?;
-                        first = false;
-                    }
-
-                    write!(f, "{x}")?;
-                }
-                write!(f, "]")
-            }
-        }
     }
 }
