@@ -21,6 +21,7 @@ pub enum Instruction {
     ConstantInt(isize),
     Not,
     Stop,
+    Goto(usize),
 }
 
 use Instruction::*;

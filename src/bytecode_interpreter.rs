@@ -63,9 +63,7 @@ where
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
             // self.dbg_print();
-
             let instr = &self.program.instructions[self.pc];
-            self.pc += 1;
 
             match instr {
                 Instruction::Stop => break Ok(()),
@@ -81,6 +79,11 @@ where
 
                 Instruction::Value(val) => {
                     self.push_stack(val.clone());
+                }
+
+                Instruction::Goto(idx) => {
+                    self.pc = *idx;
+                    continue;
                 }
 
                 Instruction::GetBasePtr => {
@@ -114,6 +117,8 @@ where
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
             }
+
+            self.pc += 1;
         }
     }
 
