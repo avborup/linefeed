@@ -1,6 +1,9 @@
 use std::io::Write;
 
-use crate::compiler::{Instruction, RuntimeValue};
+use crate::{
+    ast::Span,
+    compiler::{Instruction, RuntimeValue},
+};
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
     program: Vec<Instruction>,
@@ -38,7 +41,7 @@ where
         }
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<(), RuntimeError> {
         let mut pc = 0;
 
         loop {
@@ -46,9 +49,37 @@ where
             pc += 1;
 
             match instr {
-                Instruction::Stop => break,
+                Instruction::Stop => break Ok(()),
 
-                _ => todo!(),
+                Instruction::PrintValue => {
+                    let val = self.pop_stack()?;
+                    writeln!(self.stdout, "{val}").unwrap();
+                }
+
+                to_implement => {
+                    dbg!(to_implement);
+                    todo!()
+                }
+            }
+        }
+    }
+
+    pub fn pop_stack(&mut self) -> Result<RuntimeValue, RuntimeError> {
+        self.stack.pop().ok_or(RuntimeError::StackUnderflow)
+    }
+}
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    StackUnderflow,
+}
+
+impl RuntimeError {
+    // FIXME: Use spans to provide location in source code.
+    pub fn to_chumsky(&self) -> chumsky::error::Simple<String> {
+        match self {
+            RuntimeError::StackUnderflow => {
+                chumsky::error::Simple::custom(Span::default(), "Stack underflow".to_string())
             }
         }
     }

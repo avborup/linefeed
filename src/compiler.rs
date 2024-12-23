@@ -177,3 +177,27 @@ impl TryFrom<&AstValue> for RuntimeValue {
         Ok(res)
     }
 }
+
+impl std::fmt::Display for RuntimeValue {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            RuntimeValue::Null => write!(f, "null"),
+            RuntimeValue::Bool(b) => write!(f, "{b}"),
+            RuntimeValue::Num(n) => write!(f, "{n}"),
+            RuntimeValue::Str(s) => write!(f, "{s:?}"),
+            RuntimeValue::List(xs) => {
+                write!(f, "[")?;
+                let mut first = true;
+                for x in xs.iter() {
+                    if !first {
+                        write!(f, ", ")?;
+                        first = false;
+                    }
+
+                    write!(f, "{x}")?;
+                }
+                write!(f, "]")
+            }
+        }
+    }
+}
