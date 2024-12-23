@@ -25,6 +25,8 @@ pub fn run(src: impl AsRef<str>) {
 }
 
 pub fn compile_and_run(src: impl AsRef<str>) {
+    let (mut stdout, mut stderr) = (io::stdout(), io::stderr());
+
     let mut compiler = Compiler::default();
 
     let compile_res = parse(src.as_ref()).and_then(|ast| {
@@ -39,17 +41,18 @@ pub fn compile_and_run(src: impl AsRef<str>) {
     let program = match compile_res {
         Ok(program) => program,
         Err(errs) => {
-            pretty_print_errors(io::stderr(), src, errs);
+            pretty_print_errors(stdout, src, errs);
             return;
         }
     };
 
     let res = BytecodeInterpreter::new(program)
+        .with_output(&mut stdout, &mut stderr)
         .run()
         .map_err(|(span, err)| vec![Simple::custom(span, err)]);
 
     if let Err(err) = res {
-        pretty_print_errors(io::stderr(), src, err);
+        pretty_print_errors(stderr, src, err);
     }
 }
 

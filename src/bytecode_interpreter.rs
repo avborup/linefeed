@@ -9,10 +9,10 @@ use crate::{
 pub struct BytecodeInterpreter<O: Write, E: Write> {
     program: Program,
     stack: Vec<RuntimeValue>,
-    stdout: O,
-    stderr: E,
     pc: usize,
     bp: usize,
+    pub stdout: O,
+    pub stderr: E,
 }
 
 impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
