@@ -18,7 +18,7 @@ impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
     pub fn new(program: Vec<Instruction>) -> Self {
         Self {
             program,
-            stack: Vec::new(),
+            stack: vec![RuntimeValue::Null],
             stdout: std::io::stdout(),
             stderr: std::io::stderr(),
             pc: 0,
@@ -60,10 +60,10 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
+            // self.dbg_print();
+
             let instr = &self.program[self.pc];
             self.pc += 1;
-
-            self.dbg_print();
 
             match instr {
                 Instruction::Stop => break Ok(()),
@@ -77,8 +77,35 @@ where
                     self.push_stack(RuntimeValue::Int(*i));
                 }
 
+                Instruction::Value(val) => {
+                    self.push_stack(val.clone());
+                }
+
                 Instruction::GetBasePtr => {
                     self.push_stack(RuntimeValue::Int(self.bp as isize));
+                }
+
+                Instruction::Add => {
+                    let a = self.pop_stack()?;
+                    let b = self.pop_stack()?;
+                    self.push_stack(a.add(&b)?);
+                }
+
+                Instruction::Mul => {
+                    let a = self.pop_stack()?;
+                    let b = self.pop_stack()?;
+                    self.push_stack(a.mul(&b)?);
+                }
+
+                Instruction::Store => {
+                    let val = self.pop_stack()?;
+                    let addr = self.pop_stack()?.address()?;
+                    self.stack[addr] = val;
+                }
+
+                Instruction::Load => {
+                    let addr = self.pop_stack()?.address()?;
+                    self.push_stack(self.stack[addr].clone());
                 }
 
                 to_implement => {
@@ -99,30 +126,39 @@ where
     pub fn dbg_print(&self) {
         eprintln!("===== Bytecode Interpreter State =====");
         eprintln!("pc: {}", self.pc);
-        eprintln!("bp: {}\n", self.bp);
+        eprintln!("bp: {}", self.bp);
+        eprintln!("Instruction: {:?}\n", self.program.get(self.pc));
         eprintln!("Program: {:?}", self.program);
         eprintln!("Stack: {:?}", self.stack);
         eprintln!();
     }
 }
 
-#[derive(Debug)]
-pub enum RuntimeError {
-    StackUnderflow,
-    NotImplemented(Instruction),
-}
+impl RuntimeValue {
+    pub fn add(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a + b)),
+            (RuntimeValue::Int(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(*a as f64 + b)),
+            (RuntimeValue::Num(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Num(a + *b as f64)),
+            _ => Err(RuntimeError::NotImplemented(Instruction::Add)),
+        }
+    }
 
-impl RuntimeError {
-    // FIXME: Use spans to provide location in source code.
-    pub fn to_chumsky(&self) -> chumsky::error::Simple<String> {
+    pub fn mul(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
+            (RuntimeValue::Int(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(*a as f64 * b)),
+            (RuntimeValue::Num(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Num(a * *b as f64)),
+            _ => Err(RuntimeError::NotImplemented(Instruction::Mul)),
+        }
+    }
+
+    pub fn address(&self) -> Result<usize, RuntimeError> {
         match self {
-            RuntimeError::StackUnderflow => {
-                chumsky::error::Simple::custom(Span::default(), "Stack underflow".to_string())
-            }
-            RuntimeError::NotImplemented(instr) => chumsky::error::Simple::custom(
-                Span::default(),
-                format!("Instruction not implemented: {instr:?}"),
-            ),
+            RuntimeValue::Int(i) => Ok(*i as usize),
+            _ => Err(RuntimeError::InvalidAddress(self.clone())),
         }
     }
 }
@@ -148,6 +184,32 @@ impl std::fmt::Display for RuntimeValue {
                 }
                 write!(f, "]")
             }
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum RuntimeError {
+    StackUnderflow,
+    NotImplemented(Instruction),
+    InvalidAddress(RuntimeValue),
+}
+
+impl RuntimeError {
+    // FIXME: Use spans to provide location in source code.
+    pub fn to_chumsky(&self) -> chumsky::error::Simple<String> {
+        match self {
+            RuntimeError::StackUnderflow => {
+                chumsky::error::Simple::custom(Span::default(), "Stack underflow".to_string())
+            }
+            RuntimeError::NotImplemented(instr) => chumsky::error::Simple::custom(
+                Span::default(),
+                format!("Instruction not implemented: {instr:?}"),
+            ),
+            RuntimeError::InvalidAddress(val) => chumsky::error::Simple::custom(
+                Span::default(),
+                format!("Invalid address of type {}", val.kind_str()),
+            ),
         }
     }
 }
