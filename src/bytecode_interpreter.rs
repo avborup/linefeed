@@ -2,7 +2,8 @@ use std::io::Write;
 
 use crate::{
     ast::Span,
-    compiler::{Instruction, Program, RuntimeValue},
+    compiler::{Instruction, Program},
+    runtime_value::RuntimeValue,
 };
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
@@ -141,60 +142,6 @@ where
         eprintln!("Program: {:?}", self.program);
         eprintln!("Stack: {:?}", self.stack);
         eprintln!();
-    }
-}
-
-impl RuntimeValue {
-    pub fn add(&self, other: &Self) -> Result<Self, RuntimeError> {
-        match (self, other) {
-            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a + b)),
-            (RuntimeValue::Int(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(*a as f64 + b)),
-            (RuntimeValue::Num(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Num(a + *b as f64)),
-            _ => Err(RuntimeError::NotImplemented(Instruction::Add)),
-        }
-    }
-
-    pub fn mul(&self, other: &Self) -> Result<Self, RuntimeError> {
-        match (self, other) {
-            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
-            (RuntimeValue::Int(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(*a as f64 * b)),
-            (RuntimeValue::Num(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Num(a * *b as f64)),
-            _ => Err(RuntimeError::NotImplemented(Instruction::Mul)),
-        }
-    }
-
-    pub fn address(&self) -> Result<usize, RuntimeError> {
-        match self {
-            RuntimeValue::Int(i) => Ok(*i as usize),
-            _ => Err(RuntimeError::InvalidAddress(self.clone())),
-        }
-    }
-}
-
-impl std::fmt::Display for RuntimeValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            RuntimeValue::Null => write!(f, "null"),
-            RuntimeValue::Bool(b) => write!(f, "{b}"),
-            RuntimeValue::Int(n) => write!(f, "{n}"),
-            RuntimeValue::Num(n) => write!(f, "{n}"),
-            RuntimeValue::Str(s) => write!(f, "{s:?}"),
-            RuntimeValue::List(xs) => {
-                write!(f, "[")?;
-                let mut first = true;
-                for x in xs.iter() {
-                    if !first {
-                        write!(f, ", ")?;
-                        first = false;
-                    }
-
-                    write!(f, "{x}")?;
-                }
-                write!(f, "]")
-            }
-        }
     }
 }
 

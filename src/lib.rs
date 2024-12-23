@@ -17,6 +17,7 @@ pub mod compiler;
 pub mod interpreter;
 pub mod lexer;
 pub mod parser;
+pub mod runtime_value;
 pub mod scoped_map;
 
 pub fn run(src: impl AsRef<str>) {
