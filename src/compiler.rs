@@ -36,6 +36,12 @@ pub enum RuntimeValue {
     List(Rc<Vec<RuntimeValue>>),
 }
 
+const _: () = {
+    // Just to make sure that we don't accidentally change the size of RuntimeValue and make
+    // cloning super expensive
+    assert!(std::mem::size_of::<RuntimeValue>() == 16);
+};
+
 #[derive(Debug, Default)]
 pub struct Program {
     pub instructions: Vec<Instruction>,
