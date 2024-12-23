@@ -2,6 +2,7 @@ use std::io::{self, Write};
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
+use std::time::Instant;
 
 use crate::{
     ast::{Expr, Span, Spanned},
@@ -29,7 +30,12 @@ pub fn compile_and_run(src: impl AsRef<str>) {
 
     let mut compiler = Compiler::default();
 
-    let compile_res = parse(src.as_ref()).and_then(|ast| {
+    let parse_start = Instant::now();
+    let ast = parse(src.as_ref());
+    let parse_time = Instant::now().duration_since(parse_start);
+
+    let compile_start = Instant::now();
+    let compile_res = ast.and_then(|ast| {
         compiler.compile(&ast).map_err(|e| {
             vec![match e {
                 CompileError::Spanned { span, msg } => chumsky::error::Simple::custom(span, msg),
@@ -37,6 +43,7 @@ pub fn compile_and_run(src: impl AsRef<str>) {
             }]
         })
     });
+    let compile_time = Instant::now().duration_since(compile_start);
 
     let program = match compile_res {
         Ok(program) => program,
@@ -48,25 +55,40 @@ pub fn compile_and_run(src: impl AsRef<str>) {
 
     program.disassemble(src.as_ref());
 
+    let run_start = Instant::now();
     let res = BytecodeInterpreter::new(program)
         .with_output(&mut stdout, &mut stderr)
         .run()
         .map_err(|(span, err)| vec![Simple::custom(span, err)]);
+    let run_time = Instant::now().duration_since(run_start);
 
     if let Err(err) = res {
         pretty_print_errors(stderr, src, err);
     }
+
+    eprintln!(
+        "Parse time: {:?}, Compile time: {:?}, Run time: {:?}",
+        parse_time, compile_time, run_time
+    );
 }
 
 pub fn run_with_interpreter(
     mut interpreter: Interpreter<impl Write, impl Write>,
     src: impl AsRef<str>,
 ) {
-    let res = parse(src.as_ref()).and_then(|ast| interpreter.run(&ast).map_err(|e| vec![e]));
+    let parse_start = Instant::now();
+    let ast = parse(src.as_ref());
+    let parse_time = Instant::now().duration_since(parse_start);
+
+    let run_start = Instant::now();
+    let res = ast.and_then(|ast| interpreter.run(&ast).map_err(|e| vec![e]));
+    let run_time = Instant::now().duration_since(run_start);
 
     if let Err(errs) = res {
         pretty_print_errors(interpreter.stderr, src, errs);
     }
+
+    eprintln!("Parse time: {:?}, Run time: {:?}", parse_time, run_time);
 }
 
 pub fn parse(src: impl AsRef<str>) -> Result<Spanned<Expr>, Vec<Simple<String>>> {
