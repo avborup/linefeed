@@ -76,7 +76,7 @@ impl Compiler {
                 }
             }
 
-            Expr::Let(name, val) => self.compile_var_assign(name, val)?,
+            Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
 
             Expr::Value(val) => {
                 let instrs = self
@@ -148,6 +148,7 @@ impl Compiler {
     // FIXME: Same as above
     fn compile_var_assign(
         &mut self,
+        expr: &Spanned<Expr>,
         name: &String,
         val: &Spanned<Expr>,
     ) -> Result<Program, CompileError> {
@@ -162,7 +163,7 @@ impl Compiler {
         let store_instrs = vec![GetBasePtr, ConstantInt(addr as isize), Add];
         program
             .source_map
-            .extend(repeat_span(val.1.clone(), store_instrs.len()));
+            .extend(repeat_span(expr.1.clone(), store_instrs.len()));
         program.instructions.extend(store_instrs);
 
         let val_program = self.compile_expr(val)?;
@@ -170,7 +171,7 @@ impl Compiler {
         program.source_map.extend(val_program.source_map);
 
         program.instructions.push(Store);
-        program.source_map.push(val.1.clone());
+        program.source_map.push(expr.1.clone());
 
         Ok(program)
     }
