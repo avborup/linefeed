@@ -139,7 +139,7 @@ where
             "Instruction: {:?}\n",
             self.program.instructions.get(self.pc)
         );
-        eprintln!("Program: {:?}", self.program);
+        eprintln!("Program: {:?}", self.program.instructions);
         eprintln!("Stack: {:?}", self.stack);
         eprintln!();
     }
