@@ -1,10 +1,10 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{cell::RefCell, iter, rc::Rc};
+use std::{iter, rc::Rc};
 
 use crate::{
     ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
-    runtime_value::RuntimeValue,
+    runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
     scoped_map::ScopedMap,
 };
 
@@ -104,7 +104,7 @@ impl Compiler {
 
             Expr::List(items) => {
                 let initial_val = Program::default().then_instructions(
-                    vec![Value(RuntimeValue::List(Rc::new(RefCell::new(vec![]))))],
+                    vec![Value(RuntimeValue::List(RuntimeList::new()))],
                     expr.1.clone(),
                 );
 
@@ -220,7 +220,7 @@ impl TryFrom<&AstValue> for RuntimeValue {
         let res = match val {
             AstValue::Null => RuntimeValue::Null,
             AstValue::Bool(b) => RuntimeValue::Bool(*b),
-            AstValue::Num(n) => RuntimeValue::Num(*n),
+            AstValue::Num(n) => RuntimeValue::Num(RuntimeNumber::Float(*n)),
             AstValue::Str(s) => RuntimeValue::Str(Rc::new(s.clone())),
             AstValue::List(xs) => {
                 let items = xs
@@ -228,7 +228,7 @@ impl TryFrom<&AstValue> for RuntimeValue {
                     .map(RuntimeValue::try_from)
                     .collect::<Result<_, _>>()?;
 
-                RuntimeValue::List(Rc::new(RefCell::new(items)))
+                RuntimeValue::List(RuntimeList::from_vec(items))
             }
             AstValue::Func(_) => return Err("Cannot compile function value".to_string()),
         };
