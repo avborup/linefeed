@@ -72,8 +72,8 @@ impl std::fmt::Display for RuntimeValue {
                 for x in xs.iter() {
                     if !first {
                         write!(f, ", ")?;
-                        first = false;
                     }
+                    first = false;
 
                     write!(f, "{x}")?;
                 }
