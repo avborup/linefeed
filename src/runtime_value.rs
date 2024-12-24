@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cell::RefCell, rc::Rc};
 
 use crate::{bytecode_interpreter::RuntimeError, compiler::Instruction};
 
@@ -9,7 +9,7 @@ pub enum RuntimeValue {
     Int(isize),
     Num(f64),
     Str(Rc<String>),
-    List(Rc<Vec<RuntimeValue>>),
+    List(Rc<RefCell<Vec<RuntimeValue>>>),
 }
 
 const _: () = {
@@ -50,6 +50,15 @@ impl RuntimeValue {
         }
     }
 
+    pub fn append(&mut self, other: Self) -> Result<(), RuntimeError> {
+        match self {
+            RuntimeValue::List(xs) => xs.borrow_mut().push(other),
+            _ => return Err(RuntimeError::NotImplemented(Instruction::Append)),
+        };
+
+        Ok(())
+    }
+
     pub fn address(&self) -> Result<usize, RuntimeError> {
         match self {
             RuntimeValue::Int(i) => Ok(*i as usize),
@@ -69,7 +78,7 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::List(xs) => {
                 write!(f, "[")?;
                 let mut first = true;
-                for x in xs.iter() {
+                for x in xs.borrow().iter() {
                     if !first {
                         write!(f, ", ")?;
                     }

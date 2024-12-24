@@ -1,6 +1,6 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{iter, rc::Rc};
+use std::{cell::RefCell, iter, rc::Rc};
 
 use crate::{
     ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
@@ -23,6 +23,7 @@ pub enum Instruction {
     Not,
     Stop,
     Goto(usize),
+    Append,
 }
 
 use Instruction::*;
@@ -99,6 +100,23 @@ impl Compiler {
                 };
 
                 program.then_instructions(to_add, expr.1.clone())
+            }
+
+            Expr::List(items) => {
+                let initial_val = Program::default().then_instructions(
+                    vec![Value(RuntimeValue::List(Rc::new(RefCell::new(vec![]))))],
+                    expr.1.clone(),
+                );
+
+                items
+                    .iter()
+                    .map(|item| self.compile_expr(item))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .fold(initial_val, |acc, p| {
+                        acc.then_program(p)
+                            .then_instructions(vec![Append], expr.1.clone())
+                    })
             }
 
             _ => unimplemented!(),
@@ -210,7 +228,7 @@ impl TryFrom<&AstValue> for RuntimeValue {
                     .map(RuntimeValue::try_from)
                     .collect::<Result<_, _>>()?;
 
-                RuntimeValue::List(Rc::new(items))
+                RuntimeValue::List(Rc::new(RefCell::new(items)))
             }
             AstValue::Func(_) => return Err("Cannot compile function value".to_string()),
         };

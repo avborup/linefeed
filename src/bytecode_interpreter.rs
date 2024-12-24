@@ -109,6 +109,12 @@ where
                     self.stack[addr] = val;
                 }
 
+                Instruction::Append => {
+                    let val = self.pop_stack()?;
+                    let into = self.peek_stack_mut()?;
+                    into.append(val)?;
+                }
+
                 Instruction::Load => {
                     let addr = self.pop_stack()?.address()?;
                     self.push_stack(self.stack[addr].clone());
@@ -129,6 +135,14 @@ where
 
     pub fn push_stack(&mut self, value: RuntimeValue) {
         self.stack.push(value);
+    }
+
+    pub fn peek_stack(&self) -> Result<&RuntimeValue, RuntimeError> {
+        self.stack.last().ok_or(RuntimeError::StackUnderflow)
+    }
+
+    pub fn peek_stack_mut(&mut self) -> Result<&mut RuntimeValue, RuntimeError> {
+        self.stack.last_mut().ok_or(RuntimeError::StackUnderflow)
     }
 
     pub fn dbg_print(&self) {
