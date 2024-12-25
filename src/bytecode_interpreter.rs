@@ -126,6 +126,11 @@ where
                     }
                 }
 
+                Bytecode::Not => {
+                    let val = self.pop_stack()?;
+                    self.push_stack(RuntimeValue::Bool(!val.bool()));
+                }
+
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
