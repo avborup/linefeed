@@ -59,7 +59,7 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
-            // self.dbg_print();
+            self.dbg_print();
             let instr = &self.program.instructions[self.pc];
 
             match instr {
@@ -169,13 +169,22 @@ where
     pub fn dbg_print(&self) {
         eprintln!("===== Bytecode Interpreter State =====");
         eprintln!("pc: {}", self.pc);
-        eprintln!("bp: {}", self.bp);
-        eprintln!(
-            "Instruction: {:?}\n",
-            self.program.instructions.get(self.pc)
-        );
-        eprintln!("Program: {:?}", self.program.instructions);
-        eprintln!("Stack: {:?}", self.stack);
+        eprintln!("bp: {}\n", self.bp);
+        eprintln!("Stack: {:?}\n", self.stack);
+        eprintln!("Instructions:");
+        for i in (self.pc.saturating_sub(2))..=(self.pc + 2) {
+            if i == 0 || i >= self.program.instructions.len() {
+                continue;
+            }
+
+            if i == self.pc {
+                eprint!("-> ");
+            } else {
+                eprint!("   ");
+            }
+
+            eprintln!("{:>3}: {:?}", i, self.program.instructions[i]);
+        }
         eprintln!();
     }
 }
