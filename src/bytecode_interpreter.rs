@@ -100,12 +100,6 @@ where
                     self.push_stack(a.mul(&b)?);
                 }
 
-                Bytecode::Store => {
-                    let val = self.pop_stack()?;
-                    let addr = self.pop_stack()?.address()?;
-                    self.stack[addr] = val;
-                }
-
                 Bytecode::Append => {
                     let val = self.pop_stack()?;
                     let into = self.peek_stack_mut()?;
@@ -115,6 +109,13 @@ where
                 Bytecode::Load => {
                     let addr = self.pop_stack()?.address()?;
                     self.push_stack(self.stack[addr].clone());
+                }
+
+                Bytecode::Store => {
+                    self.swap();
+                    let addr = self.pop_stack()?.address()?;
+                    let val = self.peek_stack()?.clone();
+                    self.stack[addr] = val;
                 }
 
                 Bytecode::Pop => {
@@ -158,6 +159,11 @@ where
 
     pub fn peek_stack_mut(&mut self) -> Result<&mut RuntimeValue, RuntimeError> {
         self.stack.last_mut().ok_or(RuntimeError::StackUnderflow)
+    }
+
+    pub fn swap(&mut self) {
+        let len = self.stack.len();
+        self.stack.swap(len - 1, len - 2);
     }
 
     pub fn dbg_print(&self) {
