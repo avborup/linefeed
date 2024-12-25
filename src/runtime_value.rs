@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::{
+    bytecode::Bytecode,
     bytecode_interpreter::RuntimeError,
-    compiler::Instruction,
     runtime_value::{
         list::RuntimeList, number::RuntimeNumber, operations::LfAppend, set::RuntimeSet,
     },
@@ -47,7 +47,7 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) + (*b))),
-            _ => Err(RuntimeError::NotImplemented(Instruction::Add)),
+            _ => Err(RuntimeError::NotImplemented(Bytecode::Add)),
         }
     }
 
@@ -55,7 +55,7 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) * (*b))),
-            _ => Err(RuntimeError::NotImplemented(Instruction::Mul)),
+            _ => Err(RuntimeError::NotImplemented(Bytecode::Mul)),
         }
     }
 
@@ -63,7 +63,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::List(list) => list.append(val)?,
             RuntimeValue::Set(set) => set.append(val)?,
-            _ => return Err(RuntimeError::NotImplemented(Instruction::Append)),
+            _ => return Err(RuntimeError::NotImplemented(Bytecode::Append)),
         };
 
         Ok(())
@@ -73,6 +73,18 @@ impl RuntimeValue {
         match self {
             RuntimeValue::Int(i) => Ok(*i as usize),
             _ => Err(RuntimeError::InvalidAddress(self.clone())),
+        }
+    }
+
+    pub fn bool(&self) -> bool {
+        match self {
+            RuntimeValue::Bool(b) => *b,
+            RuntimeValue::Null => false,
+            RuntimeValue::Int(n) => *n != 0,
+            RuntimeValue::Num(n) => n.bool(),
+            RuntimeValue::Str(s) => !s.is_empty(),
+            RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
+            RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
         }
     }
 }

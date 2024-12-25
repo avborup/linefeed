@@ -4,6 +4,7 @@ use std::{iter, rc::Rc};
 
 use crate::{
     ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
+    bytecode::Bytecode,
     runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
     scoped_map::ScopedMap,
 };
@@ -22,35 +23,48 @@ pub enum Instruction {
     ConstantInt(isize),
     Not,
     Stop,
-    Goto(usize),
+    Goto(Label),
+    Label(Label),
+    IfTrue(Label),
+    IfFalse(Label),
+    Method(Method),
+}
+
+#[derive(Debug, Clone)]
+pub enum Method {
     Append,
 }
 
 use Instruction::*;
 
 #[derive(Debug, Default)]
-pub struct Program {
-    pub instructions: Vec<Instruction>,
+pub struct Program<T> {
+    pub instructions: Vec<T>,
     pub source_map: Vec<Span>,
 }
 
 #[derive(Default)]
 pub struct Compiler {
     vars: ScopedMap<String, usize>,
+    label_count: usize,
 }
 
 impl Compiler {
-    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program, CompileError> {
+    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program<Bytecode>, CompileError> {
         let program = self
             .compile_expr(expr)?
             .then_instructions(vec![Stop], expr.1.end..expr.1.end);
 
         assert_eq!(program.instructions.len(), program.source_map.len());
 
-        Ok(program)
+        // TODO: Optimise the instuctions emitted by the above
+
+        let bytecode_program = program.into_bytecode()?;
+
+        Ok(bytecode_program)
     }
 
-    fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Program, CompileError> {
+    fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Program<Instruction>, CompileError> {
         let instructions = match &expr.0 {
             Expr::Error => unreachable!(),
 
@@ -78,12 +92,14 @@ impl Compiler {
                 Program::from_instructions(instrs, expr.1.clone())
             }
 
+            // TODO: Make a stack-pop after each item here since all expressions leave a value on
+            // the stack?
             Expr::Sequence(exprs) => exprs
                 .iter()
                 .map(|expr| self.compile_expr(expr))
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
-                .fold(Program::default(), Program::then_program),
+                .fold(Program::new(), Program::then_program),
 
             Expr::Print(sub_expr) => self
                 .compile_expr(sub_expr)?
@@ -103,7 +119,7 @@ impl Compiler {
             }
 
             Expr::List(items) => {
-                let initial_val = Program::default().then_instructions(
+                let initial_val = Program::new().then_instructions(
                     vec![Value(RuntimeValue::List(RuntimeList::new()))],
                     expr.1.clone(),
                 );
@@ -115,8 +131,24 @@ impl Compiler {
                     .into_iter()
                     .fold(initial_val, |acc, p| {
                         acc.then_program(p)
-                            .then_instructions(vec![Append], expr.1.clone())
+                            .then_instruction(Method(Method::Append), expr.1.clone())
                     })
+            }
+
+            Expr::If(cond, true_expr, false_expr) => {
+                let cond_program = self.compile_expr(cond)?;
+                let true_program = self.compile_expr(true_expr)?;
+                let false_program = self.compile_expr(false_expr)?;
+
+                let (false_label, end_label) = (self.new_label(), self.new_label());
+
+                cond_program
+                    .then_instructions(vec![IfFalse(false_label)], cond.1.clone())
+                    .then_program(true_program)
+                    .then_instructions(vec![Goto(end_label)], true_expr.1.clone())
+                    .then_instructions(vec![Instruction::Label(false_label)], false_expr.1.clone())
+                    .then_program(false_program)
+                    .then_instructions(vec![Instruction::Label(end_label)], expr.1.clone())
             }
 
             _ => unimplemented!(),
@@ -142,14 +174,14 @@ impl Compiler {
         expr: &Spanned<Expr>,
         name: &String,
         val: &Spanned<Expr>,
-    ) -> Result<Program, CompileError> {
+    ) -> Result<Program<Instruction>, CompileError> {
         let addr = self.vars.get(name).cloned().unwrap_or_else(|| {
             let local_addr = self.vars.cur_scope_len();
             self.vars.set(name.clone(), local_addr);
             local_addr
         });
 
-        let program = Program::default()
+        let program = Program::new()
             .then_instructions(
                 vec![GetBasePtr, ConstantInt(addr as isize), Add],
                 expr.1.clone(),
@@ -164,45 +196,77 @@ impl Compiler {
         let rt_val = RuntimeValue::try_from(val)?;
         Ok(vec![Instruction::Value(rt_val)])
     }
+
+    pub fn new_label(&mut self) -> Label {
+        let label = Label(self.label_count);
+        self.label_count += 1;
+        label
+    }
 }
 
 fn repeat_span(span: Span, count: usize) -> Vec<Span> {
     iter::repeat(span).take(count).collect()
 }
 
-impl Program {
-    pub fn disassemble(&self, src: &str) {
-        for (instr, span) in self.instructions.iter().zip(&self.source_map) {
-            let i = format!("{:?}", instr);
-            let range = format!("{:?}", span);
-            println!("{:>20}  {:<8} {:?}", i, range, &src[span.start..span.end]);
+impl<T> Program<T>
+where
+    T: std::fmt::Debug,
+{
+    pub fn new() -> Self {
+        Program {
+            instructions: Vec::new(),
+            source_map: Vec::new(),
         }
     }
 
-    pub fn from_instructions(instrs: Vec<Instruction>, span: Span) -> Program {
+    pub fn disassemble(&self, src: &str) {
+        for (pc, (instr, span)) in self.instructions.iter().zip(&self.source_map).enumerate() {
+            let i = format!("{:?}", instr);
+            let range = format!("{:?}", span);
+            println!(
+                "{:>3}: {:>20}  {:<8} {:?}",
+                pc,
+                i,
+                range,
+                &src[span.start..span.end]
+            );
+        }
+    }
+
+    pub fn from_instructions(instrs: Vec<T>, span: Span) -> Self {
         Program {
             source_map: repeat_span(span, instrs.len()),
             instructions: instrs,
         }
     }
 
-    pub fn add_instructions(&mut self, instrs: Vec<Instruction>, span: Span) {
+    pub fn add_instruction(&mut self, instr: T, span: Span) {
+        self.source_map.push(span);
+        self.instructions.push(instr);
+    }
+
+    pub fn add_instructions(&mut self, instrs: Vec<T>, span: Span) {
         self.source_map.extend(repeat_span(span, instrs.len()));
         self.instructions.extend(instrs);
     }
 
-    pub fn then_instructions(mut self, instrs: Vec<Instruction>, span: Span) -> Program {
+    pub fn then_instruction(mut self, instr: T, span: Span) -> Self {
+        self.add_instruction(instr, span);
+        self
+    }
+
+    pub fn then_instructions(mut self, instrs: Vec<T>, span: Span) -> Self {
         self.add_instructions(instrs, span);
         self
     }
 
-    pub fn extend(&mut self, other: Program) {
+    pub fn extend(&mut self, other: Self) {
         assert_eq!(self.instructions.len(), self.source_map.len());
         self.instructions.extend(other.instructions);
         self.source_map.extend(other.source_map);
     }
 
-    pub fn then_program(mut self, other: Program) -> Program {
+    pub fn then_program(mut self, other: Self) -> Self {
         self.extend(other);
         self
     }
@@ -236,3 +300,6 @@ impl TryFrom<&AstValue> for RuntimeValue {
         Ok(res)
     }
 }
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub struct Label(pub usize);

@@ -14,6 +14,13 @@ impl RuntimeNumber {
             Float(f) => f.floor() as isize,
         }
     }
+
+    pub fn bool(&self) -> bool {
+        match self {
+            Int(i) => *i != 0,
+            Float(f) => *f != 0.0,
+        }
+    }
 }
 
 impl std::fmt::Display for RuntimeNumber {

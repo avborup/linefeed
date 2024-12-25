@@ -1,13 +1,9 @@
 use std::io::Write;
 
-use crate::{
-    ast::Span,
-    compiler::{Instruction, Program},
-    runtime_value::RuntimeValue,
-};
+use crate::{ast::Span, bytecode::Bytecode, compiler::Program, runtime_value::RuntimeValue};
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
-    program: Program,
+    program: Program<Bytecode>,
     stack: Vec<RuntimeValue>,
     pc: usize,
     bp: usize,
@@ -16,7 +12,7 @@ pub struct BytecodeInterpreter<O: Write, E: Write> {
 }
 
 impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
-    pub fn new(program: Program) -> Self {
+    pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
             stack: vec![RuntimeValue::Null],
@@ -67,57 +63,67 @@ where
             let instr = &self.program.instructions[self.pc];
 
             match instr {
-                Instruction::Stop => break Ok(()),
+                Bytecode::Stop => break Ok(()),
 
-                Instruction::PrintValue => {
+                Bytecode::PrintValue => {
                     let val = self.pop_stack()?;
                     writeln!(self.stdout, "{val}").unwrap();
+                    self.push_stack(val);
                 }
 
-                Instruction::ConstantInt(i) => {
+                Bytecode::ConstantInt(i) => {
                     self.push_stack(RuntimeValue::Int(*i));
                 }
 
-                Instruction::Value(val) => {
+                Bytecode::Value(val) => {
                     self.push_stack(val.clone());
                 }
 
-                Instruction::Goto(idx) => {
+                Bytecode::Goto(idx) => {
                     self.pc = *idx;
                     continue;
                 }
 
-                Instruction::GetBasePtr => {
+                Bytecode::GetBasePtr => {
                     self.push_stack(RuntimeValue::Int(self.bp as isize));
                 }
 
-                Instruction::Add => {
+                Bytecode::Add => {
                     let a = self.pop_stack()?;
                     let b = self.pop_stack()?;
                     self.push_stack(a.add(&b)?);
                 }
 
-                Instruction::Mul => {
+                Bytecode::Mul => {
                     let a = self.pop_stack()?;
                     let b = self.pop_stack()?;
                     self.push_stack(a.mul(&b)?);
                 }
 
-                Instruction::Store => {
+                Bytecode::Store => {
                     let val = self.pop_stack()?;
                     let addr = self.pop_stack()?.address()?;
                     self.stack[addr] = val;
                 }
 
-                Instruction::Append => {
+                Bytecode::Append => {
                     let val = self.pop_stack()?;
                     let into = self.peek_stack_mut()?;
                     into.append(val)?;
                 }
 
-                Instruction::Load => {
+                Bytecode::Load => {
                     let addr = self.pop_stack()?.address()?;
                     self.push_stack(self.stack[addr].clone());
+                }
+
+                Bytecode::IfFalse(idx) => {
+                    let idx = *idx;
+                    let val = self.pop_stack()?;
+                    if !val.bool() {
+                        self.pc = idx;
+                        continue;
+                    }
                 }
 
                 to_implement => {
@@ -162,7 +168,7 @@ where
 #[derive(Debug)]
 pub enum RuntimeError {
     StackUnderflow,
-    NotImplemented(Instruction),
+    NotImplemented(Bytecode),
     InvalidAddress(RuntimeValue),
 }
 

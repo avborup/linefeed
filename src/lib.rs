@@ -13,6 +13,7 @@ use crate::{
 };
 
 pub mod ast;
+pub mod bytecode;
 pub mod bytecode_interpreter;
 pub mod compiler;
 pub mod interpreter;

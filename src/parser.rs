@@ -40,7 +40,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                             Box::new(match b {
                                 Some(b) => b,
                                 // If an `if` expression has no trailing `else` block, we magic up one that just produces null
-                                None => Spanned(Expr::Value(Value::Null), span.clone()),
+                                None => Spanned(Expr::Value(Value::Null), span.end..span.end),
                             }),
                         ),
                         span,
