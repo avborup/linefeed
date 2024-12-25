@@ -18,6 +18,9 @@ pub enum Bytecode {
     Value(RuntimeValue),
     ConstantInt(isize),
 
+    // Stack manipulation
+    Pop,
+
     // Arithmetic
     Add,
     Sub,
@@ -61,6 +64,7 @@ impl Bytecode {
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
+            Instruction::Pop => Bytecode::Pop,
             Instruction::Method(method) => match method {
                 Method::Append => Bytecode::Append,
             },

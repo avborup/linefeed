@@ -117,6 +117,10 @@ where
                     self.push_stack(self.stack[addr].clone());
                 }
 
+                Bytecode::Pop => {
+                    self.pop_stack()?;
+                }
+
                 Bytecode::IfFalse(idx) => {
                     let idx = *idx;
                     let val = self.pop_stack()?;

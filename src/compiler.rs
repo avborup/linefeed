@@ -16,6 +16,7 @@ pub enum Instruction {
     PrintValue,
     Value(RuntimeValue),
     GetBasePtr,
+    Pop,
     Add,
     Sub,
     Mul,
@@ -92,14 +93,30 @@ impl Compiler {
                 Program::from_instructions(instrs, expr.1.clone())
             }
 
-            // TODO: Make a stack-pop after each item here since all expressions leave a value on
-            // the stack?
-            Expr::Sequence(exprs) => exprs
-                .iter()
-                .map(|expr| self.compile_expr(expr))
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .fold(Program::new(), Program::then_program),
+            Expr::Sequence(exprs) => {
+                let mut program = exprs
+                    .iter()
+                    .map(|expr| self.compile_expr(expr))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .fold(Program::new(), |program, sub_program| {
+                        let pop_span = sub_program.span().unwrap_or_else(|| expr.1.clone());
+
+                        program
+                            .then_program(sub_program)
+                            // Everything is an expression, so values are left on the stack. For
+                            // statement-style semi-colon-separated expressions, we pop the value
+                            // left on the stack after each expression.
+                            .then_instruction(Pop, pop_span)
+                    });
+
+                if !program.instructions.is_empty() {
+                    // Only the last value in a sequence of expressions should be kept on the stack
+                    program.pop();
+                }
+
+                program
+            }
 
             Expr::Print(sub_expr) => self
                 .compile_expr(sub_expr)?
@@ -269,6 +286,17 @@ where
     pub fn then_program(mut self, other: Self) -> Self {
         self.extend(other);
         self
+    }
+
+    pub fn pop(&mut self) -> Option<T> {
+        self.source_map.pop();
+        self.instructions.pop()
+    }
+
+    pub fn span(&self) -> Option<Span> {
+        let start = self.source_map.iter().map(|s| s.start).min()?;
+        let end = self.source_map.iter().map(|s| s.end).max()?;
+        Some(Span { start, end })
     }
 }
 
