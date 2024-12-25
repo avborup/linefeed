@@ -54,7 +54,7 @@ impl Compiler {
     pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program<Bytecode>, CompileError> {
         let program = self
             .compile_expr(expr)?
-            .then_instructions(vec![Stop], expr.1.end..expr.1.end);
+            .then_instruction(Stop, expr.1.end..expr.1.end);
 
         assert_eq!(program.instructions.len(), program.source_map.len());
 
@@ -120,7 +120,7 @@ impl Compiler {
 
             Expr::Print(sub_expr) => self
                 .compile_expr(sub_expr)?
-                .then_instructions(vec![PrintValue], expr.1.clone()),
+                .then_instruction(PrintValue, expr.1.clone()),
 
             Expr::Block(sub_expr) => self.compile_expr(sub_expr)?,
 
@@ -136,8 +136,8 @@ impl Compiler {
             }
 
             Expr::List(items) => {
-                let initial_val = Program::new().then_instructions(
-                    vec![Value(RuntimeValue::List(RuntimeList::new()))],
+                let initial_val = Program::new().then_instruction(
+                    Value(RuntimeValue::List(RuntimeList::new())),
                     expr.1.clone(),
                 );
 
@@ -160,12 +160,12 @@ impl Compiler {
                 let (false_label, end_label) = (self.new_label(), self.new_label());
 
                 cond_program
-                    .then_instructions(vec![IfFalse(false_label)], cond.1.clone())
+                    .then_instruction(IfFalse(false_label), cond.1.clone())
                     .then_program(true_program)
-                    .then_instructions(vec![Goto(end_label)], true_expr.1.clone())
-                    .then_instructions(vec![Instruction::Label(false_label)], false_expr.1.clone())
+                    .then_instruction(Goto(end_label), true_expr.1.clone())
+                    .then_instruction(Instruction::Label(false_label), false_expr.1.clone())
                     .then_program(false_program)
-                    .then_instructions(vec![Instruction::Label(end_label)], expr.1.clone())
+                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
             }
 
             _ => unimplemented!(),
@@ -204,7 +204,7 @@ impl Compiler {
                 expr.1.clone(),
             )
             .then_program(self.compile_expr(val)?)
-            .then_instructions(vec![Store], expr.1.clone());
+            .then_instruction(Store, expr.1.clone());
 
         Ok(program)
     }
