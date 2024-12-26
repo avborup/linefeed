@@ -87,16 +87,9 @@ impl Compiler {
             Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
 
             Expr::Value(AstValue::Func(func)) => {
-                // TODO: Implement function compilation.
-                //    - Stack pointer and base pointer management
-                //    - Function call
-                //    - Closures - how to capture outer variables?
-                //    - CALL instruction? Where to store return value?
-                // See p. 178 of Introduction to Compiler Design by Torben Mogensen
-
                 // TODO: Implement
-                //   - Static function calls (depends only on the function arguments)
-                //   - Closures (depends on outer variables)
+                //   - [x] Static function calls (depends only on the function arguments)
+                //   - [ ] Closures (depends on outer variables)
                 // See https://craftinginterpreters.com/closures.html
 
                 self.vars.start_scope();
