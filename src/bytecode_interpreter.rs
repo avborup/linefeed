@@ -81,14 +81,6 @@ where
                     self.push_stack(val.clone());
                 }
 
-                Bytecode::Goto(idx) => {
-                    self.pc = *idx;
-                }
-
-                Bytecode::GetBasePtr => {
-                    self.push_stack(RuntimeValue::Int(self.bp as isize));
-                }
-
                 Bytecode::Add => {
                     let a = self.pop_stack()?;
                     let b = self.pop_stack()?;
@@ -113,10 +105,9 @@ where
                     self.push_stack(RuntimeValue::Bool(a == b));
                 }
 
-                Bytecode::Append => {
+                Bytecode::Not => {
                     let val = self.pop_stack()?;
-                    let into = self.peek_stack_mut()?;
-                    into.append(val)?;
+                    self.push_stack(RuntimeValue::Bool(!val.bool()));
                 }
 
                 Bytecode::Load => {
@@ -143,9 +134,12 @@ where
                     }
                 }
 
-                Bytecode::Not => {
-                    let val = self.pop_stack()?;
-                    self.push_stack(RuntimeValue::Bool(!val.bool()));
+                Bytecode::Goto(idx) => {
+                    self.pc = *idx;
+                }
+
+                Bytecode::GetBasePtr => {
+                    self.push_stack(RuntimeValue::Int(self.bp as isize));
                 }
 
                 Bytecode::Call(num_args) => {
@@ -195,6 +189,12 @@ where
 
                     self.stack.truncate(frame_index);
                     self.push_stack(return_val);
+                }
+
+                Bytecode::Append => {
+                    let val = self.pop_stack()?;
+                    let into = self.peek_stack_mut()?;
+                    into.append(val)?;
                 }
 
                 to_implement => {

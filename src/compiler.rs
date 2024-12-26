@@ -12,30 +12,44 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum Instruction {
+    // Variables
     Load,
     Store,
-    PrintValue,
+
+    // Values
     Value(IrValue),
-    GetBasePtr,
+    ConstantInt(isize),
+
+    // Stack manipulation
     Pop,
+
+    // Binary operations
     Add,
     Sub,
     Mul,
     Div,
-    ConstantInt(isize),
-
     Eq,
+
+    // Unary operations
     Not,
 
+    // Control flow
     Stop,
     Goto(Label),
     Label(Label),
     IfTrue(Label),
     IfFalse(Label),
 
+    // Functions
+    GetBasePtr,
     Call(usize),
     Return,
+
+    // Methods
     Method(Method),
+
+    // Builtins
+    PrintValue,
 }
 
 #[derive(Debug, Clone)]

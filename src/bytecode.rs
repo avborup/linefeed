@@ -12,9 +12,6 @@ pub enum Bytecode {
     Load,
     Store,
 
-    // Functions
-    GetBasePtr,
-
     // Values
     Value(RuntimeValue),
     ConstantInt(isize),
@@ -39,6 +36,7 @@ pub enum Bytecode {
     IfFalse(usize),
 
     // Functions
+    GetBasePtr,
     Call(usize),
     Return,
 
