@@ -170,6 +170,10 @@ impl Compiler {
                             // Everything is an expression, so values are left on the stack. For
                             // statement-style semi-colon-separated expressions, we pop the value
                             // left on the stack after each expression.
+                            // FIXME: This is buggy. A series of variable assignments results in
+                            // the variables being popped off the stack. But how the hell do we
+                            // handle popping in the correct instances and not popping in the
+                            // incorrect instances?
                             .then_instruction(Pop, pop_span)
                     });
 
