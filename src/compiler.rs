@@ -268,7 +268,7 @@ impl Compiler {
         name: &String,
         val: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let addr = self.vars.get(name).cloned().unwrap_or_else(|| {
+        let addr = self.vars.get_local(name).cloned().unwrap_or_else(|| {
             let local_addr = self.vars.cur_scope_len();
             self.vars.set(name.clone(), local_addr);
             local_addr
