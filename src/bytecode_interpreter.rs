@@ -229,7 +229,19 @@ where
         eprintln!("===== Bytecode Interpreter State =====");
         eprintln!("pc: {}", self.pc);
         eprintln!("bp: {}\n", self.bp);
-        eprintln!("Stack: {:?}\n", self.stack);
+
+        eprint!("Stack: ");
+        let mut first = true;
+        for val in self.stack.iter() {
+            if !first {
+                eprint!(", ");
+            }
+            first = false;
+
+            eprint!("{val}",);
+        }
+        eprintln!("\n");
+
         eprintln!("Instructions:");
         for i in (self.pc.saturating_sub(2))..=(self.pc + 2) {
             if i >= self.program.instructions.len() {

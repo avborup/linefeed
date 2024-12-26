@@ -136,7 +136,7 @@ impl std::fmt::Display for RuntimeValue {
                 write_items(f, xs.borrow().iter())?;
                 write!(f, "}}")
             }
-            RuntimeValue::Function(func) => write!(f, "<function/{}>", func.arity),
+            RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
         }
     }
 }
