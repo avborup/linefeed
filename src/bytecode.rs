@@ -37,6 +37,10 @@ pub enum Bytecode {
     IfTrue(usize),
     IfFalse(usize),
 
+    // Functions
+    Call(usize),
+    Return,
+
     // Methods
     Append,
 
@@ -68,6 +72,8 @@ impl Bytecode {
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
             Instruction::Pop => Bytecode::Pop,
+            Instruction::Call(num_args) => Bytecode::Call(num_args),
+            Instruction::Return => Bytecode::Return,
             Instruction::Method(method) => match method {
                 Method::Append => Bytecode::Append,
             },

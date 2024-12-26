@@ -29,6 +29,9 @@ pub enum Instruction {
     Label(Label),
     IfTrue(Label),
     IfFalse(Label),
+
+    Call(usize),
+    Return,
     Method(Method),
 }
 
@@ -82,6 +85,57 @@ impl Compiler {
             }
 
             Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
+
+            Expr::Value(AstValue::Func(func)) => {
+                // TODO: Implement function compilation.
+                //    - Stack pointer and base pointer management
+                //    - Function call
+                //    - Closures - how to capture outer variables?
+                //    - CALL instruction? Where to store return value?
+                // See p. 178 of Introduction to Compiler Design by Torben Mogensen
+
+                // TODO: Implement
+                //   - Static function calls (depends only on the function arguments)
+                //   - Closures (depends on outer variables)
+                // See https://craftinginterpreters.com/closures.html
+
+                self.vars.start_scope();
+
+                for (offset, arg) in func.args.iter().enumerate() {
+                    self.vars.set(arg.clone(), offset);
+                }
+
+                let func_label = self.new_label();
+                let post_func_label = self.new_label();
+
+                let val = IrValue::Function(RuntimeFunction {
+                    location: func_label,
+                    arity: func.args.len(),
+                });
+
+                let program = Program::new()
+                    .then_instruction(Value(val), expr.1.clone())
+                    .then_instruction(Goto(post_func_label), expr.1.clone())
+                    .then_instruction(Instruction::Label(func_label), expr.1.clone())
+                    .then_program(self.compile_expr(&func.body)?)
+                    .then_instruction(Return, expr.1.clone())
+                    .then_instruction(Instruction::Label(post_func_label), expr.1.clone());
+
+                self.vars.pop_scope();
+
+                program
+            }
+
+            Expr::Call(func, args) => {
+                let func_program = self.compile_expr(func)?;
+
+                args.iter()
+                    .map(|arg| self.compile_expr(arg))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .fold(func_program, Program::then_program)
+                    .then_instruction(Call(args.len()), expr.1.clone())
+            }
 
             Expr::Value(val) => {
                 let ir_val = IrValue::try_from(val).map_err(|msg| CompileError::Spanned {
@@ -165,7 +219,12 @@ impl Compiler {
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
             }
 
-            _ => unimplemented!(),
+            _ => {
+                return Err(CompileError::Spanned {
+                    span: expr.1.clone(),
+                    msg: format!("Compilation not implemented yet for {:?}", expr.0),
+                })
+            }
         };
 
         Ok(instructions)

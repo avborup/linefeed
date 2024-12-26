@@ -4,6 +4,7 @@ use crate::{ast::Span, bytecode::Bytecode, compiler::Program, runtime_value::Run
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
     program: Program<Bytecode>,
+    // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
     pc: usize,
     bp: usize,
@@ -61,6 +62,7 @@ where
         loop {
             self.dbg_print();
             let instr = &self.program.instructions[self.pc];
+            self.pc += 1;
 
             match instr {
                 Bytecode::Stop => break Ok(()),
@@ -81,7 +83,6 @@ where
 
                 Bytecode::Goto(idx) => {
                     self.pc = *idx;
-                    continue;
                 }
 
                 Bytecode::GetBasePtr => {
@@ -127,7 +128,6 @@ where
                     let val = self.pop_stack()?;
                     if !val.bool() {
                         self.pc = idx;
-                        continue;
                     }
                 }
 
@@ -136,12 +136,59 @@ where
                     self.push_stack(RuntimeValue::Bool(!val.bool()));
                 }
 
+                Bytecode::Call(num_args) => {
+                    let num_args = *num_args;
+
+                    let func_index = self.stack.len() - 1 - num_args;
+                    let func = match &self.stack[func_index] {
+                        RuntimeValue::Function(func) => func,
+                        val => {
+                            break Err(RuntimeError::TypeMismatch(format!(
+                                "Cannot call type {} as a function",
+                                val.kind_str()
+                            )));
+                        }
+                    };
+
+                    if func.arity != num_args {
+                        break Err(RuntimeError::TypeMismatch(format!(
+                            "Expected {} arguments, got {}",
+                            func.arity, num_args
+                        )));
+                    }
+
+                    let func_location = func.location;
+
+                    // Store pc and bp (2 slots), then start new stack frame after that
+                    let new_bp = func_index + 2;
+
+                    // First slot is the return address; pop function instance and insert return address
+                    self.stack[new_bp - 2] = RuntimeValue::Int(self.pc as isize);
+                    // Second slot is the old base pointer
+                    self.stack
+                        .insert(new_bp - 1, RuntimeValue::Int(self.bp as isize));
+
+                    // And then set the new base pointer and jump to the function
+                    self.bp = new_bp;
+                    self.pc = func_location;
+                }
+
+                Bytecode::Return => {
+                    let return_val = self.pop_stack()?;
+                    let frame_index = self.bp - 2;
+
+                    let return_addr = self.stack[self.bp - 2].address()?;
+                    self.bp = self.stack[self.bp - 1].address()?;
+                    self.pc = return_addr;
+
+                    self.stack.truncate(frame_index);
+                    self.push_stack(return_val);
+                }
+
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
             }
-
-            self.pc += 1;
         }
     }
 
@@ -173,7 +220,7 @@ where
         eprintln!("Stack: {:?}\n", self.stack);
         eprintln!("Instructions:");
         for i in (self.pc.saturating_sub(2))..=(self.pc + 2) {
-            if i == 0 || i >= self.program.instructions.len() {
+            if i >= self.program.instructions.len() {
                 continue;
             }
 
@@ -194,6 +241,7 @@ pub enum RuntimeError {
     StackUnderflow,
     NotImplemented(Bytecode),
     InvalidAddress(RuntimeValue),
+    TypeMismatch(String),
 }
 
 impl std::fmt::Display for RuntimeError {
@@ -205,6 +253,9 @@ impl std::fmt::Display for RuntimeError {
             }
             RuntimeError::InvalidAddress(val) => {
                 write!(f, "Invalid address of type {}", val.kind_str())
+            }
+            RuntimeError::TypeMismatch(msg) => {
+                write!(f, "Type mismatch: {msg}")
             }
         }
     }
