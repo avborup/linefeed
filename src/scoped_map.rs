@@ -50,6 +50,10 @@ where
         }
     }
 
+    pub fn get_local(&self, name: &K) -> Option<&V> {
+        self.scopes.last().unwrap().get(name)
+    }
+
     pub fn set_local(&mut self, name: K, val: V) {
         self.scopes.last_mut().unwrap().insert(name, val);
     }

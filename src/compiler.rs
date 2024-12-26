@@ -228,7 +228,8 @@ impl Compiler {
     fn compile_var_access(&mut self, name: &String) -> Result<Vec<Instruction>, String> {
         let addr = self
             .vars
-            .get(name)
+            // TODO: Upvalues / closures are not supported yet
+            .get_local(name)
             .ok_or_else(|| format!("Variable {name} not found"))?;
 
         Ok(vec![GetBasePtr, ConstantInt(*addr as isize), Add, Load])
