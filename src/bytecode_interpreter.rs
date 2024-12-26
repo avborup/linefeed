@@ -112,14 +112,14 @@ where
 
                 Bytecode::Load => {
                     let addr = self.pop_stack()?.address()?;
-                    self.push_stack(self.stack[addr].clone());
+                    self.push_stack(self.get(addr)?.clone());
                 }
 
                 Bytecode::Store => {
                     self.swap();
                     let addr = self.pop_stack()?.address()?;
                     let val = self.peek_stack()?.clone();
-                    self.stack[addr] = val;
+                    self.set(addr, val)?;
                 }
 
                 Bytecode::Pop => {
@@ -216,6 +216,33 @@ where
         self.stack.last().ok_or(RuntimeError::StackUnderflow)
     }
 
+    // TODO: It's probably very slow to check this every time, but it provides good diagnostics.
+    // Provide feature flag to enable checks?
+    pub fn set(&mut self, index: usize, value: RuntimeValue) -> Result<(), RuntimeError> {
+        if index >= self.stack.len() {
+            return Err(RuntimeError::InternalBug(format!(
+                "Tried to set stack index {} but stack length is {}",
+                index,
+                self.stack.len()
+            )));
+        }
+
+        self.stack[index] = value;
+        Ok(())
+    }
+
+    pub fn get(&self, index: usize) -> Result<&RuntimeValue, RuntimeError> {
+        if index >= self.stack.len() {
+            return Err(RuntimeError::InternalBug(format!(
+                "Tried to get stack index {} but stack length is {}",
+                index,
+                self.stack.len()
+            )));
+        }
+
+        Ok(&self.stack[index])
+    }
+
     pub fn peek_stack_mut(&mut self) -> Result<&mut RuntimeValue, RuntimeError> {
         self.stack.last_mut().ok_or(RuntimeError::StackUnderflow)
     }
@@ -266,6 +293,7 @@ pub enum RuntimeError {
     NotImplemented(Bytecode),
     InvalidAddress(RuntimeValue),
     TypeMismatch(String),
+    InternalBug(String),
 }
 
 impl std::fmt::Display for RuntimeError {
@@ -280,6 +308,9 @@ impl std::fmt::Display for RuntimeError {
             }
             RuntimeError::TypeMismatch(msg) => {
                 write!(f, "Type mismatch: {msg}")
+            }
+            RuntimeError::InternalBug(msg) => {
+                write!(f, "Internal bug: {msg}")
             }
         }
     }
