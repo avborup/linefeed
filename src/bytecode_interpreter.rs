@@ -95,10 +95,22 @@ where
                     self.push_stack(a.add(&b)?);
                 }
 
+                Bytecode::Sub => {
+                    let a = self.pop_stack()?;
+                    let b = self.pop_stack()?;
+                    self.push_stack(a.sub(&b)?);
+                }
+
                 Bytecode::Mul => {
                     let a = self.pop_stack()?;
                     let b = self.pop_stack()?;
                     self.push_stack(a.mul(&b)?);
+                }
+
+                Bytecode::Eq => {
+                    let a = self.pop_stack()?;
+                    let b = self.pop_stack()?;
+                    self.push_stack(RuntimeValue::Bool(a == b));
                 }
 
                 Bytecode::Append => {

@@ -55,6 +55,14 @@ impl RuntimeValue {
         }
     }
 
+    pub fn sub(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a - b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) - (*b))),
+            _ => Err(RuntimeError::NotImplemented(Bytecode::Sub)),
+        }
+    }
+
     pub fn mul(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),

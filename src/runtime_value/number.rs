@@ -1,4 +1,4 @@
-use std::ops::{Add, Mul};
+use std::ops::{Add, Mul, Sub};
 
 #[derive(Debug, Clone, Copy)]
 pub enum RuntimeNumber {
@@ -75,6 +75,19 @@ impl Add for RuntimeNumber {
             (Int(a), Float(b)) => Float(a as f64 + b),
             (Float(a), Int(b)) => Float(a + b as f64),
             (Float(a), Float(b)) => Float(a + b),
+        }
+    }
+}
+
+impl Sub for RuntimeNumber {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        match (self, other) {
+            (Int(a), Int(b)) => Int(a - b),
+            (Int(a), Float(b)) => Float(a as f64 - b),
+            (Float(a), Int(b)) => Float(a - b as f64),
+            (Float(a), Float(b)) => Float(a - b),
         }
     }
 }

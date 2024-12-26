@@ -22,11 +22,12 @@ pub enum Bytecode {
     // Stack manipulation
     Pop,
 
-    // Arithmetic
+    // Binary operations
     Add,
     Sub,
     Mul,
     Div,
+    Eq,
 
     // Logic
     Not,
@@ -66,6 +67,7 @@ impl Bytecode {
             Instruction::Sub => Bytecode::Sub,
             Instruction::Mul => Bytecode::Mul,
             Instruction::Div => Bytecode::Div,
+            Instruction::Eq => Bytecode::Eq,
             Instruction::Not => Bytecode::Not,
             Instruction::Stop => Bytecode::Stop,
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),

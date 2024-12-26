@@ -3,7 +3,7 @@
 use std::iter;
 
 use crate::{
-    ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
+    ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
     bytecode::Bytecode,
     ir_value::{IrList, IrValue},
     runtime_value::function::RuntimeFunction,
@@ -23,7 +23,10 @@ pub enum Instruction {
     Mul,
     Div,
     ConstantInt(isize),
+
+    Eq,
     Not,
+
     Stop,
     Goto(Label),
     Label(Label),
@@ -179,6 +182,29 @@ impl Compiler {
                 };
 
                 program.then_instructions(to_add, expr.1.clone())
+            }
+
+            Expr::Binary(lhs, op, rhs) => {
+                let lhs_program = self.compile_expr(lhs)?;
+                let rhs_program = self.compile_expr(rhs)?;
+
+                let op_instr = match op {
+                    BinaryOp::Add => Add,
+                    BinaryOp::Sub => Sub,
+                    BinaryOp::Mul => Mul,
+                    BinaryOp::Div => Div,
+                    BinaryOp::Eq => Eq,
+                    _ => {
+                        return Err(CompileError::Spanned {
+                            span: expr.1.clone(),
+                            msg: format!("Binary operator {:?} not implemented", op),
+                        })
+                    }
+                };
+
+                lhs_program
+                    .then_program(rhs_program)
+                    .then_instruction(op_instr, expr.1.clone())
             }
 
             Expr::List(items) => {
