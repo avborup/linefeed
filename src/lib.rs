@@ -17,6 +17,7 @@ pub mod bytecode;
 pub mod bytecode_interpreter;
 pub mod compiler;
 pub mod interpreter;
+pub mod ir_value;
 pub mod lexer;
 pub mod parser;
 pub mod runtime_value;

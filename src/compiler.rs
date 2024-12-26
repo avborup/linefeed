@@ -1,11 +1,12 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{iter, rc::Rc};
+use std::iter;
 
 use crate::{
     ast::{Expr, Span, Spanned, UnaryOp, Value as AstValue},
     bytecode::Bytecode,
-    runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
+    ir_value::{IrList, IrValue},
+    runtime_value::function::RuntimeFunction,
     scoped_map::ScopedMap,
 };
 
@@ -14,7 +15,7 @@ pub enum Instruction {
     Load,
     Store,
     PrintValue,
-    Value(RuntimeValue),
+    Value(IrValue),
     GetBasePtr,
     Pop,
     Add,
@@ -83,14 +84,12 @@ impl Compiler {
             Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
 
             Expr::Value(val) => {
-                let instrs = self
-                    .compile_value(val)
-                    .map_err(|msg| CompileError::Spanned {
-                        span: expr.1.clone(),
-                        msg,
-                    })?;
+                let ir_val = IrValue::try_from(val).map_err(|msg| CompileError::Spanned {
+                    span: expr.1.clone(),
+                    msg,
+                })?;
 
-                Program::from_instructions(instrs, expr.1.clone())
+                Program::new().then_instruction(Value(ir_val), expr.1.clone())
             }
 
             Expr::Sequence(exprs) => {
@@ -136,10 +135,8 @@ impl Compiler {
             }
 
             Expr::List(items) => {
-                let initial_val = Program::new().then_instruction(
-                    Value(RuntimeValue::List(RuntimeList::new())),
-                    expr.1.clone(),
-                );
+                let initial_val = Program::new()
+                    .then_instruction(Value(IrValue::List(IrList(Vec::new()))), expr.1.clone());
 
                 items
                     .iter()
@@ -207,11 +204,6 @@ impl Compiler {
             .then_instruction(Store, expr.1.clone());
 
         Ok(program)
-    }
-
-    fn compile_value(&mut self, val: &AstValue) -> Result<Vec<Instruction>, String> {
-        let rt_val = RuntimeValue::try_from(val)?;
-        Ok(vec![Instruction::Value(rt_val)])
     }
 
     pub fn new_label(&mut self) -> Label {
@@ -303,30 +295,6 @@ where
 pub enum CompileError {
     Spanned { span: Span, msg: String },
     Plain(String),
-}
-
-impl TryFrom<&AstValue> for RuntimeValue {
-    type Error = String;
-
-    fn try_from(val: &AstValue) -> Result<Self, Self::Error> {
-        let res = match val {
-            AstValue::Null => RuntimeValue::Null,
-            AstValue::Bool(b) => RuntimeValue::Bool(*b),
-            AstValue::Num(n) => RuntimeValue::Num(RuntimeNumber::Float(*n)),
-            AstValue::Str(s) => RuntimeValue::Str(Rc::new(s.clone())),
-            AstValue::List(xs) => {
-                let items = xs
-                    .iter()
-                    .map(RuntimeValue::try_from)
-                    .collect::<Result<_, _>>()?;
-
-                RuntimeValue::List(RuntimeList::from_vec(items))
-            }
-            AstValue::Func(_) => return Err("Cannot compile function value".to_string()),
-        };
-
-        Ok(res)
-    }
 }
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]

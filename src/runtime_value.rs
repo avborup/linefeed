@@ -4,10 +4,12 @@ use crate::{
     bytecode::Bytecode,
     bytecode_interpreter::RuntimeError,
     runtime_value::{
-        list::RuntimeList, number::RuntimeNumber, operations::LfAppend, set::RuntimeSet,
+        function::RuntimeFunction, list::RuntimeList, number::RuntimeNumber, operations::LfAppend,
+        set::RuntimeSet,
     },
 };
 
+pub mod function;
 pub mod list;
 pub mod number;
 pub mod operations;
@@ -22,6 +24,7 @@ pub enum RuntimeValue {
     Str(Rc<String>),
     List(RuntimeList),
     Set(RuntimeSet),
+    Function(Rc<RuntimeFunction>),
 }
 
 const _: () = {
@@ -40,6 +43,7 @@ impl RuntimeValue {
             RuntimeValue::Str(_) => "str",
             RuntimeValue::List(_) => "list",
             RuntimeValue::Set(_) => "set",
+            RuntimeValue::Function(_) => "function",
         }
     }
 
@@ -85,6 +89,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => !s.is_empty(),
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
+            RuntimeValue::Function(_) => true,
         }
     }
 }
@@ -123,6 +128,7 @@ impl std::fmt::Display for RuntimeValue {
                 write_items(f, xs.borrow().iter())?;
                 write!(f, "}}")
             }
+            RuntimeValue::Function(func) => write!(f, "<function/{}>", func.arity),
         }
     }
 }

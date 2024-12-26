@@ -1,8 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use crate::{
     compiler::{CompileError, Instruction, Label, Method, Program},
-    runtime_value::RuntimeValue,
+    ir_value::IrValue,
+    runtime_value::{function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, RuntimeValue},
 };
 
 #[derive(Debug, Clone)]
@@ -53,7 +54,9 @@ impl Bytecode {
             Instruction::Load => Bytecode::Load,
             Instruction::Store => Bytecode::Store,
             Instruction::GetBasePtr => Bytecode::GetBasePtr,
-            Instruction::Value(value) => Bytecode::Value(value),
+            Instruction::Value(value) => {
+                Bytecode::Value(Self::into_runtime_value_with_mapper(value, label_mapper)?)
+            }
             Instruction::ConstantInt(i) => Bytecode::ConstantInt(i),
             Instruction::Add => Bytecode::Add,
             Instruction::Sub => Bytecode::Sub,
@@ -72,6 +75,41 @@ impl Bytecode {
         };
 
         Ok(Some(bytecode))
+    }
+
+    fn into_runtime_value_with_mapper(
+        value: IrValue,
+        label_mapper: &LabelMapper,
+    ) -> Result<RuntimeValue, CompileError> {
+        let res = match value {
+            IrValue::Null => RuntimeValue::Null,
+            IrValue::Bool(b) => RuntimeValue::Bool(b),
+            IrValue::Int(i) => RuntimeValue::Int(i),
+            IrValue::Num(n) => RuntimeValue::Num(n),
+            IrValue::Str(s) => RuntimeValue::Str(Rc::new(s)),
+            IrValue::List(xs) => {
+                let items =
+                    xs.0.into_iter()
+                        .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                        .collect::<Result<_, _>>()?;
+
+                RuntimeValue::List(RuntimeList::from_vec(items))
+            }
+            IrValue::Set(xs) => {
+                let items =
+                    xs.0.into_iter()
+                        .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                        .collect::<Result<_, _>>()?;
+
+                RuntimeValue::Set(RuntimeSet::from_set(items))
+            }
+            IrValue::Function(func) => RuntimeValue::Function(Rc::new(RuntimeFunction {
+                location: label_mapper.get(func.location)?,
+                arity: func.arity,
+            })),
+        };
+
+        Ok(res)
     }
 }
 
