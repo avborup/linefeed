@@ -278,14 +278,20 @@ impl Compiler {
         name: &String,
         expr: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let var = self
-            .vars
-            // TODO: Upvalues / closures are not supported yet
-            .get_local(name)
-            .ok_or_else(|| CompileError::Spanned {
-                span: expr.1.clone(),
-                msg: format!("Variable {name} not found"),
-            })?;
+        // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
+        // variables are allowed.
+        let var = match self.vars.get_local(name) {
+            Some(var) => var,
+            None => match self.vars.get(name) {
+                Some(var) if matches!(var, VarType::Global(_)) => var,
+                _ => {
+                    return Err(CompileError::Spanned {
+                        span: expr.1.clone(),
+                        msg: format!("Variable {name} not found"),
+                    })
+                }
+            },
+        };
 
         let addr_instrs = match var {
             VarType::Local(offset) => {
@@ -310,8 +316,14 @@ impl Compiler {
             // Allocate stack space for new local variable if it doesn't exist
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
 
-            self.vars
-                .set(name.clone(), VarType::Local(self.vars.cur_scope_len()));
+            let offset = self.vars.cur_scope_len();
+            let var = if self.vars.is_currently_top_scope() {
+                VarType::Global(offset)
+            } else {
+                VarType::Local(offset)
+            };
+
+            self.vars.set(name.clone(), var);
         };
 
         Ok(program

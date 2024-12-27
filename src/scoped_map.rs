@@ -61,4 +61,8 @@ where
     pub fn cur_scope_len(&self) -> usize {
         self.scopes.last().unwrap().len()
     }
+
+    pub fn is_currently_top_scope(&self) -> bool {
+        self.scopes.len() == 1
+    }
 }
