@@ -261,11 +261,15 @@ where
 
         eprint!("{}: [", "Stack".underline());
         let mut first = true;
-        for val in self.stack.iter() {
+        for (i, val) in self.stack.iter().enumerate() {
             if !first {
                 eprint!(", ");
             }
             first = false;
+
+            if i == self.bp {
+                eprint!("{} ", "(bp)".yellow());
+            }
 
             eprint!("{}", format!("{val}").blue());
         }
