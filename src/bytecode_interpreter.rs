@@ -1,5 +1,7 @@
 use std::io::Write;
 
+use yansi::Paint;
+
 use crate::{ast::Span, bytecode::Bytecode, compiler::Program, runtime_value::RuntimeValue};
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
@@ -253,11 +255,11 @@ where
     }
 
     pub fn dbg_print(&self) {
-        eprintln!("===== Bytecode Interpreter State =====");
-        eprintln!("pc: {}", self.pc);
-        eprintln!("bp: {}\n", self.bp);
+        eprintln!("======== Bytecode Interpreter State ========");
+        eprintln!("{}", format!("pc: {}", self.pc).dim());
+        eprintln!("{}", format!("bp: {}", self.bp).dim());
 
-        eprint!("Stack: ");
+        eprint!("{}: [", "Stack".underline());
         let mut first = true;
         for val in self.stack.iter() {
             if !first {
@@ -265,23 +267,22 @@ where
             }
             first = false;
 
-            eprint!("{val}",);
+            eprint!("{}", format!("{val}").blue());
         }
-        eprintln!("\n");
+        eprintln!("]\n");
 
-        eprintln!("Instructions:");
+        eprintln!("{}:", "Instructions".underline());
         for i in (self.pc.saturating_sub(2))..=(self.pc + 2) {
             if i >= self.program.instructions.len() {
                 continue;
             }
 
+            let content = format!("{:>3}: {:?}", i, self.program.instructions[i]);
             if i == self.pc {
-                eprint!("-> ");
+                eprintln!("-> {}", content.bold());
             } else {
-                eprint!("   ");
+                eprintln!("   {}", content.dim());
             }
-
-            eprintln!("{:>3}: {:?}", i, self.program.instructions[i]);
         }
         eprintln!();
     }
