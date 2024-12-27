@@ -65,9 +65,16 @@ pub struct Program<T> {
     pub source_map: Vec<Span>,
 }
 
+#[derive(Debug, Clone)]
+pub enum VarType {
+    Local(usize),
+    Global(usize),
+    // Upvalue,
+}
+
 #[derive(Default)]
 pub struct Compiler {
-    vars: ScopedMap<String, usize>,
+    vars: ScopedMap<String, VarType>,
     label_count: usize,
 }
 
@@ -90,16 +97,9 @@ impl Compiler {
         let instructions = match &expr.0 {
             Expr::Error => unreachable!(),
 
-            Expr::Local(name) => {
-                let instrs =
-                    self.compile_var_access(name)
-                        .map_err(|msg| CompileError::Spanned {
-                            span: expr.1.clone(),
-                            msg: format!("Failed to compile variable access to '{name}': {msg}"),
-                        })?;
-
-                Program::from_instructions(instrs, expr.1.clone())
-            }
+            Expr::Local(name) => self
+                .compile_var_address(name, expr)?
+                .then_instruction(Load, expr.1.clone()),
 
             Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
 
@@ -112,7 +112,7 @@ impl Compiler {
                 self.vars.start_scope();
 
                 for (offset, arg) in func.args.iter().enumerate() {
-                    self.vars.set(arg.clone(), offset);
+                    self.vars.set(arg.clone(), VarType::Local(offset));
                 }
 
                 let func_label = self.new_label();
@@ -272,14 +272,28 @@ impl Compiler {
 
     // FIXME: The addresses here are completely nonsensical for outer scopes due to
     // base-pointer-relative addressing
-    fn compile_var_access(&mut self, name: &String) -> Result<Vec<Instruction>, String> {
-        let addr = self
+    fn compile_var_address(
+        &mut self,
+        name: &String,
+        expr: &Spanned<Expr>,
+    ) -> Result<Program<Instruction>, CompileError> {
+        let var = self
             .vars
             // TODO: Upvalues / closures are not supported yet
             .get_local(name)
-            .ok_or_else(|| format!("Variable {name} not found"))?;
+            .ok_or_else(|| CompileError::Spanned {
+                span: expr.1.clone(),
+                msg: format!("Variable {name} not found"),
+            })?;
 
-        Ok(vec![GetBasePtr, ConstantInt(*addr as isize), Add, Load])
+        let addr_instrs = match var {
+            VarType::Local(offset) => {
+                vec![GetBasePtr, ConstantInt(*offset as isize), Add]
+            }
+            VarType::Global(addr) => vec![ConstantInt(*addr as isize)],
+        };
+
+        Ok(Program::from_instructions(addr_instrs, expr.1.clone()))
     }
 
     // FIXME: Same as above
@@ -291,20 +305,16 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         let mut program = Program::new();
 
-        let addr = self.vars.get_local(name).cloned().unwrap_or_else(|| {
-            // Allocate space for new local variable if it doesn't exist
+        if self.vars.get_local(name).is_none() {
+            // Allocate stack space for new local variable if it doesn't exist
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
 
-            let local_addr = self.vars.cur_scope_len();
-            self.vars.set(name.clone(), local_addr);
-            local_addr
-        });
+            self.vars
+                .set(name.clone(), VarType::Local(self.vars.cur_scope_len()));
+        };
 
         Ok(program
-            .then_instructions(
-                vec![GetBasePtr, ConstantInt(addr as isize), Add],
-                expr.1.clone(),
-            )
+            .then_program(self.compile_var_address(name, expr)?)
             .then_program(self.compile_expr(val)?)
             .then_instruction(Store, expr.1.clone()))
     }
