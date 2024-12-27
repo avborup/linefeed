@@ -82,21 +82,21 @@ where
                 }
 
                 Bytecode::Add => {
-                    let a = self.pop_stack()?;
-                    let b = self.pop_stack()?;
-                    self.push_stack(a.add(&b)?);
+                    let rhs = self.pop_stack()?;
+                    let lhs = self.pop_stack()?;
+                    self.push_stack(lhs.add(&rhs)?);
                 }
 
                 Bytecode::Sub => {
-                    let a = self.pop_stack()?;
-                    let b = self.pop_stack()?;
-                    self.push_stack(a.sub(&b)?);
+                    let rhs = self.pop_stack()?;
+                    let lhs = self.pop_stack()?;
+                    self.push_stack(lhs.sub(&rhs)?);
                 }
 
                 Bytecode::Mul => {
-                    let a = self.pop_stack()?;
-                    let b = self.pop_stack()?;
-                    self.push_stack(a.mul(&b)?);
+                    let rhs = self.pop_stack()?;
+                    let lhs = self.pop_stack()?;
+                    self.push_stack(lhs.mul(&rhs)?);
                 }
 
                 Bytecode::Eq => {
