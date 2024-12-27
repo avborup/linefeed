@@ -18,7 +18,7 @@ impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
     pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
-            stack: vec![RuntimeValue::Null],
+            stack: vec![],
             stdout: std::io::stdout(),
             stderr: std::io::stderr(),
             pc: 0,

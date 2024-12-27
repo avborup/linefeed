@@ -173,7 +173,10 @@ impl Compiler {
                             // FIXME: This is buggy. A series of variable assignments results in
                             // the variables being popped off the stack. But how the hell do we
                             // handle popping in the correct instances and not popping in the
-                            // incorrect instances?
+                            // incorrect instances? Idea: make a "statement" - anything with a
+                            // semicolon after is wrapped in a statement. Would this work? VM would
+                            // still push stuff to stack, though. Need to make compiler emit a
+                            // push-stack instruction?
                             .then_instruction(Pop, pop_span)
                     });
 
@@ -286,21 +289,24 @@ impl Compiler {
         name: &String,
         val: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
+        let mut program = Program::new();
+
         let addr = self.vars.get_local(name).cloned().unwrap_or_else(|| {
+            // Allocate space for new local variable if it doesn't exist
+            program.add_instruction(Value(IrValue::Null), expr.1.clone());
+
             let local_addr = self.vars.cur_scope_len();
             self.vars.set(name.clone(), local_addr);
             local_addr
         });
 
-        let program = Program::new()
+        Ok(program
             .then_instructions(
                 vec![GetBasePtr, ConstantInt(addr as isize), Add],
                 expr.1.clone(),
             )
             .then_program(self.compile_expr(val)?)
-            .then_instruction(Store, expr.1.clone());
-
-        Ok(program)
+            .then_instruction(Store, expr.1.clone()))
     }
 
     pub fn new_label(&mut self) -> Label {
