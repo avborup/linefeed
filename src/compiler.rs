@@ -124,12 +124,19 @@ impl Compiler {
                 });
 
                 let program = Program::new()
-                    .then_instruction(Value(val), expr.1.clone())
-                    .then_instruction(Goto(post_func_label), expr.1.clone())
-                    .then_instruction(Instruction::Label(func_label), expr.1.clone())
+                    .then_instructions(
+                        vec![
+                            Value(val),
+                            Goto(post_func_label),
+                            Instruction::Label(func_label),
+                        ],
+                        expr.1.clone(),
+                    )
                     .then_program(self.compile_expr(&func.body)?)
-                    .then_instruction(Return, expr.1.clone())
-                    .then_instruction(Instruction::Label(post_func_label), expr.1.clone());
+                    .then_instructions(
+                        vec![Return, Instruction::Label(post_func_label)],
+                        expr.1.clone(),
+                    );
 
                 self.vars.pop_scope();
 
@@ -153,7 +160,7 @@ impl Compiler {
                     msg,
                 })?;
 
-                Program::new().then_instruction(Value(ir_val), expr.1.clone())
+                Program::from_instruction(Value(ir_val), expr.1.clone())
             }
 
             Expr::Sequence(exprs) => {
@@ -168,21 +175,14 @@ impl Compiler {
                         program
                             .then_program(sub_program)
                             // Everything is an expression, so values are left on the stack. For
-                            // statement-style semi-colon-separated expressions, we pop the value
-                            // left on the stack after each expression.
-                            // FIXME: This is buggy. A series of variable assignments results in
-                            // the variables being popped off the stack. But how the hell do we
-                            // handle popping in the correct instances and not popping in the
-                            // incorrect instances? Idea: make a "statement" - anything with a
-                            // semicolon after is wrapped in a statement. Would this work? VM would
-                            // still push stuff to stack, though. Need to make compiler emit a
-                            // push-stack instruction?
+                            // statement-style semi-colon-separated expressions, we pop the unused
+                            // value left on the stack after each expression.
                             .then_instruction(Pop, pop_span)
                     });
 
                 if !program.instructions.is_empty() {
                     // Only the last value in a sequence of expressions should be kept on the stack
-                    program.pop();
+                    program.pop_instruction();
                 }
 
                 program
@@ -228,20 +228,21 @@ impl Compiler {
                     .then_instruction(op_instr, expr.1.clone())
             }
 
-            Expr::List(items) => {
-                let initial_val = Program::new()
-                    .then_instruction(Value(IrValue::List(IrList(Vec::new()))), expr.1.clone());
-
-                items
-                    .iter()
-                    .map(|item| self.compile_expr(item))
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .fold(initial_val, |acc, p| {
+            Expr::List(items) => items
+                .iter()
+                .map(|item| self.compile_expr(item))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .fold(
+                    Program::from_instruction(
+                        Value(IrValue::List(IrList(Vec::new()))),
+                        expr.1.clone(),
+                    ),
+                    |acc, p| {
                         acc.then_program(p)
                             .then_instruction(Method(Method::Append), expr.1.clone())
-                    })
-            }
+                    },
+                ),
 
             Expr::If(cond, true_expr, false_expr) => {
                 let cond_program = self.compile_expr(cond)?;
@@ -355,6 +356,13 @@ where
         }
     }
 
+    pub fn from_instruction(instr: T, span: Span) -> Self {
+        Program {
+            source_map: vec![span],
+            instructions: vec![instr],
+        }
+    }
+
     pub fn from_instructions(instrs: Vec<T>, span: Span) -> Self {
         Program {
             source_map: repeat_span(span, instrs.len()),
@@ -393,7 +401,7 @@ where
         self
     }
 
-    pub fn pop(&mut self) -> Option<T> {
+    pub fn pop_instruction(&mut self) -> Option<T> {
         self.source_map.pop();
         self.instructions.pop()
     }
