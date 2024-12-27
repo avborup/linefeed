@@ -71,6 +71,10 @@ impl RuntimeValue {
         }
     }
 
+    pub fn eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
+        Ok(RuntimeValue::Bool(self == other))
+    }
+
     pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
         match self {
             RuntimeValue::List(list) => list.append(val)?,

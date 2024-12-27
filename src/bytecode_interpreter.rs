@@ -27,6 +27,14 @@ impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
     }
 }
 
+macro_rules! binary_op {
+    ($vm:expr, $op:ident) => {{
+        let rhs = $vm.pop_stack()?;
+        let lhs = $vm.pop_stack()?;
+        $vm.push_stack(lhs.$op(&rhs)?);
+    }};
+}
+
 impl<O, E> BytecodeInterpreter<O, E>
 where
     O: Write,
@@ -83,29 +91,10 @@ where
                     self.push_stack(val.clone());
                 }
 
-                Bytecode::Add => {
-                    let rhs = self.pop_stack()?;
-                    let lhs = self.pop_stack()?;
-                    self.push_stack(lhs.add(&rhs)?);
-                }
-
-                Bytecode::Sub => {
-                    let rhs = self.pop_stack()?;
-                    let lhs = self.pop_stack()?;
-                    self.push_stack(lhs.sub(&rhs)?);
-                }
-
-                Bytecode::Mul => {
-                    let rhs = self.pop_stack()?;
-                    let lhs = self.pop_stack()?;
-                    self.push_stack(lhs.mul(&rhs)?);
-                }
-
-                Bytecode::Eq => {
-                    let a = self.pop_stack()?;
-                    let b = self.pop_stack()?;
-                    self.push_stack(RuntimeValue::Bool(a == b));
-                }
+                Bytecode::Add => binary_op!(self, add),
+                Bytecode::Sub => binary_op!(self, sub),
+                Bytecode::Mul => binary_op!(self, mul),
+                Bytecode::Eq => binary_op!(self, eq_bool),
 
                 Bytecode::Not => {
                     let val = self.pop_stack()?;
