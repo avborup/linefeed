@@ -335,7 +335,7 @@ impl Compiler {
         // variables are allowed.
         let var = self.vars.get(name).ok_or_else(|| CompileError::Spanned {
             span: expr.1.clone(),
-            msg: format!("Variable {name} not found"),
+            msg: format!("No such variable '{name}' in scope"),
         })?;
 
         let addr_instrs = match var {

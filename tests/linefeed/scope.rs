@@ -66,6 +66,6 @@ eval_and_assert!(
         foo();
         print(x); # error
     "#},
-    equals("some value"),
+    empty(), // compilation fails, so no output
     contains("Error: No such variable 'x' in scope")
 );
