@@ -7,7 +7,7 @@ use crate::{
     bytecode::Bytecode,
     ir_value::{IrList, IrValue},
     runtime_value::function::RuntimeFunction,
-    scoped_map::ScopedMap,
+    scoped_map::{ScopedMap, VarType},
 };
 
 #[derive(Debug, Clone)]
@@ -65,16 +65,9 @@ pub struct Program<T> {
     pub source_map: Vec<Span>,
 }
 
-#[derive(Debug, Clone)]
-pub enum VarType {
-    Local(usize),
-    Global(usize),
-    // Upvalue,
-}
-
 #[derive(Default)]
 pub struct Compiler {
-    vars: ScopedMap<String, VarType>,
+    vars: ScopedMap<String, usize>,
     label_count: usize,
 }
 
@@ -112,7 +105,7 @@ impl Compiler {
                 self.vars.start_scope();
 
                 for (offset, arg) in func.args.iter().enumerate() {
-                    self.vars.set(arg.clone(), VarType::Local(offset));
+                    self.vars.set_local(arg.clone(), offset);
                 }
 
                 let func_label = self.new_label();
@@ -280,18 +273,10 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
         // variables are allowed.
-        let var = match self.vars.get_local(name) {
-            Some(var) => var,
-            None => match self.vars.get(name) {
-                Some(var) if matches!(var, VarType::Global(_)) => var,
-                _ => {
-                    return Err(CompileError::Spanned {
-                        span: expr.1.clone(),
-                        msg: format!("Variable {name} not found"),
-                    })
-                }
-            },
-        };
+        let var = self.vars.get(name).ok_or_else(|| CompileError::Spanned {
+            span: expr.1.clone(),
+            msg: format!("Variable {name} not found"),
+        })?;
 
         let addr_instrs = match var {
             VarType::Local(offset) => {
@@ -317,13 +302,7 @@ impl Compiler {
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
 
             let offset = self.vars.cur_scope_len();
-            let var = if self.vars.is_currently_top_scope() {
-                VarType::Global(offset)
-            } else {
-                VarType::Local(offset)
-            };
-
-            self.vars.set(name.clone(), var);
+            self.vars.set(name.clone(), offset);
         };
 
         Ok(program

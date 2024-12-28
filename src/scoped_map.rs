@@ -1,8 +1,26 @@
 use std::collections::HashMap;
 
+use chumsky::chain::Chain;
+
 #[derive(Debug)]
 pub struct ScopedMap<K, V> {
     scopes: Vec<HashMap<K, V>>,
+}
+
+#[derive(Debug, Clone)]
+pub enum VarType<T> {
+    Local(T),
+    Global(T),
+    // Upvalue,
+}
+
+impl<T> VarType<T> {
+    pub fn inner(self) -> T {
+        match self {
+            Self::Local(val) => val,
+            Self::Global(val) => val,
+        }
+    }
 }
 
 impl<K, V> Default for ScopedMap<K, V>
@@ -32,20 +50,35 @@ where
         self.scopes.pop();
     }
 
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(key))
+    pub fn get(&self, key: &K) -> Option<VarType<&V>> {
+        let cur_scope = self.scopes.len() - 1;
+        self.scopes.iter().enumerate().rev().find_map(|(i, scope)| {
+            scope.get(key).and_then(|v| match i {
+                0 => Some(VarType::Global(v)),
+                _ if i == cur_scope => Some(VarType::Local(v)),
+                _ => None,
+            })
+        })
     }
 
-    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+    pub fn get_mut(&mut self, key: &K) -> Option<VarType<&mut V>> {
+        let cur_scope = self.scopes.len() - 1;
         self.scopes
             .iter_mut()
+            .enumerate()
             .rev()
-            .find_map(|scope| scope.get_mut(key))
+            .find_map(|(i, scope)| {
+                scope.get_mut(key).and_then(|v| match i {
+                    0 => Some(VarType::Global(v)),
+                    _ if i == cur_scope => Some(VarType::Local(v)),
+                    _ => None,
+                })
+            })
     }
 
     pub fn set(&mut self, key: K, val: V) {
         match self.get_mut(&key) {
-            Some(existing) => *existing = val,
+            Some(existing) => *existing.inner() = val,
             None => self.set_local(key, val),
         }
     }

@@ -47,10 +47,15 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                     .collect::<Result<_, _>>()?,
             ),
 
-            Expr::Local(name) => self.vars.get(name).cloned().ok_or_else(|| Error::Simple {
-                span: expr.1.clone(),
-                msg: format!("No such variable '{}' in scope", name),
-            })?,
+            Expr::Local(name) => self
+                .vars
+                .get(name)
+                .ok_or_else(|| Error::Simple {
+                    span: expr.1.clone(),
+                    msg: format!("No such variable '{}' in scope", name),
+                })?
+                .inner()
+                .clone(),
 
             Expr::Let(local, val) => {
                 let val = self.eval_expr(val)?;
