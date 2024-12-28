@@ -81,6 +81,26 @@ impl RuntimeValue {
         Ok(RuntimeValue::Bool(self == other))
     }
 
+    pub fn is_ordering(
+        &self,
+        other: &Self,
+        ordering: std::cmp::Ordering,
+    ) -> Result<Self, RuntimeError> {
+        self.partial_cmp(other)
+            .map(|actual| RuntimeValue::Bool(ordering == actual))
+            .ok_or_else(|| {
+                RuntimeError::TypeMismatch(format!(
+                    "Cannot compare types '{}' and '{}'",
+                    self.kind_str(),
+                    other.kind_str()
+                ))
+            })
+    }
+
+    pub fn less_than(&self, other: &Self) -> Result<Self, RuntimeError> {
+        self.is_ordering(other, std::cmp::Ordering::Less)
+    }
+
     pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
         match self {
             RuntimeValue::List(list) => list.append(val)?,

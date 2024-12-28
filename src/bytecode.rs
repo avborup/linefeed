@@ -25,6 +25,7 @@ pub enum Bytecode {
     Mul,
     Div,
     Eq,
+    Less,
 
     // Logic
     Not,
@@ -66,6 +67,7 @@ impl Bytecode {
             Instruction::Mul => Bytecode::Mul,
             Instruction::Div => Bytecode::Div,
             Instruction::Eq => Bytecode::Eq,
+            Instruction::Less => Bytecode::Less,
             Instruction::Not => Bytecode::Not,
             Instruction::Stop => Bytecode::Stop,
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),

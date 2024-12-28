@@ -29,6 +29,7 @@ pub enum Instruction {
     Mul,
     Div,
     Eq,
+    Less,
 
     // Unary operations
     Not,
@@ -208,10 +209,11 @@ impl Compiler {
                     BinaryOp::Mul => Mul,
                     BinaryOp::Div => Div,
                     BinaryOp::Eq => Eq,
+                    BinaryOp::Less => Less,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.1.clone(),
-                            msg: format!("Binary operator {:?} not implemented", op),
+                            msg: format!("Binary operator {:?} not implemented in compiler", op),
                         })
                     }
                 };
