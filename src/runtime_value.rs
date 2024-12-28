@@ -77,6 +77,16 @@ impl RuntimeValue {
         }
     }
 
+    pub fn div(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) / (*b))),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "divide", self, other,
+            )),
+        }
+    }
+
     pub fn eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
         Ok(RuntimeValue::Bool(self == other))
     }
