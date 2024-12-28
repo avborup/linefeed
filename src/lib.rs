@@ -24,12 +24,12 @@ pub mod runtime_value;
 pub mod scoped_map;
 
 pub fn run(src: impl AsRef<str>) {
-    run_with_interpreter(Interpreter::default(), src);
+    let mut stdout = io::stdout();
+    let mut stderr = io::stderr();
+    run_with_output(src, &mut stdout, &mut stderr);
 }
 
-pub fn compile_and_run(src: impl AsRef<str>) {
-    let (mut stdout, mut stderr) = (io::stdout(), io::stderr());
-
+pub fn run_with_output(src: impl AsRef<str>, mut stdout: impl Write, mut stderr: impl Write) {
     let mut compiler = Compiler::default();
 
     let parse_start = Instant::now();
