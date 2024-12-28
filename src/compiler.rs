@@ -202,6 +202,44 @@ impl Compiler {
                 program.then_instructions(to_add, expr.1.clone())
             }
 
+            Expr::Binary(lhs, BinaryOp::And, rhs) => {
+                let label_end = self.new_label();
+                let label_false = self.new_label();
+
+                Program::new()
+                    .then_program(self.compile_expr(lhs)?)
+                    .then_instruction(IfFalse(label_false), expr.1.clone())
+                    .then_program(self.compile_expr(rhs)?)
+                    .then_instructions(
+                        vec![
+                            Goto(label_end),
+                            Instruction::Label(label_false),
+                            Value(IrValue::Bool(false)),
+                            Instruction::Label(label_end),
+                        ],
+                        expr.1.clone(),
+                    )
+            }
+
+            Expr::Binary(lhs, BinaryOp::Or, rhs) => {
+                let label_end = self.new_label();
+                let label_true = self.new_label();
+
+                Program::new()
+                    .then_program(self.compile_expr(lhs)?)
+                    .then_instruction(IfTrue(label_true), expr.1.clone())
+                    .then_program(self.compile_expr(rhs)?)
+                    .then_instructions(
+                        vec![
+                            Goto(label_end),
+                            Instruction::Label(label_true),
+                            Value(IrValue::Bool(true)),
+                            Instruction::Label(label_end),
+                        ],
+                        expr.1.clone(),
+                    )
+            }
+
             Expr::Binary(lhs, op, rhs) => {
                 let lhs_program = self.compile_expr(lhs)?;
                 let rhs_program = self.compile_expr(rhs)?;

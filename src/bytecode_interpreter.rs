@@ -129,6 +129,14 @@ where
                     }
                 }
 
+                Bytecode::IfTrue(idx) => {
+                    let idx = *idx;
+                    let val = self.pop_stack()?;
+                    if val.bool() {
+                        self.pc = idx;
+                    }
+                }
+
                 Bytecode::Goto(idx) => {
                     self.pc = *idx;
                 }
