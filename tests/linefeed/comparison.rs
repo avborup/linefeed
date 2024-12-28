@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -112,6 +112,6 @@ eval_and_assert!(
         print((|x| x) < (|x| x));
         print((|x| x) == (|x| x));
     "#},
-    equals("false \n false"),
-    empty()
+    empty(),
+    contains("Type mismatch: Cannot compare types 'function' and 'function'")
 );
