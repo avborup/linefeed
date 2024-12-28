@@ -299,12 +299,12 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         let mut program = Program::new();
 
-        if self.vars.get_local(name).is_none() {
+        if self.vars.get(name).is_none() {
             // Allocate stack space for new local variable if it doesn't exist
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
 
             let offset = self.vars.cur_scope_len();
-            self.vars.set(name.clone(), offset);
+            self.vars.set_local(name.clone(), offset);
         };
 
         Ok(program
