@@ -70,7 +70,7 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
-            self.dbg_print();
+            // self.dbg_print();
             let instr = &self.program.instructions[self.pc];
             self.pc += 1;
 

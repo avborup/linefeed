@@ -1,7 +1,5 @@
 use std::collections::HashMap;
 
-use chumsky::chain::Chain;
-
 #[derive(Debug)]
 pub struct ScopedMap<K, V> {
     scopes: Vec<HashMap<K, V>>,
