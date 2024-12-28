@@ -290,6 +290,20 @@ pub enum RuntimeError {
     InternalBug(String),
 }
 
+impl RuntimeError {
+    pub fn invalid_binary_op_for_types(
+        action: &str,
+        lhs: &RuntimeValue,
+        rhs: &RuntimeValue,
+    ) -> Self {
+        RuntimeError::TypeMismatch(format!(
+            "Cannot {action} types '{}' and '{}'",
+            lhs.kind_str(),
+            rhs.kind_str()
+        ))
+    }
+}
+
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
