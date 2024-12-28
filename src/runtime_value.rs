@@ -81,6 +81,10 @@ impl RuntimeValue {
         Ok(RuntimeValue::Bool(self == other))
     }
 
+    pub fn not_eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
+        Ok(RuntimeValue::Bool(self != other))
+    }
+
     pub fn check_ordering(
         &self,
         other: &Self,

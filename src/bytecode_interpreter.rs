@@ -95,6 +95,7 @@ where
                 Bytecode::Sub => binary_op!(self, sub),
                 Bytecode::Mul => binary_op!(self, mul),
                 Bytecode::Eq => binary_op!(self, eq_bool),
+                Bytecode::NotEq => binary_op!(self, not_eq_bool),
                 Bytecode::Less => binary_op!(self, less_than),
                 Bytecode::LessEq => binary_op!(self, less_than_or_eq),
                 Bytecode::Greater => binary_op!(self, greater_than),
