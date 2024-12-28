@@ -152,6 +152,10 @@ impl Compiler {
                     .then_instruction(Call(args.len()), expr.1.clone())
             }
 
+            Expr::Return(val) => self
+                .compile_expr(val)?
+                .then_instruction(Return, expr.1.clone()),
+
             Expr::Value(val) => {
                 let ir_val = IrValue::try_from(val).map_err(|msg| CompileError::Spanned {
                     span: expr.1.clone(),
