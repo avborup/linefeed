@@ -165,7 +165,7 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::Bool(b) => write!(f, "{b}"),
             RuntimeValue::Int(n) => write!(f, "{n}"),
             RuntimeValue::Num(n) => write!(f, "{n}"),
-            RuntimeValue::Str(s) => write!(f, "{s:?}"),
+            RuntimeValue::Str(s) => write!(f, "{s}"),
             RuntimeValue::List(xs) => {
                 write!(f, "[")?;
                 write_items(f, xs.as_slice().iter())?;
