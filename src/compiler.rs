@@ -152,9 +152,17 @@ impl Compiler {
                     .then_instruction(Call(args.len()), expr.1.clone())
             }
 
-            Expr::Return(val) => self
-                .compile_expr(val)?
-                .then_instruction(Return, expr.1.clone()),
+            Expr::Return(val) => {
+                if self.vars.is_currently_top_scope() {
+                    return Err(CompileError::Spanned {
+                        span: expr.1.clone(),
+                        msg: "Illegal return outside of function".to_string(),
+                    });
+                }
+
+                self.compile_expr(val)?
+                    .then_instruction(Return, expr.1.clone())
+            }
 
             Expr::Value(val) => {
                 let ir_val = IrValue::try_from(val).map_err(|msg| CompileError::Spanned {

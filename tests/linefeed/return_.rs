@@ -38,5 +38,5 @@ eval_and_assert!(
         return;
     "#},
     empty(),
-    contains("illegal return outside of function")
+    contains("Illegal return outside of function")
 );

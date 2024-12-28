@@ -50,7 +50,7 @@ pub fn run_with_output(src: impl AsRef<str>, mut stdout: impl Write, mut stderr:
     let program = match compile_res {
         Ok(program) => program,
         Err(errs) => {
-            pretty_print_errors(stdout, src, errs);
+            pretty_print_errors(stderr, src, errs);
             return;
         }
     };
