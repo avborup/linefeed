@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{cmp::Ordering, rc::Rc};
 
 use crate::{
     bytecode::Bytecode,
@@ -81,18 +81,34 @@ impl RuntimeValue {
         Ok(RuntimeValue::Bool(self == other))
     }
 
-    pub fn is_ordering(
+    pub fn check_ordering(
         &self,
         other: &Self,
-        ordering: std::cmp::Ordering,
+        checker: impl FnOnce(Ordering) -> bool,
     ) -> Result<Self, RuntimeError> {
         self.partial_cmp(other)
-            .map(|actual| RuntimeValue::Bool(ordering == actual))
+            .map(|actual| RuntimeValue::Bool(checker(actual)))
             .ok_or_else(|| RuntimeError::invalid_binary_op_for_types("compare", self, other))
     }
 
     pub fn less_than(&self, other: &Self) -> Result<Self, RuntimeError> {
-        self.is_ordering(other, std::cmp::Ordering::Less)
+        self.check_ordering(other, |actual| actual == Ordering::Less)
+    }
+
+    pub fn less_than_or_eq(&self, other: &Self) -> Result<Self, RuntimeError> {
+        self.check_ordering(other, |actual| {
+            actual == Ordering::Less || actual == Ordering::Equal
+        })
+    }
+
+    pub fn greater_than(&self, other: &Self) -> Result<Self, RuntimeError> {
+        self.check_ordering(other, |actual| actual == Ordering::Greater)
+    }
+
+    pub fn greater_than_or_eq(&self, other: &Self) -> Result<Self, RuntimeError> {
+        self.check_ordering(other, |actual| {
+            actual == Ordering::Greater || actual == Ordering::Equal
+        })
     }
 
     pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
@@ -166,9 +182,9 @@ impl std::fmt::Display for RuntimeValue {
 }
 
 impl std::cmp::PartialOrd for RuntimeValue {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
-            (RuntimeValue::Null, RuntimeValue::Null) => Some(std::cmp::Ordering::Equal),
+            (RuntimeValue::Null, RuntimeValue::Null) => Some(Ordering::Equal),
             (RuntimeValue::Bool(a), RuntimeValue::Bool(b)) => a.partial_cmp(b),
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => a.partial_cmp(b),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => a.partial_cmp(b),

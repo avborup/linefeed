@@ -96,6 +96,9 @@ where
                 Bytecode::Mul => binary_op!(self, mul),
                 Bytecode::Eq => binary_op!(self, eq_bool),
                 Bytecode::Less => binary_op!(self, less_than),
+                Bytecode::LessEq => binary_op!(self, less_than_or_eq),
+                Bytecode::Greater => binary_op!(self, greater_than),
+                Bytecode::GreaterEq => binary_op!(self, greater_than_or_eq),
 
                 Bytecode::Not => {
                     let val = self.pop_stack()?;

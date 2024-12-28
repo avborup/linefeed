@@ -30,6 +30,9 @@ pub enum Instruction {
     Div,
     Eq,
     Less,
+    LessEq,
+    Greater,
+    GreaterEq,
 
     // Unary operations
     Not,
@@ -210,6 +213,9 @@ impl Compiler {
                     BinaryOp::Div => Div,
                     BinaryOp::Eq => Eq,
                     BinaryOp::Less => Less,
+                    BinaryOp::LessEq => LessEq,
+                    BinaryOp::Greater => Greater,
+                    BinaryOp::GreaterEq => GreaterEq,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.1.clone(),
