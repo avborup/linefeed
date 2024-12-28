@@ -6,7 +6,7 @@ use crate::{
     ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
     bytecode::Bytecode,
     ir_value::{IrList, IrValue},
-    runtime_value::function::RuntimeFunction,
+    runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
     scoped_map::{ScopedMap, VarType},
 };
 
@@ -196,7 +196,7 @@ impl Compiler {
 
                 let to_add = match op {
                     UnaryOp::Not => vec![Not],
-                    UnaryOp::Neg => vec![ConstantInt(-1), Mul],
+                    UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::Int(-1))), Mul],
                 };
 
                 program.then_instructions(to_add, expr.1.clone())
