@@ -88,13 +88,7 @@ impl RuntimeValue {
     ) -> Result<Self, RuntimeError> {
         self.partial_cmp(other)
             .map(|actual| RuntimeValue::Bool(ordering == actual))
-            .ok_or_else(|| {
-                RuntimeError::TypeMismatch(format!(
-                    "Cannot compare types '{}' and '{}'",
-                    self.kind_str(),
-                    other.kind_str()
-                ))
-            })
+            .ok_or_else(|| RuntimeError::invalid_binary_op_for_types("compare", self, other))
     }
 
     pub fn less_than(&self, other: &Self) -> Result<Self, RuntimeError> {
