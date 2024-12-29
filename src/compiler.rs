@@ -6,6 +6,7 @@ use crate::{
     ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
     bytecode::Bytecode,
     ir_value::{IrList, IrValue},
+    method::Method,
     runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
     scoped_map::{ScopedMap, VarType},
 };
@@ -55,11 +56,6 @@ pub enum Instruction {
 
     // Builtins
     PrintValue,
-}
-
-#[derive(Debug, Clone)]
-pub enum Method {
-    Append,
 }
 
 use Instruction::*;
@@ -311,6 +307,25 @@ impl Compiler {
                     .then_instruction(Instruction::Label(false_label), false_expr.1.clone())
                     .then_program(false_program)
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
+            }
+
+            Expr::MethodCall(target, method_name, args) => {
+                let target_program = self.compile_expr(target)?;
+
+                let method_instr =
+                    Method::from_name(method_name).ok_or_else(|| CompileError::Spanned {
+                        span: expr.1.clone(),
+                        msg: format!("Method {method_name:?} is unknown"),
+                    })?;
+
+                let program = args
+                    .iter()
+                    .map(|arg| self.compile_expr(arg))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .fold(target_program, Program::then_program);
+
+                program.then_instruction(Method(method_instr), expr.1.clone())
             }
 
             _ => {

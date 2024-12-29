@@ -19,6 +19,7 @@ pub mod compiler;
 pub mod interpreter;
 pub mod ir_value;
 pub mod lexer;
+pub mod method;
 pub mod parser;
 pub mod runtime_value;
 pub mod scoped_map;

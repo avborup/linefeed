@@ -1,8 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    compiler::{CompileError, Instruction, Label, Method, Program},
+    compiler::{CompileError, Instruction, Label, Program},
     ir_value::IrValue,
+    method::Method,
     runtime_value::{function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, RuntimeValue},
 };
 
@@ -45,11 +46,13 @@ pub enum Bytecode {
     Call(usize),
     Return,
 
-    // Methods
-    Append,
-
     // Builtins
     PrintValue,
+
+    // Methods
+    Append,
+    ToUpperCase,
+    ToLowerCase,
 }
 
 impl Bytecode {
@@ -84,10 +87,12 @@ impl Bytecode {
             Instruction::Pop => Bytecode::Pop,
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
+            Instruction::PrintValue => Bytecode::PrintValue,
             Instruction::Method(method) => match method {
                 Method::Append => Bytecode::Append,
+                Method::ToUpperCase => Bytecode::ToUpperCase,
+                Method::ToLowerCase => Bytecode::ToLowerCase,
             },
-            Instruction::PrintValue => Bytecode::PrintValue,
         };
 
         Ok(Some(bytecode))
