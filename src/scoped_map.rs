@@ -46,6 +46,7 @@ where
 
     pub fn pop_scope(&mut self) {
         self.scopes.pop();
+        assert!(!self.scopes.is_empty(), "Cannot pop the last scope");
     }
 
     pub fn get(&self, key: &K) -> Option<VarType<&V>> {
