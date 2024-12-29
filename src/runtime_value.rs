@@ -1,8 +1,8 @@
 use std::{cmp::Ordering, rc::Rc};
 
 use crate::{
-    bytecode::Bytecode,
     bytecode_interpreter::RuntimeError,
+    method::Method,
     runtime_value::{
         function::RuntimeFunction, list::RuntimeList, number::RuntimeNumber, operations::LfAppend,
         set::RuntimeSet,
@@ -125,16 +125,6 @@ impl RuntimeValue {
         })
     }
 
-    pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
-        match self {
-            RuntimeValue::List(list) => list.append(val)?,
-            RuntimeValue::Set(set) => set.append(val)?,
-            _ => return Err(RuntimeError::NotImplemented(Bytecode::Append)),
-        };
-
-        Ok(())
-    }
-
     pub fn address(&self) -> Result<usize, RuntimeError> {
         match self {
             RuntimeValue::Int(i) => Ok(*i as usize),
@@ -207,5 +197,40 @@ impl std::cmp::PartialOrd for RuntimeValue {
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => a.partial_cmp(b),
             _ => None,
         }
+    }
+}
+
+// Method implementations
+impl RuntimeValue {
+    pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => list.append(val)?,
+            RuntimeValue::Set(set) => set.append(val)?,
+            _ => return Err(RuntimeError::invalid_method_for_type(Method::Append, self)),
+        };
+
+        Ok(())
+    }
+
+    pub fn to_uppercase(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Str(s) = self else {
+            return Err(RuntimeError::invalid_method_for_type(
+                Method::ToUpperCase,
+                self,
+            ));
+        };
+
+        Ok(RuntimeValue::Str(Rc::new(s.to_uppercase())))
+    }
+
+    pub fn to_lowercase(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Str(s) = self else {
+            return Err(RuntimeError::invalid_method_for_type(
+                Method::ToLowerCase,
+                self,
+            ));
+        };
+
+        Ok(RuntimeValue::Str(Rc::new(s.to_lowercase())))
     }
 }

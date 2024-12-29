@@ -2,7 +2,9 @@ use std::io::Write;
 
 use yansi::Paint;
 
-use crate::{ast::Span, bytecode::Bytecode, compiler::Program, runtime_value::RuntimeValue};
+use crate::{
+    ast::Span, bytecode::Bytecode, compiler::Program, method::Method, runtime_value::RuntimeValue,
+};
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
     program: Program<Bytecode>,
@@ -202,6 +204,16 @@ where
                     into.append(val)?;
                 }
 
+                Bytecode::ToUpperCase => {
+                    let val = self.pop_stack()?;
+                    self.push_stack(val.to_uppercase()?);
+                }
+
+                Bytecode::ToLowerCase => {
+                    let val = self.pop_stack()?;
+                    self.push_stack(val.to_lowercase()?);
+                }
+
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
@@ -314,6 +326,14 @@ impl RuntimeError {
             "Cannot {action} types '{}' and '{}'",
             lhs.kind_str(),
             rhs.kind_str()
+        ))
+    }
+
+    pub fn invalid_method_for_type(method: Method, val: &RuntimeValue) -> Self {
+        RuntimeError::TypeMismatch(format!(
+            "Cannot call method '{}' on type '{}'",
+            method.name(),
+            val.kind_str()
         ))
     }
 }
