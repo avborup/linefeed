@@ -169,7 +169,8 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     just(Token::Ctrl('.'))
                         .ignore_then(ident)
                         .then(call_with_args)
-                        .repeated(),
+                        .repeated()
+                        .at_least(1),
                 )
                 .foldl(|val, (method, args)| {
                     let span = val.1.start..args.1.end;
