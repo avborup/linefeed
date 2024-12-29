@@ -1,4 +1,4 @@
-rate = |hotness| {
+fn rate(hotness) {
   if hotness >= 10 {
     return "damn you hot boy";
   };

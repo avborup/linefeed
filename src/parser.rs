@@ -72,10 +72,12 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
             let args = ident
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing()
-                .delimited_by(just(Token::Ctrl('|')), just(Token::Ctrl('|')))
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
                 .labelled("function args");
 
-            let func = args
+            let func = just(Token::Fn)
+                .ignore_then(ident.or_not().labelled("function name"))
+                .then(args)
                 .then(
                     block_expr
                         .clone()
@@ -91,11 +93,16 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         ))
                         .or(raw_expr.clone()),
                 )
-                .map(|(args, body)| {
-                    Expr::Value(Value::Func(Rc::new(Func {
+                .map_with_span(|((name, args), body), span: Span| {
+                    let val = Expr::Value(Value::Func(Rc::new(Func {
                         args,
                         body: Rc::new(body),
-                    })))
+                    })));
+
+                    match name {
+                        Some(name) => Expr::Let(name, Box::new(Spanned(val, span))),
+                        None => val,
+                    }
                 })
                 .labelled("function");
 

@@ -38,7 +38,7 @@ eval_and_assert!(
     indoc! {r#"
         x = 0;
 
-        foo = |x| {
+        fn foo(x) {
             x = x + 1;
             print(x);
         };
@@ -58,7 +58,7 @@ eval_and_assert!(
 eval_and_assert!(
     scope_function_is_local_and_yields_error,
     indoc! {r#"
-        foo = || {
+        fn foo() {
             x = "some value";
             print(x);
         };

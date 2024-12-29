@@ -18,6 +18,7 @@ pub enum Token {
     Or,
     And,
     Not,
+    Fn,
     Return,
     Unless,
 }
@@ -44,6 +45,7 @@ impl fmt::Display for Token {
             Token::Or => write!(f, "or"),
             Token::Not => write!(f, "not"),
             Token::And => write!(f, "and"),
+            Token::Fn => write!(f, "fn"),
             Token::Return => write!(f, "return"),
             Token::Unless => write!(f, "unless"),
         }
@@ -80,6 +82,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         "and" => Token::And,
         "not" => Token::Not,
         "null" => Token::Null,
+        "fn" => Token::Fn,
         "return" => Token::Return,
         "unless" => Token::Unless,
         _ => Token::Ident(ident),

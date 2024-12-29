@@ -5,7 +5,7 @@
 
 var = "outer";
 
-foo = |val| {
+fn foo(val) {
   var = val;
   print(var); # overwritten
 };

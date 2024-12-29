@@ -18,7 +18,7 @@ eval_and_assert!(
 eval_and_assert!(
     return_evaluates_nothing_after,
     indoc! {r#"
-        foo = || {
+        fn foo() {
             return print("this is printed");
             print("this is not printed");
         };

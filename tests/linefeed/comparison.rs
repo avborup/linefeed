@@ -109,8 +109,8 @@ eval_and_assert!(
 eval_and_assert!(
     cmp_functions,
     indoc! {r#"
-        print((|x| x) < (|x| x));
-        print((|x| x) == (|x| x));
+        print((fn(x) x) < (fn(x) x));
+        print((fn(x) x) == (fn(x) x));
     "#},
     empty(),
     contains("Type mismatch: Cannot compare types 'function' and 'function'")

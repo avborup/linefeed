@@ -12,6 +12,8 @@ eval_and_assert!(
         2
         2
         yes
+        hello
+        3
     "#}),
     empty()
 );
@@ -19,7 +21,7 @@ eval_and_assert!(
 eval_and_assert!(
     recursive_fibonacci,
     indoc! {r#"
-        fib = |n| {
+        fn fib(n) {
             if n <= 1 {
                 n
             } else {
