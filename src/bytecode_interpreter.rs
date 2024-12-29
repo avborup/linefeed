@@ -37,6 +37,13 @@ macro_rules! binary_op {
     }};
 }
 
+macro_rules! unary_mapper_method {
+    ($vm:expr, $method:ident) => {{
+        let val = $vm.pop_stack()?;
+        $vm.push_stack(val.$method()?);
+    }};
+}
+
 impl<O, E> BytecodeInterpreter<O, E>
 where
     O: Write,
@@ -204,15 +211,8 @@ where
                     into.append(val)?;
                 }
 
-                Bytecode::ToUpperCase => {
-                    let val = self.pop_stack()?;
-                    self.push_stack(val.to_uppercase()?);
-                }
-
-                Bytecode::ToLowerCase => {
-                    let val = self.pop_stack()?;
-                    self.push_stack(val.to_lowercase()?);
-                }
+                Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
+                Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
 
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
