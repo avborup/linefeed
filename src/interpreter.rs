@@ -170,6 +170,8 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 writeln!(self.stdout, "{val}").unwrap();
                 val
             }
+
+            _ => unimplemented!("{:?}", expr.0),
         })
     }
 

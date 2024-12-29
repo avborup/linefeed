@@ -149,19 +149,34 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     |span| Spanned(Expr::Error, span),
                 ));
 
+            let call_with_args = items
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+                .map_with_span(|args, span: Span| (args, span))
+                .labelled("function call args");
+
             // Function calls have very high precedence so we prioritise them
-            let call = atom
+            let func_call =
+                atom.clone()
+                    .then(call_with_args.clone().repeated())
+                    .foldl(|f, args| {
+                        let span = f.1.start..args.1.end;
+                        Spanned(Expr::Call(Box::new(f), args.0), span)
+                    });
+
+            let method_call = atom
                 .clone()
                 .then(
-                    items
-                        .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-                        .map_with_span(|args, span: Span| (args, span))
+                    just(Token::Ctrl('.'))
+                        .ignore_then(ident)
+                        .then(call_with_args)
                         .repeated(),
                 )
-                .foldl(|f, args| {
-                    let span = f.1.start..args.1.end;
-                    Spanned(Expr::Call(Box::new(f), args.0), span)
+                .foldl(|val, (method, args)| {
+                    let span = val.1.start..args.1.end;
+                    Spanned(Expr::MethodCall(Box::new(val), method, args.0), span)
                 });
+
+            let call = method_call.or(func_call);
 
             let mul_op = just(Token::op("*")).to(BinaryOp::Mul);
             let div_op = just(Token::op("/")).to(BinaryOp::Div);

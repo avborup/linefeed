@@ -68,6 +68,7 @@ pub enum Expr {
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
+    MethodCall(Box<Spanned<Self>>, String, Vec<Spanned<Self>>),
     If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Block(Box<Spanned<Self>>),
     Sequence(Vec<Spanned<Self>>),
