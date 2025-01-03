@@ -310,13 +310,18 @@ impl Compiler {
             }
 
             Expr::While(cond, body) => {
-                let cond_label = self.new_label();
-                let end_label = self.new_label();
+                let (cond_label, end_label) = (self.new_label(), self.new_label());
 
                 Program::new()
+                    // result of last iteration: null if no iterations or popped and replaced by
+                    // upcoming iterations
+                    .then_instruction(Value(IrValue::Null), expr.1.clone())
                     .then_instruction(Instruction::Label(cond_label), expr.1.clone())
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.1.clone())
+                    // last expression in the block will leave a new value on the stack, so pop
+                    // the current "last value" off
+                    .then_instruction(Pop, cond.1.clone())
                     .then_program(self.compile_expr(body)?)
                     .then_instruction(Goto(cond_label), expr.1.clone())
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
