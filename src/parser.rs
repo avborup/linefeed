@@ -205,9 +205,10 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             let call_or_index = choice((method_call, index_into, func_call, atom.clone()));
 
-            let mul_op = just(Token::op("*")).to(BinaryOp::Mul);
-            let div_op = just(Token::op("/")).to(BinaryOp::Div);
-            let prod_op = mul_op.or(div_op);
+            let prod_op = choice((
+                just(Token::op("*")).to(BinaryOp::Mul),
+                just(Token::op("/")).to(BinaryOp::Div),
+            ));
 
             let neg = just(Token::op("-"))
                 .repeated()
@@ -248,12 +249,14 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let cmp_op = (just(Token::op("==")).to(BinaryOp::Eq))
-                .or(just(Token::op("!=")).to(BinaryOp::NotEq))
-                .or(just(Token::op("<")).to(BinaryOp::Less))
-                .or(just(Token::op("<=")).to(BinaryOp::LessEq))
-                .or(just(Token::op(">")).to(BinaryOp::Greater))
-                .or(just(Token::op(">=")).to(BinaryOp::GreaterEq));
+            let cmp_op = choice((
+                just(Token::op("==")).to(BinaryOp::Eq),
+                just(Token::op("!=")).to(BinaryOp::NotEq),
+                just(Token::op("<")).to(BinaryOp::Less),
+                just(Token::op("<=")).to(BinaryOp::LessEq),
+                just(Token::op(">")).to(BinaryOp::Greater),
+                just(Token::op(">=")).to(BinaryOp::GreaterEq),
+            ));
 
             let compare = sum
                 .clone()
