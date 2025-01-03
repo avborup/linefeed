@@ -20,7 +20,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     (Token::Ctrl('('), Token::Ctrl(')')),
                     (Token::Ctrl('['), Token::Ctrl(']')),
                 ],
-                |span| Spanned(Expr::Error, span),
+                |span| Spanned(Expr::ParseError, span),
             ));
 
         let if_ = recursive(|if_| {
@@ -96,7 +96,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                                 (Token::Ctrl('('), Token::Ctrl(')')),
                                 (Token::Ctrl('['), Token::Ctrl(']')),
                             ],
-                            |span| Spanned(Expr::Error, span),
+                            |span| Spanned(Expr::ParseError, span),
                         ))
                         .or(raw_expr.clone()),
                 )
@@ -150,7 +150,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         (Token::Ctrl('['), Token::Ctrl(']')),
                         (Token::Ctrl('{'), Token::Ctrl('}')),
                     ],
-                    |span| Spanned(Expr::Error, span),
+                    |span| Spanned(Expr::ParseError, span),
                 ))
                 // Attempt to recover anything that looks like a list but contains errors
                 .recover_with(nested_delimiters(
@@ -160,7 +160,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         (Token::Ctrl('('), Token::Ctrl(')')),
                         (Token::Ctrl('{'), Token::Ctrl('}')),
                     ],
-                    |span| Spanned(Expr::Error, span),
+                    |span| Spanned(Expr::ParseError, span),
                 ));
 
             let call_with_args = items

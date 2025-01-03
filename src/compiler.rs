@@ -94,8 +94,6 @@ impl Compiler {
 
     fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Program<Instruction>, CompileError> {
         let instructions = match &expr.0 {
-            Expr::Error => unreachable!(),
-
             Expr::Local(name) => self.compile_var_load(expr, name)?,
 
             Expr::Let(name, val) => {
@@ -392,6 +390,13 @@ impl Compiler {
 
                 // TODO: pass along how many args were given
                 program.then_instruction(Method(method_instr), expr.1.clone())
+            }
+
+            Expr::ParseError => {
+                return Err(CompileError::Spanned {
+                    msg: "Parse error".to_string(),
+                    span: expr.1.clone(),
+                })
             }
 
             _ => {

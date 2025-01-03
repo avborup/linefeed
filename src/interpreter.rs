@@ -36,7 +36,7 @@ impl<O: Write, E: Write> Interpreter<O, E> {
 
     pub fn eval_expr(&mut self, expr: &Spanned<Expr>) -> Result<Value, Error> {
         Ok(match &expr.0 {
-            Expr::Error => unreachable!(), // Error expressions only get created by parser errors, so cannot exist in a valid AST
+            Expr::ParseError => unreachable!(), // Error expressions only get created by parser errors, so cannot exist in a valid AST
 
             Expr::Value(val) => val.clone(),
 

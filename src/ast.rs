@@ -8,7 +8,7 @@ pub struct Spanned<T>(pub T, pub Span);
 // An expression node in the AST. Children are spanned so we can generate useful runtime errors.
 #[derive(Debug)]
 pub enum Expr {
-    Error,
+    ParseError,
     Value(Value),
     List(Vec<Spanned<Self>>),
     Local(String),
