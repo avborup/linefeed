@@ -161,7 +161,8 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                         (Token::Ctrl('{'), Token::Ctrl('}')),
                     ],
                     |span| Spanned(Expr::ParseError, span),
-                ));
+                ))
+                .boxed(); // Boxing significantly improves compile time
 
             let call_with_args = items
                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
