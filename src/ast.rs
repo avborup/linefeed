@@ -22,6 +22,7 @@ pub enum Expr {
     Sequence(Vec<Spanned<Self>>),
     Print(Box<Spanned<Self>>),
     Return(Box<Spanned<Self>>),
+    While(Box<Spanned<Self>>, Box<Spanned<Self>>),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]

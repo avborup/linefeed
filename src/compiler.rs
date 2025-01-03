@@ -309,6 +309,19 @@ impl Compiler {
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
             }
 
+            Expr::While(cond, body) => {
+                let cond_label = self.new_label();
+                let end_label = self.new_label();
+
+                Program::new()
+                    .then_instruction(Instruction::Label(cond_label), expr.1.clone())
+                    .then_program(self.compile_expr(cond)?)
+                    .then_instruction(IfFalse(end_label), cond.1.clone())
+                    .then_program(self.compile_expr(body)?)
+                    .then_instruction(Goto(cond_label), expr.1.clone())
+                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
+            }
+
             Expr::MethodCall(target, method_name, args) => {
                 let target_program = self.compile_expr(target)?;
 
@@ -325,6 +338,7 @@ impl Compiler {
                     .into_iter()
                     .fold(target_program, Program::then_program);
 
+                // TODO: pass along how many args were given
                 program.then_instruction(Method(method_instr), expr.1.clone())
             }
 

@@ -4,6 +4,7 @@ mod comparison;
 mod functions;
 mod list;
 mod logical;
+mod loops;
 mod math;
 mod method;
 mod postfix_control_flow;

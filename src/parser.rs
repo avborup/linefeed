@@ -48,8 +48,14 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 })
         });
 
-        // Both blocks and `if` are 'block expressions' and can appear in the place of statements
-        let block_expr = block.clone().or(if_).labelled("block");
+        let while_ = just(Token::While)
+            .ignore_then(expr.clone())
+            .then(block.clone())
+            .map_with_span(|(cond, a), span: Span| {
+                Spanned(Expr::While(Box::new(cond), Box::new(a)), span)
+            });
+
+        let block_expr = block.clone().or(if_).or(while_).labelled("block");
 
         let raw_expr = recursive(|raw_expr| {
             let val = select! {
