@@ -87,6 +87,16 @@ impl RuntimeValue {
         }
     }
 
+    pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => list.index(index),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot index into '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
+
     pub fn eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
         Ok(RuntimeValue::Bool(self == other))
     }

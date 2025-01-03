@@ -199,7 +199,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .clone()
                 .then(index.clone().repeated().at_least(1))
                 .foldl(|val, idx| {
-                    let span = val.1.start..(idx.1.end + 1);
+                    let span = val.1.start..idx.1.end;
                     Spanned(Expr::Index(Box::new(val), Box::new(idx)), span)
                 });
 

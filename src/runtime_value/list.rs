@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     bytecode_interpreter::RuntimeError,
-    runtime_value::{operations::LfAppend, RuntimeValue},
+    runtime_value::{number::RuntimeNumber, operations::LfAppend, RuntimeValue},
 };
 
 #[derive(Debug, Clone)]
@@ -22,6 +22,41 @@ impl RuntimeList {
 
     pub fn as_slice(&self) -> Ref<'_, [RuntimeValue]> {
         Ref::map(self.0.borrow(), |v| v.as_slice())
+    }
+
+    pub fn index(&self, index: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+        let RuntimeValue::Num(n) = index else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Expected index to be a number, found {}",
+                index.kind_str()
+            )));
+        };
+
+        let n = n.floor_int();
+        let len = self.0.borrow().len();
+
+        if n.unsigned_abs() >= self.0.borrow().len() {
+            return Err(RuntimeError::IndexOutOfBounds(n, len));
+        }
+
+        let i = if n.is_negative() {
+            self.0.borrow().len() - n.unsigned_abs()
+        } else {
+            n as usize
+        };
+
+        let value = self
+            .0
+            .borrow()
+            .get(i)
+            .ok_or_else(|| {
+                RuntimeError::InternalBug(format!(
+                    "Index {i} is out of bounds for list of length {len}",
+                ))
+            })?
+            .clone();
+
+        Ok(value)
     }
 }
 

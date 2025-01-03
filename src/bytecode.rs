@@ -51,6 +51,7 @@ pub enum Bytecode {
 
     // Builtins
     PrintValue,
+    Index,
 
     // Methods
     Append,
@@ -94,6 +95,7 @@ impl Bytecode {
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
             Instruction::PrintValue => Bytecode::PrintValue,
+            Instruction::Index => Bytecode::Index,
             Instruction::Method(method) => match method {
                 Method::Append => Bytecode::Append,
                 Method::ToUpperCase => Bytecode::ToUpperCase,

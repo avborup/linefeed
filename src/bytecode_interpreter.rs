@@ -224,6 +224,13 @@ where
                     into.append(val)?;
                 }
 
+                Bytecode::Index => {
+                    let index = self.pop_stack()?;
+                    let into = self.peek_stack_mut()?;
+                    let value = into.index(&index)?;
+                    *into = value;
+                }
+
                 Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
 
@@ -332,6 +339,7 @@ pub enum RuntimeError {
     InvalidAddress(RuntimeValue),
     TypeMismatch(String),
     InternalBug(String),
+    IndexOutOfBounds(isize, usize),
 }
 
 impl RuntimeError {
@@ -371,6 +379,9 @@ impl std::fmt::Display for RuntimeError {
             }
             RuntimeError::InternalBug(msg) => {
                 write!(f, "Internal bug: {msg}")
+            }
+            RuntimeError::IndexOutOfBounds(i, len) => {
+                write!(f, "Index {i} out of bounds, length is {len}")
             }
         }
     }

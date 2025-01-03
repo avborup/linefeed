@@ -298,6 +298,15 @@ impl Compiler {
                     },
                 ),
 
+            Expr::Index(value, index) => {
+                let value_program = self.compile_expr(value)?;
+                let index_program = self.compile_expr(index)?;
+
+                value_program
+                    .then_program(index_program)
+                    .then_instruction(Index, index.1.clone())
+            }
+
             Expr::If(cond, true_expr, false_expr) => {
                 let cond_program = self.compile_expr(cond)?;
                 let true_program = self.compile_expr(true_expr)?;
@@ -363,11 +372,10 @@ impl Compiler {
 
                 let loop_id = self.cur_loop_id();
                 let loop_name = self.loop_name(loop_id);
-                let (_, end_label) = self
+                let (_, end_label) = *self
                     .loop_labels
                     .get(&loop_id)
-                    .expect("labels for loop id not found")
-                    .clone();
+                    .expect("labels for loop id not found");
 
                 self.compile_var_load(expr, &loop_name)?
                     .then_instructions(vec![SetStackPtr, Goto(end_label)], expr.1.clone())
