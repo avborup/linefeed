@@ -1,5 +1,6 @@
 pub mod helpers;
 
+mod advent_of_code_2020;
 mod comparison;
 mod functions;
 mod list;
