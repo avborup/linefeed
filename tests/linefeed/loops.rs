@@ -77,4 +77,36 @@ eval_and_assert!(
     contains("Error: Cannot break outside of loop")
 );
 
+eval_and_assert!(
+    while_loop_break_only_breaks_out_of_inner_loop,
+    indoc::indoc! {r#"
+        i = 0;
+        while i < 2 {
+            j = 0;
+
+            while j <= 10 {
+                if j == 2 {
+                    break
+                };
+                j = j + 1;
+                print("inner");
+            };
+
+            i = i + 1;
+            print("outer");
+        };
+        print("done");
+    "#},
+    equals(indoc! {r#"
+        inner
+        inner
+        outer
+        inner
+        inner
+        outer
+        done
+    "#}),
+    empty()
+);
+
 // TODO: add test that you cannot break out of a loop that is not inside the current function
