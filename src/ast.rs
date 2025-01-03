@@ -5,6 +5,25 @@ pub type Span = std::ops::Range<usize>;
 #[derive(Clone, Debug)]
 pub struct Spanned<T>(pub T, pub Span);
 
+// An expression node in the AST. Children are spanned so we can generate useful runtime errors.
+#[derive(Debug)]
+pub enum Expr {
+    Error,
+    Value(Value),
+    List(Vec<Spanned<Self>>),
+    Local(String),
+    Let(String, Box<Spanned<Self>>),
+    Unary(UnaryOp, Box<Spanned<Self>>),
+    Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
+    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
+    MethodCall(Box<Spanned<Self>>, String, Vec<Spanned<Self>>),
+    If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Block(Box<Spanned<Self>>),
+    Sequence(Vec<Spanned<Self>>),
+    Print(Box<Spanned<Self>>),
+    Return(Box<Spanned<Self>>),
+}
+
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
 pub enum Value {
     Null,
@@ -55,25 +74,6 @@ pub enum BinaryOp {
 pub enum UnaryOp {
     Neg,
     Not,
-}
-
-// An expression node in the AST. Children are spanned so we can generate useful runtime errors.
-#[derive(Debug)]
-pub enum Expr {
-    Error,
-    Value(Value),
-    List(Vec<Spanned<Self>>),
-    Local(String),
-    Let(String, Box<Spanned<Self>>),
-    Unary(UnaryOp, Box<Spanned<Self>>),
-    Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
-    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
-    MethodCall(Box<Spanned<Self>>, String, Vec<Spanned<Self>>),
-    If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Block(Box<Spanned<Self>>),
-    Sequence(Vec<Spanned<Self>>),
-    Print(Box<Spanned<Self>>),
-    Return(Box<Spanned<Self>>),
 }
 
 // A function node in the AST.
