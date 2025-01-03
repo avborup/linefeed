@@ -1,4 +1,4 @@
-report = [
+rep = [
   1721,
   979,
   366,
@@ -15,15 +15,11 @@ i = -1;
 while (i = i + 1) < n {
   j = i;
   while (j = j + 1) < n {
-    if report[i] + report[j] == 2020 {
-      part1 = report[i] * report[j];
-    };
+    part1 = rep[i] * rep[j] if rep[i] + rep[j] == 2020;
 
     k = j;
     while (k = k + 1) < n {
-      if report[i] + report[j] + report[k] == 2020 {
-        part2 = report[i] * report[j] * report[k];
-      };
+      part2 = rep[i] * rep[j] * rep[k] if rep[i] + rep[j] + rep[k] == 2020;
     };
   };
 };
