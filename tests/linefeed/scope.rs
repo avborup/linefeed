@@ -69,3 +69,12 @@ eval_and_assert!(
     empty(), // compilation fails, so no output
     contains("Error: No such variable 'x' in scope")
 );
+
+eval_and_assert!(
+    overwrite_variable_before_assignment_yields_error,
+    indoc! {r#"
+        x = x + 1; # error
+    "#},
+    empty(), // compilation fails, so no output
+    contains("Error: No such variable 'x' in scope")
+);

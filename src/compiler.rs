@@ -372,6 +372,11 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         let mut program = Program::new();
 
+        // Compile this *before* we define the variable in the scope, so that it errors for cases
+        // where assignments that use the variable before it's defined, e.g. x = x + 1 before x is
+        // defined.
+        let value_program = self.compile_expr(val)?;
+
         if self.vars.get(name).is_none() {
             // Allocate stack space for new local variable if it doesn't exist
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
@@ -382,7 +387,7 @@ impl Compiler {
 
         Ok(program
             .then_program(self.compile_var_address(name, expr)?)
-            .then_program(self.compile_expr(val)?)
+            .then_program(value_program)
             .then_instruction(Store, expr.1.clone()))
     }
 
