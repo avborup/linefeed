@@ -132,6 +132,19 @@ where
                     self.pop_stack()?;
                 }
 
+                Bytecode::Swap => {
+                    self.swap();
+                }
+
+                Bytecode::GetStackPtr => {
+                    self.push_stack(RuntimeValue::Int((self.stack.len() - 1) as isize));
+                }
+
+                Bytecode::SetStackPtr => {
+                    let new_ptr = self.pop_stack()?.address()?;
+                    self.stack.truncate(new_ptr + 1);
+                }
+
                 Bytecode::IfFalse(idx) => {
                     let idx = *idx;
                     let val = self.pop_stack()?;
@@ -265,6 +278,7 @@ where
     }
 
     pub fn swap(&mut self) {
+        assert!(self.stack.len() >= 2);
         let len = self.stack.len();
         self.stack.swap(len - 1, len - 2);
     }
@@ -286,7 +300,11 @@ where
                 eprint!("{} ", "(bp)".yellow());
             }
 
-            eprint!("{}", format!("{val}").blue());
+            match val {
+                RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
+                RuntimeValue::Str(s) => eprint!("{}", format!("{s}").green()),
+                _ => eprint!("{}", format!("{val}").blue()),
+            }
         }
         eprintln!("]\n");
 

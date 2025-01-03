@@ -1,6 +1,6 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::iter;
+use std::{collections::HashMap, iter};
 
 use crate::{
     ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
@@ -23,6 +23,9 @@ pub enum Instruction {
 
     // Stack manipulation
     Pop,
+    Swap,
+    GetStackPtr,
+    SetStackPtr,
 
     // Binary operations
     Add,
@@ -70,6 +73,8 @@ pub struct Program<T> {
 pub struct Compiler {
     vars: ScopedMap<String, usize>,
     label_count: usize,
+    loop_count: usize,
+    loop_labels: HashMap<usize, (Label, Label)>,
 }
 
 impl Compiler {
@@ -91,11 +96,12 @@ impl Compiler {
         let instructions = match &expr.0 {
             Expr::Error => unreachable!(),
 
-            Expr::Local(name) => self
-                .compile_var_address(name, expr)?
-                .then_instruction(Load, expr.1.clone()),
+            Expr::Local(name) => self.compile_var_load(expr, name)?,
 
-            Expr::Let(name, val) => self.compile_var_assign(expr, name, val)?,
+            Expr::Let(name, val) => {
+                let val_program = self.compile_expr(val)?;
+                self.compile_var_assign(expr, name, val_program)?
+            }
 
             Expr::Value(AstValue::Func(func)) => {
                 // TODO: Implement
@@ -312,19 +318,60 @@ impl Compiler {
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
-                Program::new()
+                let loop_id = self.new_loop_id();
+                let loop_name = self.loop_name(loop_id);
+                self.loop_labels.insert(loop_id, (cond_label, end_label));
+                let register_loop = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_name,
+                        Program::from_instructions(vec![GetStackPtr], expr.1.clone()),
+                    )?
+                    .then_instruction(Pop, expr.1.clone());
+
+                let program = register_loop
                     // result of last iteration: null if no iterations or popped and replaced by
                     // upcoming iterations
                     .then_instruction(Value(IrValue::Null), expr.1.clone())
                     .then_instruction(Instruction::Label(cond_label), expr.1.clone())
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.1.clone())
+                    .then_program(self.compile_expr(body)?)
                     // last expression in the block will leave a new value on the stack, so pop
                     // the current "last value" off
-                    .then_instruction(Pop, cond.1.clone())
-                    .then_program(self.compile_expr(body)?)
-                    .then_instruction(Goto(cond_label), expr.1.clone())
-                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
+                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.1.clone())
+                    .then_instructions(
+                        vec![Instruction::Label(end_label), Swap, Pop],
+                        expr.1.clone(),
+                    );
+
+                self.vars.remove_local(&loop_name);
+
+                program
+            }
+
+            // 1. Get the current loop name
+            // 2. Set stack pointer to that number
+            // 3. Swap top of stack [sp, last_val] -> [last_val, sp]
+            // 4. Pop the top of the stack
+            Expr::Break => {
+                if !self.is_in_loop() {
+                    return Err(CompileError::Spanned {
+                        span: expr.1.clone(),
+                        msg: "Cannot break outside of loop".to_string(),
+                    });
+                }
+
+                let loop_id = self.cur_loop_id();
+                let loop_name = self.loop_name(loop_id);
+                let (_, end_label) = self
+                    .loop_labels
+                    .get(&loop_id)
+                    .expect("labels for loop id not found")
+                    .clone();
+
+                self.compile_var_load(expr, &loop_name)?
+                    .then_instructions(vec![SetStackPtr, Goto(end_label)], expr.1.clone())
             }
 
             Expr::MethodCall(target, method_name, args) => {
@@ -382,19 +429,24 @@ impl Compiler {
         Ok(Program::from_instructions(addr_instrs, expr.1.clone()))
     }
 
+    fn compile_var_load(
+        &mut self,
+        expr: &Spanned<Expr>,
+        name: &String,
+    ) -> Result<Program<Instruction>, CompileError> {
+        Ok(self
+            .compile_var_address(name, expr)?
+            .then_instruction(Load, expr.1.clone()))
+    }
+
     // FIXME: Same as above
     fn compile_var_assign(
         &mut self,
         expr: &Spanned<Expr>,
         name: &String,
-        val: &Spanned<Expr>,
+        value_program: Program<Instruction>,
     ) -> Result<Program<Instruction>, CompileError> {
         let mut program = Program::new();
-
-        // Compile this *before* we define the variable in the scope, so that it errors for cases
-        // where assignments that use the variable before it's defined, e.g. x = x + 1 before x is
-        // defined.
-        let value_program = self.compile_expr(val)?;
 
         if self.vars.get(name).is_none() {
             // Allocate stack space for new local variable if it doesn't exist
@@ -414,6 +466,38 @@ impl Compiler {
         let label = Label(self.label_count);
         self.label_count += 1;
         label
+    }
+
+    pub fn new_loop_id(&mut self) -> usize {
+        let loop_id = self.loop_count;
+        self.loop_count += 1;
+        loop_id
+    }
+
+    pub fn loop_name(&self, id: usize) -> String {
+        format!("!loop_{id}")
+    }
+
+    pub fn local_loop_vars(&self) -> impl Iterator<Item = (&String, &usize)> {
+        self.vars
+            .iter_local()
+            .filter(|(name, _)| name.starts_with("!loop_"))
+    }
+
+    pub fn is_in_loop(&mut self) -> bool {
+        self.local_loop_vars().next().is_some()
+    }
+
+    pub fn cur_loop_id(&self) -> usize {
+        self.local_loop_vars()
+            .max_by_key(|(_, offset)| **offset)
+            .map(|(name, _)| {
+                name.strip_prefix("!loop_")
+                    .unwrap()
+                    .parse()
+                    .expect("loop name is not a number")
+            })
+            .expect("not in a loop")
     }
 }
 

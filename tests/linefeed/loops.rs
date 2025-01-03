@@ -2,7 +2,7 @@ use indoc::indoc;
 
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 eval_and_assert!(
@@ -45,3 +45,36 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    while_loop_break_works,
+    indoc::indoc! {r#"
+        n = 5;
+        while n > 0 {
+            print(n);
+            if n == 3 {
+                break
+            };
+            n = n - 1;
+        };
+    "#},
+    equals(indoc! {r#"
+        5
+        4
+        3
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    while_loop_break_outside_loop_yields_error,
+    indoc::indoc! {r#"
+        if 1 == 3 {
+            break
+        };
+    "#},
+    empty(),
+    contains("Error: Cannot break outside of loop")
+);
+
+// TODO: add test that you cannot break out of a loop that is not inside the current function

@@ -23,7 +23,7 @@ impl<T> VarType<T> {
 
 impl<K, V> Default for ScopedMap<K, V>
 where
-    K: Eq + std::hash::Hash,
+    K: Eq + std::hash::Hash + std::fmt::Debug,
 {
     fn default() -> Self {
         Self::new()
@@ -32,7 +32,7 @@ where
 
 impl<K, V> ScopedMap<K, V>
 where
-    K: Eq + std::hash::Hash,
+    K: Eq + std::hash::Hash + std::fmt::Debug,
 {
     pub fn new() -> Self {
         let mut store = Self { scopes: Vec::new() };
@@ -96,5 +96,17 @@ where
 
     pub fn is_currently_top_scope(&self) -> bool {
         self.scopes.len() == 1
+    }
+
+    pub fn remove_local(&mut self, name: &K) {
+        let res = self.scopes.last_mut().unwrap().remove(name);
+        assert!(
+            res.is_some(),
+            "Variable {name:?} not found in the current scope"
+        );
+    }
+
+    pub fn iter_local(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.scopes.last().unwrap().iter()
     }
 }

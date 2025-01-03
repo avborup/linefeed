@@ -23,6 +23,7 @@ pub enum Expr {
     Print(Box<Spanned<Self>>),
     Return(Box<Spanned<Self>>),
     While(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Break,
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]

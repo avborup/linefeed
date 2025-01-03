@@ -19,6 +19,9 @@ pub enum Bytecode {
 
     // Stack manipulation
     Pop,
+    Swap,
+    GetStackPtr,
+    SetStackPtr,
 
     // Binary operations
     Add,
@@ -85,6 +88,9 @@ impl Bytecode {
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
             Instruction::Pop => Bytecode::Pop,
+            Instruction::Swap => Bytecode::Swap,
+            Instruction::GetStackPtr => Bytecode::GetStackPtr,
+            Instruction::SetStackPtr => Bytecode::SetStackPtr,
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
             Instruction::PrintValue => Bytecode::PrintValue,
