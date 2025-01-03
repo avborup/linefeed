@@ -69,7 +69,7 @@ where
             let source_span = self
                 .program
                 .source_map
-                .get(self.pc)
+                .get(self.pc - 1)
                 .cloned()
                 .unwrap_or_default();
 
