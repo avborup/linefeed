@@ -109,4 +109,39 @@ eval_and_assert!(
     empty()
 );
 
-// TODO: add test that you cannot break out of a loop that is not inside the current function
+eval_and_assert!(
+    break_outside_current_function_yields_error,
+    indoc::indoc! {r#"
+        fn inner() {
+            break;
+        };
+
+        i = 0;
+        while i <= 10 {
+            inner();
+            i = i + 1;
+        };
+    "#},
+    empty(),
+    contains("Error: Cannot break outside of loop")
+);
+
+eval_and_assert!(
+    break_in_condition_expression,
+    indoc::indoc! {r#"
+        n = 5;
+        while n > 0 {
+            print(n);
+            if (n == 3 and break) {
+                print("unreachable");
+            };
+            n = n - 1;
+        };
+    "#},
+    equals(indoc! {r#"
+        5
+        4
+        3
+    "#}),
+    empty()
+);
