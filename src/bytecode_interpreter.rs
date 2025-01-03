@@ -302,7 +302,7 @@ where
 
             match val {
                 RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
-                RuntimeValue::Str(s) => eprint!("{}", format!("{s}").green()),
+                RuntimeValue::Str(s) => eprint!("{}", format!("{s:?}").green()),
                 _ => eprint!("{}", format!("{val}").blue()),
             }
         }
