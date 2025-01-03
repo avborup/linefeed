@@ -51,6 +51,12 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) + (*b))),
+            (RuntimeValue::Str(a), RuntimeValue::Str(b)) => {
+                Ok(RuntimeValue::Str(Rc::new(format!("{a}{b}"))))
+            }
+            (RuntimeValue::Str(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Str(Rc::new(format!("{a}{b}"))))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
