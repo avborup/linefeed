@@ -11,6 +11,7 @@ pub enum Expr {
     ParseError,
     Value(Value),
     List(Vec<Spanned<Self>>),
+    Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(String),
     Let(String, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),

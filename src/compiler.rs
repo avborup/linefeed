@@ -59,6 +59,7 @@ pub enum Instruction {
 
     // Builtins
     PrintValue,
+    Index,
 }
 
 use Instruction::*;
