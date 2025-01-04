@@ -59,19 +59,23 @@ pub fn run_with_output(src: impl AsRef<str>, mut stdout: impl Write, mut stderr:
     program.disassemble(src.as_ref());
 
     let run_start = Instant::now();
-    let res = BytecodeInterpreter::new(program)
-        .with_output(&mut stdout, &mut stderr)
+
+    let mut bytecode_interpreter =
+        BytecodeInterpreter::new(program).with_output(&mut stdout, &mut stderr);
+
+    let res = bytecode_interpreter
         .run()
         .map_err(|(span, err)| vec![Simple::custom(span, err)]);
+
     let run_time = Instant::now().duration_since(run_start);
+    let instrs_executed = bytecode_interpreter.instructions_executed;
 
     if let Err(err) = res {
         pretty_print_errors(stderr, src, err);
     }
 
     eprintln!(
-        "Parse time: {:?}, Compile time: {:?}, Run time: {:?}",
-        parse_time, compile_time, run_time
+        "Parse time: {parse_time:?}, Compile time: {compile_time:?}, Run time: {run_time:?}. {instrs_executed} instructions executed.",
     );
 }
 

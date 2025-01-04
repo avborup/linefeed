@@ -14,6 +14,7 @@ pub struct BytecodeInterpreter<O: Write, E: Write> {
     bp: usize,
     pub stdout: O,
     pub stderr: E,
+    pub instructions_executed: usize,
 }
 
 impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
@@ -25,6 +26,7 @@ impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
             stderr: std::io::stderr(),
             pc: 0,
             bp: 0,
+            instructions_executed: 0,
         }
     }
 }
@@ -61,6 +63,7 @@ where
             stderr,
             pc: self.pc,
             bp: self.bp,
+            instructions_executed: self.instructions_executed,
         }
     }
 
@@ -82,6 +85,7 @@ where
             // self.dbg_print();
             let instr = &self.program.instructions[self.pc];
             self.pc += 1;
+            self.instructions_executed += 1;
 
             match instr {
                 Bytecode::Stop => break Ok(()),
