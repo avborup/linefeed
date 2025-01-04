@@ -11,14 +11,10 @@ n = 6;
 part1 = "?";
 part2 = "?";
 
-i = -1;
-while (i = i + 1) < n {
-  j = i;
-  while (j = j + 1) < n {
+for i in 0..n {
+  for j in i+1..n {
     part1 = rep[i] * rep[j] if rep[i] + rep[j] == 2020;
-
-    k = j;
-    while (k = k + 1) < n {
+    for k in j+1..n {
       part2 = rep[i] * rep[j] * rep[k] if rep[i] + rep[j] + rep[k] == 2020;
     };
   };
