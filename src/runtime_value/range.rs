@@ -1,4 +1,4 @@
-use crate::runtime_value::number::RuntimeNumber;
+use crate::runtime_value::{number::RuntimeNumber, RuntimeValue};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeRange {
@@ -25,5 +25,37 @@ impl std::fmt::Display for RuntimeRange {
             Some(end) => write!(f, "{:?}..{:?}", self.start, end),
             None => write!(f, "{:?}..", self.start),
         }
+    }
+}
+
+pub struct RangeIterator {
+    range: RuntimeRange,
+    value: isize,
+}
+
+impl RangeIterator {
+    pub fn new(range: RuntimeRange) -> Self {
+        Self {
+            value: range.start,
+            range,
+        }
+    }
+}
+
+impl Iterator for RangeIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        assert!(self.range.step.abs() == 1);
+
+        let (value, step, end) = (self.value, self.range.step, self.range.end);
+
+        if step.is_positive() && end.map_or(false, |end| value >= end)
+            || step.is_negative() && end.map_or(false, |end| value <= end)
+        {
+            return None;
+        }
+
+        Some(RuntimeValue::Num(RuntimeNumber::Float(self.value as f64)))
     }
 }

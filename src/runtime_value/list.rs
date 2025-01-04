@@ -24,6 +24,10 @@ impl RuntimeList {
         Ref::map(self.0.borrow(), |v| v.as_slice())
     }
 
+    pub fn len(&self) -> usize {
+        self.0.borrow().len()
+    }
+
     pub fn index(&self, index: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         let RuntimeValue::Num(n) = index else {
             return Err(RuntimeError::TypeMismatch(format!(

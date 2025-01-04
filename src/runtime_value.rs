@@ -4,12 +4,13 @@ use crate::{
     bytecode_interpreter::RuntimeError,
     method::Method,
     runtime_value::{
-        function::RuntimeFunction, list::RuntimeList, number::RuntimeNumber, operations::LfAppend,
-        range::RuntimeRange, set::RuntimeSet,
+        function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
+        number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, set::RuntimeSet,
     },
 };
 
 pub mod function;
+pub mod iterator;
 pub mod list;
 pub mod number;
 pub mod operations;
@@ -27,6 +28,7 @@ pub enum RuntimeValue {
     Set(RuntimeSet),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
+    Iterator(Box<RuntimeIterator>),
 }
 
 const _: () = {
@@ -47,6 +49,7 @@ impl RuntimeValue {
             RuntimeValue::Set(_) => "set",
             RuntimeValue::Function(_) => "function",
             RuntimeValue::Range(_) => "range",
+            RuntimeValue::Iterator(_) => "iterator",
         }
     }
 
@@ -190,6 +193,7 @@ impl RuntimeValue {
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
             RuntimeValue::Function(_) => true,
             RuntimeValue::Range(_) => true,
+            RuntimeValue::Iterator(_) => true,
         }
     }
 }
@@ -230,6 +234,7 @@ impl std::fmt::Display for RuntimeValue {
             }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
             RuntimeValue::Range(range) => write!(f, "{range}"),
+            RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
         }
     }
 }
