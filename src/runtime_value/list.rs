@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     bytecode_interpreter::RuntimeError,
-    runtime_value::{number::RuntimeNumber, operations::LfAppend, RuntimeValue},
+    runtime_value::{operations::LfAppend, RuntimeValue},
 };
 
 #[derive(Debug, Clone)]

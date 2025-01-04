@@ -28,6 +28,15 @@ impl RuntimeNumber {
             Float(f) => *f,
         }
     }
+
+    pub fn modulo(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Int(a), Int(b)) => Int(a % b),
+            (Int(a), Float(b)) => Float((*a as f64) % b),
+            (Float(a), Int(b)) => Float(a % (*b as f64)),
+            (Float(a), Float(b)) => Float(a % b),
+        }
+    }
 }
 
 impl std::fmt::Display for RuntimeNumber {

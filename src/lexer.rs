@@ -68,7 +68,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Str);
 
-    let op = one_of("+-*/!=<>")
+    let op = one_of("+-*/!=<>%")
         .repeated()
         .at_least(1)
         .collect::<String>()

@@ -93,6 +93,16 @@ impl RuntimeValue {
         }
     }
 
+    pub fn modulo(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a % b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.modulo(b))),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "modulo", self, other,
+            )),
+        }
+    }
+
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::List(list) => list.index(index),

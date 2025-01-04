@@ -20,3 +20,17 @@ eval_and_assert!(
     empty()
 );
 eval_and_assert!(op_division, "print((2 * 10) / 5)", equals("4"), empty());
+eval_and_assert!(
+    op_modulo,
+    indoc::indoc! {r#"
+        print(10 % 3);
+        print(10 % 2);
+        print((-10) % 3);
+    "#},
+    equals(indoc::indoc! {r#"
+        1
+        0
+        -1
+    "#}),
+    empty()
+);

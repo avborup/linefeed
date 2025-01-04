@@ -208,6 +208,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
             let prod_op = choice((
                 just(Token::op("*")).to(BinaryOp::Mul),
                 just(Token::op("/")).to(BinaryOp::Div),
+                just(Token::op("%")).to(BinaryOp::Mod),
             ));
 
             let neg = just(Token::op("-"))
@@ -237,13 +238,14 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let op = just(Token::op("+"))
-                .to(BinaryOp::Add)
-                .or(just(Token::op("-")).to(BinaryOp::Sub));
+            let sum_op = choice((
+                just(Token::op("+")).to(BinaryOp::Add),
+                just(Token::op("-")).to(BinaryOp::Sub),
+            ));
 
             let sum = product
                 .clone()
-                .then(op.then(product).repeated())
+                .then(sum_op.then(product).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
