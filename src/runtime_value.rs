@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, rc::Rc};
+use std::{cmp::Ordering, ops::Deref, rc::Rc};
 
 use crate::{
     bytecode_interpreter::RuntimeError,
@@ -114,6 +114,32 @@ impl RuntimeValue {
             RuntimeValue::List(list) => list.index(index),
             _ => Err(RuntimeError::TypeMismatch(format!(
                 "Cannot index into '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
+
+    pub fn to_iter(&self) -> Result<Self, RuntimeError> {
+        let res = match self {
+            RuntimeValue::Iterator(iter) => iter.deref().clone(),
+            RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
+            RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot iterate over '{}'",
+                    self.kind_str()
+                )))
+            }
+        };
+
+        Ok(RuntimeValue::Iterator(Box::new(res)))
+    }
+
+    pub fn next(&self) -> Result<Option<Self>, RuntimeError> {
+        match self {
+            RuntimeValue::Iterator(iterator) => Ok(iterator.next()),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot call next on '{}'",
                 self.kind_str()
             ))),
         }

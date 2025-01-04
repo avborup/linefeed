@@ -54,6 +54,8 @@ pub enum Bytecode {
     // Builtins
     PrintValue,
     Index,
+    NextIter,
+    ToIter,
 
     // Methods
     Append,
@@ -100,6 +102,8 @@ impl Bytecode {
             Instruction::Return => Bytecode::Return,
             Instruction::PrintValue => Bytecode::PrintValue,
             Instruction::Index => Bytecode::Index,
+            Instruction::NextIter => Bytecode::NextIter,
+            Instruction::ToIter => Bytecode::ToIter,
             Instruction::Method(method) => match method {
                 Method::Append => Bytecode::Append,
                 Method::ToUpperCase => Bytecode::ToUpperCase,

@@ -233,6 +233,19 @@ where
                     *into = value;
                 }
 
+                Bytecode::NextIter => {
+                    let iter = self.pop_stack()?;
+                    let value = iter.next()?;
+                    let has_value = RuntimeValue::Bool(value.is_some());
+
+                    if let Some(value) = value {
+                        self.push_stack(value);
+                    }
+                    self.push_stack(has_value);
+                }
+
+                Bytecode::ToIter => unary_mapper_method!(self, to_iter),
+
                 Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
 

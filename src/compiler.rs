@@ -62,6 +62,8 @@ pub enum Instruction {
     // Builtins
     PrintValue,
     Index,
+    NextIter,
+    ToIter,
 }
 
 use Instruction::*;
@@ -359,6 +361,71 @@ impl Compiler {
                         expr.1.clone(),
                     );
 
+                self.vars.remove_local(&loop_name);
+
+                program
+            }
+
+            Expr::For(loop_var, iterable, body) => {
+                let (iter_label, end_label) = (self.new_label(), self.new_label());
+
+                let register_loop_var = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_var,
+                        Program::from_instructions(vec![Value(IrValue::Null)], expr.1.clone()),
+                    )?
+                    .then_instruction(Pop, expr.1.clone());
+
+                let loop_id = self.new_loop_id();
+                let loop_name = self.loop_name(loop_id);
+                self.loop_labels.insert(loop_id, (iter_label, end_label));
+                let register_loop = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_name,
+                        Program::from_instructions(vec![GetStackPtr], expr.1.clone()),
+                    )?
+                    .then_instruction(Pop, expr.1.clone());
+
+                let iterable_name = format!("{loop_name}_iter");
+                let iterator = self
+                    .compile_expr(iterable)?
+                    .then_instruction(ToIter, iterable.1.clone());
+                let register_iterable = self
+                    .compile_var_assign(expr, &iterable_name, iterator)?
+                    .then_instruction(Pop, iterable.1.clone());
+
+                let program = register_loop_var
+                    .then_program(register_loop)
+                    .then_program(register_iterable)
+                    // result of last iteration: null if no iterations or popped and replaced by
+                    // upcoming iterations
+                    .then_instruction(Value(IrValue::Null), expr.1.clone())
+                    .then_program(self.compile_expr(iterable)?)
+                    .then_instruction(Instruction::Label(iter_label), expr.1.clone())
+                    .then_program(
+                        self.compile_var_load(expr, &iterable_name)?
+                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.1.clone()),
+                    )
+                    .then_program(
+                        self.compile_var_assign(
+                            expr,
+                            &loop_var,
+                            Program::from_instruction(Swap, expr.1.clone()),
+                        )?
+                        .then_instruction(Pop, expr.1.clone()),
+                    )
+                    .then_program(self.compile_expr(body)?)
+                    // last expression in the block will leave a new value on the stack, so pop
+                    // the current "last value" off
+                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
+                    .then_instructions(
+                        vec![Instruction::Label(end_label), Swap, Pop],
+                        expr.1.clone(),
+                    );
+
+                self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
 
                 program
