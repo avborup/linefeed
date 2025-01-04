@@ -366,6 +366,13 @@ impl Compiler {
                 program
             }
 
+            // FIXME: Loops are brooooken
+            //   - Nested variables? Kaboom.
+            //   - Nested loops? Kaboom.
+            //   - Break/continue? Work flawlessly actually, since they clean up the stack.
+            //   - Nested loops leave an extra value on the stack per nested loop.
+            //   - Also an issue for while loops.
+            //   - Can't figure it out right now, so that's it for today.
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
