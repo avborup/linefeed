@@ -5,7 +5,7 @@ use crate::{
     method::Method,
     runtime_value::{
         function::RuntimeFunction, list::RuntimeList, number::RuntimeNumber, operations::LfAppend,
-        set::RuntimeSet,
+        range::RuntimeRange, set::RuntimeSet,
     },
 };
 
@@ -13,6 +13,7 @@ pub mod function;
 pub mod list;
 pub mod number;
 pub mod operations;
+pub mod range;
 pub mod set;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -25,6 +26,7 @@ pub enum RuntimeValue {
     List(RuntimeList),
     Set(RuntimeSet),
     Function(Rc<RuntimeFunction>),
+    Range(Box<RuntimeRange>),
 }
 
 const _: () = {
@@ -44,6 +46,7 @@ impl RuntimeValue {
             RuntimeValue::List(_) => "list",
             RuntimeValue::Set(_) => "set",
             RuntimeValue::Function(_) => "function",
+            RuntimeValue::Range(_) => "range",
         }
     }
 
@@ -151,6 +154,24 @@ impl RuntimeValue {
         })
     }
 
+    pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
+        let range = match (self, other) {
+            (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {
+                RuntimeRange::new(*start, Some(*end))
+            }
+            (RuntimeValue::Num(start), RuntimeValue::Null) => RuntimeRange::new(*start, None),
+            _ => {
+                return Err(RuntimeError::invalid_binary_op_for_types(
+                    "make range from",
+                    self,
+                    other,
+                ))
+            }
+        };
+
+        Ok(RuntimeValue::Range(Box::new(range)))
+    }
+
     pub fn address(&self) -> Result<usize, RuntimeError> {
         match self {
             RuntimeValue::Int(i) => Ok(*i as usize),
@@ -168,6 +189,7 @@ impl RuntimeValue {
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
             RuntimeValue::Function(_) => true,
+            RuntimeValue::Range(_) => true,
         }
     }
 }
@@ -207,6 +229,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, "}}")
             }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
+            RuntimeValue::Range(range) => write!(f, "{range}"),
         }
     }
 }
