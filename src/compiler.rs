@@ -362,46 +362,9 @@ impl Compiler {
                 program
             }
 
-            // 1. Get the current loop name
-            // 2. Set stack pointer to that number
-            // 3. Swap top of stack [sp, last_val] -> [last_val, sp]
-            // 4. Pop the top of the stack
-            Expr::Break => {
-                if !self.is_in_loop() {
-                    return Err(CompileError::Spanned {
-                        span: expr.1.clone(),
-                        msg: "Cannot break outside of loop".to_string(),
-                    });
-                }
-
-                let loop_id = self.cur_loop_id();
-                let loop_name = self.loop_name(loop_id);
-                let (_, end_label) = *self
-                    .loop_labels
-                    .get(&loop_id)
-                    .expect("labels for loop id not found");
-
-                self.compile_var_load(expr, &loop_name)?
-                    .then_instructions(vec![SetStackPtr, Goto(end_label)], expr.1.clone())
-            }
-
+            Expr::Break => self.compile_loop_jump("break", expr, |(_, end_label)| end_label)?,
             Expr::Continue => {
-                if !self.is_in_loop() {
-                    return Err(CompileError::Spanned {
-                        span: expr.1.clone(),
-                        msg: "Cannot break outside of loop".to_string(),
-                    });
-                }
-
-                let loop_id = self.cur_loop_id();
-                let loop_name = self.loop_name(loop_id);
-                let (cond_label, _) = *self
-                    .loop_labels
-                    .get(&loop_id)
-                    .expect("labels for loop id not found");
-
-                self.compile_var_load(expr, &loop_name)?
-                    .then_instructions(vec![SetStackPtr, Goto(cond_label)], expr.1.clone())
+                self.compile_loop_jump("continue", expr, |(cond_label, _)| cond_label)?
             }
 
             Expr::MethodCall(target, method_name, args) => {
@@ -535,6 +498,36 @@ impl Compiler {
                     .expect("loop name is not a number")
             })
             .expect("not in a loop")
+    }
+
+    // 1. Get the current loop name
+    // 2. Set stack pointer to that number
+    // 3. Swap top of stack [sp, last_val] -> [last_val, sp]
+    // 4. Pop the top of the stack
+    pub fn compile_loop_jump(
+        &mut self,
+        action: &str,
+        expr: &Spanned<Expr>,
+        get_jump_to: impl FnOnce((Label, Label)) -> Label,
+    ) -> Result<Program<Instruction>, CompileError> {
+        if !self.is_in_loop() {
+            return Err(CompileError::Spanned {
+                span: expr.1.clone(),
+                msg: format!("Cannot {action} outside of loop"),
+            });
+        }
+
+        let loop_id = self.cur_loop_id();
+        let loop_name = self.loop_name(loop_id);
+        let (cond_label, end_label) = *self
+            .loop_labels
+            .get(&loop_id)
+            .expect("labels for loop id not found");
+        let jump_to = get_jump_to((cond_label, end_label));
+
+        Ok(self
+            .compile_var_load(expr, &loop_name)?
+            .then_instructions(vec![SetStackPtr, Goto(jump_to)], expr.1.clone()))
     }
 }
 
