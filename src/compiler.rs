@@ -87,6 +87,8 @@ impl Compiler {
         assert_eq!(program.instructions.len(), program.source_map.len());
 
         // TODO: Optimise the instuctions emitted by the above
+        //  - [ ] Remove unnecessary additions
+        //  - [ ] Don't do lookups on constants, just insert them
 
         let bytecode_program = program.into_bytecode()?;
 
@@ -534,13 +536,14 @@ where
         for (pc, (instr, span)) in self.instructions.iter().zip(&self.source_map).enumerate() {
             let i = format!("{:?}", instr);
             let range = format!("{:?}", span);
-            println!(
-                "{:>3}: {:>20}  {:<8} {:?}",
-                pc,
-                i,
-                range,
-                &src[span.start..span.end]
-            );
+
+            let source = if span.end <= span.start + 30 {
+                src[span.start..span.end].to_string()
+            } else {
+                format!("{}...", &src[span.start..(span.start + 30)])
+            };
+
+            println!("{pc:>3}: {i:>20}  {range:<8} {source:?}");
         }
     }
 
