@@ -145,3 +145,23 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    continue_works,
+    indoc::indoc! {r#"
+        i = -1;
+        while (i = i + 1) <= 10 {
+            continue if i % 2 == 1;
+            print(i);
+        };
+    "#},
+    equals(indoc! {r#"
+        0
+        2
+        4
+        6
+        8
+        10
+    "#}),
+    empty()
+);

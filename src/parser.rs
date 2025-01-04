@@ -64,6 +64,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 Token::Num(n) => Expr::Value(Value::Num(n.parse().unwrap())),
                 Token::Str(s) => Expr::Value(Value::Str(s)),
                 Token::Break => Expr::Break,
+                Token::Continue => Expr::Continue,
             }
             .labelled("value");
 
