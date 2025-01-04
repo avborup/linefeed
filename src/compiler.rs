@@ -372,7 +372,7 @@ impl Compiler {
                 let register_loop_var = self
                     .compile_var_assign(
                         expr,
-                        &loop_var,
+                        loop_var,
                         Program::from_instructions(vec![Value(IrValue::Null)], expr.1.clone()),
                     )?
                     .then_instruction(Pop, expr.1.clone());
@@ -384,7 +384,11 @@ impl Compiler {
                     .compile_var_assign(
                         expr,
                         &loop_name,
-                        Program::from_instructions(vec![GetStackPtr], expr.1.clone()),
+                        Program::from_instructions(
+                            // One more space for the iterable
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            expr.1.clone(),
+                        ),
                     )?
                     .then_instruction(Pop, expr.1.clone());
 
@@ -402,7 +406,6 @@ impl Compiler {
                     // result of last iteration: null if no iterations or popped and replaced by
                     // upcoming iterations
                     .then_instruction(Value(IrValue::Null), expr.1.clone())
-                    .then_program(self.compile_expr(iterable)?)
                     .then_instruction(Instruction::Label(iter_label), expr.1.clone())
                     .then_program(
                         self.compile_var_load(expr, &iterable_name)?
@@ -411,7 +414,7 @@ impl Compiler {
                     .then_program(
                         self.compile_var_assign(
                             expr,
-                            &loop_var,
+                            loop_var,
                             Program::from_instruction(Swap, expr.1.clone()),
                         )?
                         .then_instruction(Pop, expr.1.clone()),
@@ -421,7 +424,7 @@ impl Compiler {
                     // the current "last value" off
                     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
                     .then_instructions(
-                        vec![Instruction::Label(end_label), Swap, Pop],
+                        vec![Instruction::Label(end_label), Swap, Pop, Swap, Pop],
                         expr.1.clone(),
                     );
 
@@ -562,6 +565,8 @@ impl Compiler {
             .max_by_key(|(_, offset)| **offset)
             .map(|(name, _)| {
                 name.strip_prefix("!loop_")
+                    .unwrap()
+                    .strip_suffix("_iter")
                     .unwrap()
                     .parse()
                     .expect("loop name is not a number")
