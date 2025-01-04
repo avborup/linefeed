@@ -281,6 +281,15 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
+            let range_op = just(Token::op("..")).to(BinaryOp::Range);
+            let range = logical
+                .clone()
+                .then(range_op.then(logical.clone().or_not()))
+                .map_with_span(|(a, (op, b)), span: Span| {
+                    let end = b.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), span.clone()));
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), span)
+                });
+
             let return_ = just(Token::Return)
                 .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
                 .map_with_span(|expr, span: Span| {
@@ -290,7 +299,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 })
                 .labelled("return");
 
-            logical.or(return_)
+            range.or(logical).or(return_)
         });
 
         let postfix_if = raw_expr

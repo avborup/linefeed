@@ -70,6 +70,8 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Str);
 
+    let range = just("..").to(Token::op(".."));
+
     let op = one_of("+-*/!=<>%")
         .repeated()
         .at_least(1)
@@ -99,6 +101,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 
     let token = num
         .or(str_)
+        .or(range)
         .or(op)
         .or(ctrl)
         .or(ident)

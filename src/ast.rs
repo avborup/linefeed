@@ -73,6 +73,7 @@ pub enum BinaryOp {
     LessEq,
     Greater,
     GreaterEq,
+    Range,
 }
 
 #[derive(Clone, Debug)]
