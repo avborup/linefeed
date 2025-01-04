@@ -55,7 +55,17 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 Spanned(Expr::While(Box::new(cond), Box::new(a)), span)
             });
 
-        let block_expr = block.clone().or(if_).or(while_).labelled("block");
+        let ident = select! { Token::Ident(ident) => ident.clone() }.labelled("identifier");
+
+        let for_ = just(Token::For)
+            .ignore_then(ident)
+            .then(just(Token::In).ignore_then(expr.clone()))
+            .then(block.clone())
+            .map_with_span(|((var, iter), body), span: Span| {
+                Spanned(Expr::For(var, Box::new(iter), Box::new(body)), span)
+            });
+
+        let block_expr = choice((block.clone(), if_, while_, for_)).labelled("block expression");
 
         let raw_expr = recursive(|raw_expr| {
             let val = select! {
@@ -67,8 +77,6 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 Token::Continue => Expr::Continue,
             }
             .labelled("value");
-
-            let ident = select! { Token::Ident(ident) => ident.clone() }.labelled("identifier");
 
             // A list of expressions
             let items = expr

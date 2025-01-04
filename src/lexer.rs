@@ -22,6 +22,8 @@ pub enum Token {
     Return,
     Unless,
     While,
+    For,
+    In,
     Break,
     Continue,
 }
@@ -52,6 +54,8 @@ impl fmt::Display for Token {
             Token::Return => write!(f, "return"),
             Token::Unless => write!(f, "unless"),
             Token::While => write!(f, "while"),
+            Token::For => write!(f, "for"),
+            Token::In => write!(f, "in"),
             Token::Break => write!(f, "break"),
             Token::Continue => write!(f, "continue"),
         }
@@ -94,6 +98,8 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         "return" => Token::Return,
         "unless" => Token::Unless,
         "while" => Token::While,
+        "for" => Token::For,
+        "in" => Token::In,
         "break" => Token::Break,
         "continue" => Token::Continue,
         _ => Token::Ident(ident),

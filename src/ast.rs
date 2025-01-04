@@ -24,6 +24,7 @@ pub enum Expr {
     Print(Box<Spanned<Self>>),
     Return(Box<Spanned<Self>>),
     While(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    For(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Break,
     Continue,
 }
