@@ -377,15 +377,15 @@ impl Compiler {
             //    Initialisation:     OLD_SP  ITERATOR  null
             //    First iteration:    OLD_SP  ITERATOR  null  LAST_EXPR
             //    Cleanup first:      OLD_SP  ITERATOR  LAST_EXPR
-            //    Cleanup last:       LAST_EXPR
+            //    Cleanup loop:       LAST_EXPR
             //
             // So, to initialise:
             //    1. (the loop variable is already allocated at the start of the function)
             //    2. Allocate tmp OLD_SP, the stack pointer at the start of the loop (for continue/break)
             //    3. Allocate tmp ITERATOR, the iterator for the loop
-            //    4. Allocate tmp OUTPUT, the result of the loop - i.e. "last expression"
+            //    4. Place an output value on the stack, initially null in case of no iterations
             //
-            // At the end of each iteration, replace the "last expression" with the new value:
+            // At the end of each iteration, replace the "last value" with the new value:
             //    1. Just swap, pop
             //
             // To finalise loop and clean up temporary variables:
@@ -424,18 +424,9 @@ impl Compiler {
                     .compile_var_assign(expr, &iterable_name, iterator)?
                     .then_instruction(Pop, iterable.1.clone());
 
-                let output_name = format!("{loop_name}_output");
-                let register_output = self
-                    .compile_var_assign(
-                        expr,
-                        &output_name,
-                        Program::from_instruction(Value(IrValue::Null), expr.1.clone()),
-                    )?
-                    .then_instruction(Pop, expr.1.clone());
-
                 let program = register_loop
                     .then_program(register_iterable)
-                    .then_program(register_output)
+                    .then_instruction(Value(IrValue::Null), expr.1.clone())
                     .then_instruction(Instruction::Label(iter_label), expr.1.clone())
                     .then_program(
                         self.compile_var_load(expr, &iterable_name)?
@@ -450,20 +441,12 @@ impl Compiler {
                         .then_instruction(Pop, expr.1.clone()),
                     )
                     .then_program(self.compile_expr(body)?)
-                    .then_program(
-                        self.compile_var_assign(
-                            expr,
-                            &output_name,
-                            Program::from_instruction(Swap, expr.1.clone()),
-                        )?
-                        .then_instructions(vec![Pop, Goto(iter_label)], expr.1.clone()),
-                    )
+                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
                     .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
 
                 self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
-                self.vars.remove_local(&output_name);
 
                 debug_assert!(
                     self.vars.cur_scope_len() == scope_size_before,
