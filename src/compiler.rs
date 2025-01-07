@@ -410,7 +410,7 @@ impl Compiler {
                         expr,
                         &loop_name,
                         Program::from_instructions(
-                            vec![GetStackPtr, Value(IrValue::Int(1)), Sub],
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
                             expr.1.clone(),
                         ),
                     )?
@@ -607,8 +607,7 @@ impl Compiler {
             .map(|(name, _)| {
                 name.strip_prefix("!loop_")
                     .unwrap()
-                    .strip_suffix("_iter")
-                    .unwrap()
+                    .trim_end_matches("_iter")
                     .parse()
                     .expect("loop name is not a number")
             })
