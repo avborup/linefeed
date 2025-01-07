@@ -124,6 +124,7 @@ impl Bytecode {
     ) -> Result<RuntimeValue, CompileError> {
         let res = match value {
             IrValue::Null => RuntimeValue::Null,
+            IrValue::Uninit => RuntimeValue::Uninit,
             IrValue::Bool(b) => RuntimeValue::Bool(b),
             IrValue::Int(i) => RuntimeValue::Int(i),
             IrValue::Num(n) => RuntimeValue::Num(n),

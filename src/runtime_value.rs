@@ -20,6 +20,7 @@ pub mod set;
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue {
     Null,
+    Uninit,
     Bool(bool),
     Int(isize),
     Num(RuntimeNumber),
@@ -41,6 +42,7 @@ impl RuntimeValue {
     pub fn kind_str(&self) -> &str {
         match self {
             RuntimeValue::Null => "null",
+            RuntimeValue::Uninit => "uninitialized",
             RuntimeValue::Bool(_) => "boolean",
             RuntimeValue::Int(_) => "integer",
             RuntimeValue::Num(_) => "number",
@@ -212,6 +214,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::Bool(b) => *b,
             RuntimeValue::Null => false,
+            RuntimeValue::Uninit => false,
             RuntimeValue::Int(n) => *n != 0,
             RuntimeValue::Num(n) => n.bool(),
             RuntimeValue::Str(s) => !s.is_empty(),
@@ -244,6 +247,7 @@ impl std::fmt::Display for RuntimeValue {
 
         match self {
             RuntimeValue::Null => write!(f, "null"),
+            RuntimeValue::Uninit => write!(f, "uninitialized"),
             RuntimeValue::Bool(b) => write!(f, "{b}"),
             RuntimeValue::Int(n) => write!(f, "{n}"),
             RuntimeValue::Num(n) => write!(f, "{n}"),

@@ -340,6 +340,7 @@ where
             match val {
                 RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
                 RuntimeValue::Str(s) => eprint!("{}", format!("{s:?}").green()),
+                RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
                 _ => eprint!("{}", format!("{val}").blue()),
             }
         }

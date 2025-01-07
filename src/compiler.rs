@@ -603,9 +603,8 @@ impl Compiler {
 
         if self.vars.get(name).is_none() {
             // Allocate stack space for new local variable if it doesn't exist
-            program.add_instruction(Value(IrValue::Null), expr.1.clone());
 
-            dbg!(name);
+            program.add_instruction(Value(IrValue::Uninit), expr.1.clone());
 
             let offset = self.vars.cur_scope_len();
             self.vars.set_local(name.clone(), offset);
