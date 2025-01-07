@@ -141,13 +141,13 @@ impl Compiler {
                             Goto(post_func_label),
                             Instruction::Label(func_label),
                         ],
-                        expr.1.clone(),
+                        expr.span(),
                     )
                     .then_program(self.compile_allocation_for_all_vars_in_scope(&func.body))
                     .then_program(self.compile_expr(&func.body)?)
                     .then_instructions(
                         vec![Return, Instruction::Label(post_func_label)],
-                        expr.1.clone(),
+                        expr.span(),
                     );
 
                 self.vars.pop_scope();
@@ -163,28 +163,28 @@ impl Compiler {
                     .collect::<Result<Vec<_>, _>>()?
                     .into_iter()
                     .fold(func_program, Program::then_program)
-                    .then_instruction(Call(args.len()), expr.1.clone())
+                    .then_instruction(Call(args.len()), expr.span())
             }
 
             Expr::Return(val) => {
                 if self.vars.is_currently_top_scope() {
                     return Err(CompileError::Spanned {
-                        span: expr.1.clone(),
+                        span: expr.span(),
                         msg: "Illegal return outside of function".to_string(),
                     });
                 }
 
                 self.compile_expr(val)?
-                    .then_instruction(Return, expr.1.clone())
+                    .then_instruction(Return, expr.span())
             }
 
             Expr::Value(val) => {
                 let ir_val = IrValue::try_from(val).map_err(|msg| CompileError::Spanned {
-                    span: expr.1.clone(),
+                    span: expr.span(),
                     msg,
                 })?;
 
-                Program::from_instruction(Value(ir_val), expr.1.clone())
+                Program::from_instruction(Value(ir_val), expr.span())
             }
 
             Expr::Sequence(exprs) => {
@@ -194,7 +194,7 @@ impl Compiler {
                     .collect::<Result<Vec<_>, _>>()?
                     .into_iter()
                     .fold(Program::new(), |program, sub_program| {
-                        let pop_span = sub_program.span().unwrap_or_else(|| expr.1.clone());
+                        let pop_span = sub_program.span().unwrap_or_else(|| expr.span());
 
                         program
                             .then_program(sub_program)
@@ -214,7 +214,7 @@ impl Compiler {
 
             Expr::Print(sub_expr) => self
                 .compile_expr(sub_expr)?
-                .then_instruction(PrintValue, expr.1.clone()),
+                .then_instruction(PrintValue, expr.span()),
 
             Expr::Block(sub_expr) => self.compile_expr(sub_expr)?,
 
@@ -226,7 +226,7 @@ impl Compiler {
                     UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::Int(-1))), Mul],
                 };
 
-                program.then_instructions(to_add, expr.1.clone())
+                program.then_instructions(to_add, expr.span())
             }
 
             Expr::Binary(lhs, BinaryOp::And, rhs) => {
@@ -235,7 +235,7 @@ impl Compiler {
 
                 Program::new()
                     .then_program(self.compile_expr(lhs)?)
-                    .then_instruction(IfFalse(label_false), expr.1.clone())
+                    .then_instruction(IfFalse(label_false), expr.span())
                     .then_program(self.compile_expr(rhs)?)
                     .then_instructions(
                         vec![
@@ -244,7 +244,7 @@ impl Compiler {
                             Value(IrValue::Bool(false)),
                             Instruction::Label(label_end),
                         ],
-                        expr.1.clone(),
+                        expr.span(),
                     )
             }
 
@@ -254,7 +254,7 @@ impl Compiler {
 
                 Program::new()
                     .then_program(self.compile_expr(lhs)?)
-                    .then_instruction(IfTrue(label_true), expr.1.clone())
+                    .then_instruction(IfTrue(label_true), expr.span())
                     .then_program(self.compile_expr(rhs)?)
                     .then_instructions(
                         vec![
@@ -263,7 +263,7 @@ impl Compiler {
                             Value(IrValue::Bool(true)),
                             Instruction::Label(label_end),
                         ],
-                        expr.1.clone(),
+                        expr.span(),
                     )
             }
 
@@ -286,7 +286,7 @@ impl Compiler {
                     BinaryOp::Range => Range,
                     _ => {
                         return Err(CompileError::Spanned {
-                            span: expr.1.clone(),
+                            span: expr.span(),
                             msg: format!("Binary operator {:?} not implemented in compiler", op),
                         })
                     }
@@ -294,7 +294,7 @@ impl Compiler {
 
                 lhs_program
                     .then_program(rhs_program)
-                    .then_instruction(op_instr, expr.1.clone())
+                    .then_instruction(op_instr, expr.span())
             }
 
             Expr::List(items) => items
@@ -305,11 +305,11 @@ impl Compiler {
                 .fold(
                     Program::from_instruction(
                         Value(IrValue::List(IrList(Vec::new()))),
-                        expr.1.clone(),
+                        expr.span(),
                     ),
                     |acc, p| {
                         acc.then_program(p)
-                            .then_instruction(Method(Method::Append), expr.1.clone())
+                            .then_instruction(Method(Method::Append), expr.span())
                     },
                 ),
 
@@ -319,7 +319,7 @@ impl Compiler {
 
                 value_program
                     .then_program(index_program)
-                    .then_instruction(Index, index.1.clone())
+                    .then_instruction(Index, index.span())
             }
 
             Expr::If(cond, true_expr, false_expr) => {
@@ -330,12 +330,12 @@ impl Compiler {
                 let (false_label, end_label) = (self.new_label(), self.new_label());
 
                 cond_program
-                    .then_instruction(IfFalse(false_label), cond.1.clone())
+                    .then_instruction(IfFalse(false_label), cond.span())
                     .then_program(true_program)
-                    .then_instruction(Goto(end_label), true_expr.1.clone())
-                    .then_instruction(Instruction::Label(false_label), false_expr.1.clone())
+                    .then_instruction(Goto(end_label), true_expr.span())
+                    .then_instruction(Instruction::Label(false_label), false_expr.span())
                     .then_program(false_program)
-                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
+                    .then_instruction(Instruction::Label(end_label), expr.span())
             }
 
             // For an explanation of the stack layout for while loops, see the comment below for
@@ -359,7 +359,7 @@ impl Compiler {
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(cond_label), expr.span())
                     .then_program(self.compile_expr(cond)?)
-                    .then_instruction(IfFalse(end_label), cond.1.clone())
+                    .then_instruction(IfFalse(end_label), cond.span())
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
                     .then_instructions(vec![Instruction::Label(end_label), Swap, Pop], expr.span());
@@ -465,7 +465,7 @@ impl Compiler {
 
                 let method_instr =
                     Method::from_name(method_name).ok_or_else(|| CompileError::Spanned {
-                        span: expr.1.clone(),
+                        span: expr.span(),
                         msg: format!("Method {method_name:?} is unknown"),
                     })?;
 
@@ -477,19 +477,19 @@ impl Compiler {
                     .fold(target_program, Program::then_program);
 
                 // TODO: pass along how many args were given
-                program.then_instruction(Method(method_instr), expr.1.clone())
+                program.then_instruction(Method(method_instr), expr.span())
             }
 
             Expr::ParseError => {
                 return Err(CompileError::Spanned {
                     msg: "Parse error".to_string(),
-                    span: expr.1.clone(),
+                    span: expr.span(),
                 })
             }
 
             _ => {
                 return Err(CompileError::Spanned {
-                    span: expr.1.clone(),
+                    span: expr.span(),
                     msg: format!("Compilation not implemented yet for {:?}", expr.0),
                 })
             }
@@ -545,7 +545,7 @@ impl Compiler {
             // for temporary compiler variables, such as loop iterators and storing stack pointers.
             debug_assert!(name.starts_with("!"));
 
-            program.add_instruction(Value(IrValue::Uninit), expr.1.clone());
+            program.add_instruction(Value(IrValue::Uninit), expr.span());
 
             let offset = self.vars.cur_scope_len();
             self.vars.set_local(name.clone(), offset);
@@ -626,7 +626,7 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         if !self.is_in_loop() {
             return Err(CompileError::Spanned {
-                span: expr.1.clone(),
+                span: expr.span(),
                 msg: format!("Cannot {action} outside of loop"),
             });
         }
@@ -641,7 +641,7 @@ impl Compiler {
 
         Ok(self
             .compile_var_load(expr, &loop_name)?
-            .then_instructions(vec![SetStackPtr, Goto(jump_to)], expr.1.clone()))
+            .then_instructions(vec![SetStackPtr, Goto(jump_to)], expr.span()))
     }
 }
 

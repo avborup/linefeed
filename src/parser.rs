@@ -224,7 +224,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .repeated()
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
-                    let range = rhs.1.clone();
+                    let range = rhs.span();
                     Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
                 });
 
@@ -232,7 +232,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .repeated()
                 .then(atom.clone())
                 .foldr(|_op, rhs| {
-                    let range = rhs.1.clone();
+                    let range = rhs.span();
                     Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
                 });
 
