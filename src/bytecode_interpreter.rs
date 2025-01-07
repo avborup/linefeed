@@ -138,8 +138,19 @@ where
                     self.pop_stack()?;
                 }
 
+                Bytecode::RemoveIndex => {
+                    let index = self.pop_stack()?.address()?;
+                    debug_assert!(index < self.stack.len());
+                    self.stack.remove(index);
+                }
+
                 Bytecode::Swap => {
                     self.swap();
+                }
+
+                Bytecode::Dup => {
+                    let val = self.peek_stack()?.clone();
+                    self.push_stack(val);
                 }
 
                 Bytecode::GetStackPtr => {

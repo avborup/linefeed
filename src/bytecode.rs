@@ -19,7 +19,9 @@ pub enum Bytecode {
 
     // Stack manipulation
     Pop,
+    RemoveIndex,
     Swap,
+    Dup,
     GetStackPtr,
     SetStackPtr,
 
@@ -95,7 +97,9 @@ impl Bytecode {
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
             Instruction::Pop => Bytecode::Pop,
+            Instruction::RemoveIndex => Bytecode::RemoveIndex,
             Instruction::Swap => Bytecode::Swap,
+            Instruction::Dup => Bytecode::Dup,
             Instruction::GetStackPtr => Bytecode::GetStackPtr,
             Instruction::SetStackPtr => Bytecode::SetStackPtr,
             Instruction::Call(num_args) => Bytecode::Call(num_args),

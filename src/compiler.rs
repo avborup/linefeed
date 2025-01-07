@@ -23,7 +23,9 @@ pub enum Instruction {
 
     // Stack manipulation
     Pop,
+    RemoveIndex,
     Swap,
+    Dup,
     GetStackPtr,
     SetStackPtr,
 
@@ -373,6 +375,40 @@ impl Compiler {
             //   - Nested loops leave an extra value on the stack per nested loop.
             //   - Also an issue for while loops.
             //   - Can't figure it out right now, so that's it for today.
+            //
+            // The stack layout for a for loop is as follows:
+            //    Initialisation:     LOOP_VAR  OLD_SP  ITERATOR  OUTPUT
+            //    First iteration:    LOOP_VAR  OLD_SP  ITERATOR  OUTPUT  LAST_EXPR
+            //    Cleanup first:      LOOP_VAR  OLD_SP  ITERATOR  LAST_EXPR (<- into OUTPUT location)
+            //    Cleanup last:       LOOP_VAR  OUTPUT
+            //
+            // So, to initialise:
+            //    1. Allocate LOOP_VAR, the loop variable
+            //    2. Allocate OLD_SP, the stack pointer at the start of the loop (for continue/break)
+            //    3. Allocate ITERATOR, the iterator for the loop
+            //    4. Allocate OUTPUT, the result of the loop - i.e. "last expression"
+            //
+            // At the end of each iteration, replace the "last expression" with the new value:
+            //    1. Store LAST_EXPR in OUTPUT variable
+            //    2. Pop it off the stack
+            //
+            // Why use a temporary variable for the output? Because OUTPUT might not be the top of
+            // the stack after an iteration. For example, what happens to the stack if variables
+            // are allocated inside the loop?
+            //    Initialisation:     LOOP_VAR  OLD_SP  ITERATOR  OUTPUT
+            //    First iteration:    LOOP_VAR  OLD_SP  ITERATOR  OUTPUT  FOO_VAR  BAR_VAR  LAST_EXPR
+            //    Cleanup first:      LOOP_VAR  OLD_SP  ITERATOR  LAST_EXPR  FOO_VAR  BAR_VAR
+            //    Cleanup last:       LOOP_VAR  FOO_VAR  BAR_VAR  OUTPUT
+            //
+            // To finalise loop and clean up temporary variables:
+            //    1. Fix the stack, discarding OLD_SP and ITERATOR and moving OUTPUT to the top:
+            //      1. Load OUTPUT onto the top of the stack
+            //      2. Remove value at OLD_SP thrice to remove the three temporary variables
+            //    2. Fix compiler variable state:
+            //      1. Un-register variables for OLD_SP, ITERATOR, and OUTPUT in scope
+            //      2. Shift all local addresses after LOOP_VAR down (because of the un-register)
+            //
+            // FIXME: Handle continue/break in the above
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
@@ -384,6 +420,8 @@ impl Compiler {
                     )?
                     .then_instruction(Pop, expr.1.clone());
 
+                let baseline_var_offset = self.vars.cur_scope_len();
+
                 let loop_id = self.new_loop_id();
                 let loop_name = self.loop_name(loop_id);
                 self.loop_labels.insert(loop_id, (iter_label, end_label));
@@ -392,8 +430,7 @@ impl Compiler {
                         expr,
                         &loop_name,
                         Program::from_instructions(
-                            // One more space for the iterable
-                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Sub],
                             expr.1.clone(),
                         ),
                     )?
@@ -407,18 +444,29 @@ impl Compiler {
                     .compile_var_assign(expr, &iterable_name, iterator)?
                     .then_instruction(Pop, iterable.1.clone());
 
+                let output_name = format!("{loop_name}_output");
+                let register_output = self
+                    .compile_var_assign(
+                        expr,
+                        &output_name,
+                        Program::from_instruction(Value(IrValue::Null), expr.1.clone()),
+                    )?
+                    .then_instruction(Pop, expr.1.clone());
+
                 let program = register_loop_var
                     .then_program(register_loop)
                     .then_program(register_iterable)
-                    // result of last iteration: null if no iterations or popped and replaced by
-                    // upcoming iterations
-                    .then_instruction(Value(IrValue::Null), expr.1.clone())
+                    .then_program(register_output)
                     .then_instruction(Instruction::Label(iter_label), expr.1.clone())
                     .then_program(
                         self.compile_var_load(expr, &iterable_name)?
                             .then_instructions(vec![NextIter, IfFalse(end_label)], expr.1.clone()),
                     )
                     .then_program(
+                        // FIXME: problem here is that variables are being allocated on each
+                        // iteration... but we only need it to be allocated on the FIRST iteration.
+                        // Subsequent iterations should just use the existing variable. FFS. Do we
+                        // need to analyse expression to get all declared variables?
                         self.compile_var_assign(
                             expr,
                             loop_var,
@@ -427,16 +475,39 @@ impl Compiler {
                         .then_instruction(Pop, expr.1.clone()),
                     )
                     .then_program(self.compile_expr(body)?)
-                    // last expression in the block will leave a new value on the stack, so pop
-                    // the current "last value" off
-                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
-                    .then_instructions(
-                        vec![Instruction::Label(end_label), Swap, Pop, Swap, Pop],
+                    .then_program(
+                        self.compile_var_assign(
+                            expr,
+                            &output_name,
+                            Program::from_instruction(Swap, expr.1.clone()),
+                        )?
+                        .then_instructions(vec![Pop, Goto(iter_label)], expr.1.clone()),
+                    )
+                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
+                    .then_program(self.compile_var_load(expr, &loop_name)?.then_instructions(
+                        vec![Dup, Dup, RemoveIndex, RemoveIndex, RemoveIndex],
                         expr.1.clone(),
-                    );
+                    ));
 
                 self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
+                self.vars.remove_local(&output_name);
+
+                const NUM_TEMP_VARS: usize = 3;
+
+                let shifted_var_offsets = self
+                    .vars
+                    .iter_local()
+                    .filter(|(_, &offset)| offset > baseline_var_offset)
+                    .map(|(name, offset)| (name.clone(), offset - NUM_TEMP_VARS))
+                    .collect::<Vec<_>>();
+
+                dbg!(baseline_var_offset, &shifted_var_offsets);
+
+                shifted_var_offsets.into_iter().for_each(|(name, offset)| {
+                    let old_val = self.vars.set_local(name, offset);
+                    debug_assert!(old_val.is_some());
+                });
 
                 program
             }
@@ -530,6 +601,8 @@ impl Compiler {
         if self.vars.get(name).is_none() {
             // Allocate stack space for new local variable if it doesn't exist
             program.add_instruction(Value(IrValue::Null), expr.1.clone());
+
+            dbg!(name);
 
             let offset = self.vars.cur_scope_len();
             self.vars.set_local(name.clone(), offset);
