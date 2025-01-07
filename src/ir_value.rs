@@ -7,6 +7,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum IrValue {
     Null,
+    Uninit,
     Bool(bool),
     Int(isize),
     Num(RuntimeNumber),

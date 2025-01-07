@@ -1,6 +1,9 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{collections::HashMap, iter};
+use std::{
+    collections::{HashMap, HashSet},
+    iter,
+};
 
 use crate::{
     ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
@@ -23,7 +26,9 @@ pub enum Instruction {
 
     // Stack manipulation
     Pop,
+    RemoveIndex,
     Swap,
+    Dup,
     GetStackPtr,
     SetStackPtr,
 
@@ -85,7 +90,8 @@ pub struct Compiler {
 impl Compiler {
     pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program<Bytecode>, CompileError> {
         let program = self
-            .compile_expr(expr)?
+            .compile_allocation_for_all_vars_in_scope(expr)
+            .then_program(self.compile_expr(expr)?)
             .then_instruction(Stop, expr.1.end..expr.1.end);
 
         assert_eq!(program.instructions.len(), program.source_map.len());
@@ -137,6 +143,7 @@ impl Compiler {
                         ],
                         expr.1.clone(),
                     )
+                    .then_program(self.compile_allocation_for_all_vars_in_scope(&func.body))
                     .then_program(self.compile_expr(&func.body)?)
                     .then_instructions(
                         vec![Return, Instruction::Label(post_func_label)],
@@ -331,6 +338,9 @@ impl Compiler {
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
             }
 
+            // For an explanation of the stack layout for while loops, see the comment below for
+            // for loops. The only difference is that no iterator is needed, so the stack pointer
+            // is not added with 1.
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
@@ -341,48 +351,55 @@ impl Compiler {
                     .compile_var_assign(
                         expr,
                         &loop_name,
-                        Program::from_instructions(vec![GetStackPtr], expr.1.clone()),
+                        Program::from_instructions(vec![GetStackPtr], expr.span()),
                     )?
-                    .then_instruction(Pop, expr.1.clone());
+                    .then_instruction(Pop, expr.span());
 
                 let program = register_loop
-                    // result of last iteration: null if no iterations or popped and replaced by
-                    // upcoming iterations
-                    .then_instruction(Value(IrValue::Null), expr.1.clone())
-                    .then_instruction(Instruction::Label(cond_label), expr.1.clone())
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(cond_label), expr.span())
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.1.clone())
                     .then_program(self.compile_expr(body)?)
-                    // last expression in the block will leave a new value on the stack, so pop
-                    // the current "last value" off
-                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.1.clone())
-                    .then_instructions(
-                        vec![Instruction::Label(end_label), Swap, Pop],
-                        expr.1.clone(),
-                    );
+                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
+                    .then_instructions(vec![Instruction::Label(end_label), Swap, Pop], expr.span());
 
                 self.vars.remove_local(&loop_name);
 
                 program
             }
 
-            // FIXME: Loops are brooooken
-            //   - Nested variables? Kaboom.
-            //   - Nested loops? Kaboom.
-            //   - Break/continue? Work flawlessly actually, since they clean up the stack.
-            //   - Nested loops leave an extra value on the stack per nested loop.
-            //   - Also an issue for while loops.
-            //   - Can't figure it out right now, so that's it for today.
+            // The stack layout for a for loop is as follows:
+            //    Initialisation:     OLD_SP  ITERATOR  null
+            //    First iteration:    OLD_SP  ITERATOR  null  LAST_EXPR
+            //    Cleanup first:      OLD_SP  ITERATOR  LAST_EXPR
+            //    Cleanup loop:       LAST_EXPR
+            //
+            // So, to initialise:
+            //    1. (the loop variable is already allocated at the start of the function)
+            //    2. Allocate tmp OLD_SP, the stack pointer at the start of the loop (for continue/break)
+            //       - The stack pointer should point to the "null" position above.
+            //    3. Allocate tmp ITERATOR, the iterator for the loop
+            //    4. Place an output value on the stack, initially null in case of no iterations
+            //
+            // At the end of each iteration, replace the "last value" with the new value:
+            //    1. Just swap, pop
+            //
+            // To finalise loop and clean up temporary variables:
+            //    1. Fix the stack, discarding OLD_SP and ITERATOR:
+            //      - Swap, pop, swap, pop
+            //    2. Fix compiler variable state un-register variables for OLD_SP, ITERATOR, and OUTPUT in scope
+            //
+            // For all this, it is crucial that all variables in scope are pre-allocated!
+            // Otherwise, the top of the stack is messed up by variables allocated inside the loop.
+            //
+            // To perform break/continue, simply truncate the stack to after ITERATOR (thus
+            // discarding all local state after the iteration was started), then jumping to either
+            // the next iteration or the end of the loop.
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
-                let register_loop_var = self
-                    .compile_var_assign(
-                        expr,
-                        loop_var,
-                        Program::from_instructions(vec![Value(IrValue::Null)], expr.1.clone()),
-                    )?
-                    .then_instruction(Pop, expr.1.clone());
+                let scope_size_before = self.vars.cur_scope_len();
 
                 let loop_id = self.new_loop_id();
                 let loop_name = self.loop_name(loop_id);
@@ -392,51 +409,48 @@ impl Compiler {
                         expr,
                         &loop_name,
                         Program::from_instructions(
-                            // One more space for the iterable
                             vec![GetStackPtr, Value(IrValue::Int(1)), Add],
-                            expr.1.clone(),
+                            expr.span(),
                         ),
                     )?
-                    .then_instruction(Pop, expr.1.clone());
+                    .then_instruction(Pop, expr.span());
 
                 let iterable_name = format!("{loop_name}_iter");
                 let iterator = self
                     .compile_expr(iterable)?
-                    .then_instruction(ToIter, iterable.1.clone());
+                    .then_instruction(ToIter, iterable.span());
                 let register_iterable = self
                     .compile_var_assign(expr, &iterable_name, iterator)?
-                    .then_instruction(Pop, iterable.1.clone());
+                    .then_instruction(Pop, iterable.span());
 
-                let program = register_loop_var
-                    .then_program(register_loop)
+                let program = register_loop
                     .then_program(register_iterable)
-                    // result of last iteration: null if no iterations or popped and replaced by
-                    // upcoming iterations
-                    .then_instruction(Value(IrValue::Null), expr.1.clone())
-                    .then_instruction(Instruction::Label(iter_label), expr.1.clone())
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(
                         self.compile_var_load(expr, &iterable_name)?
-                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.1.clone()),
+                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span()),
                     )
                     .then_program(
                         self.compile_var_assign(
                             expr,
                             loop_var,
-                            Program::from_instruction(Swap, expr.1.clone()),
+                            Program::from_instruction(Swap, expr.span()),
                         )?
-                        .then_instruction(Pop, expr.1.clone()),
+                        .then_instruction(Pop, expr.span()),
                     )
                     .then_program(self.compile_expr(body)?)
-                    // last expression in the block will leave a new value on the stack, so pop
-                    // the current "last value" off
-                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
-                    .then_instructions(
-                        vec![Instruction::Label(end_label), Swap, Pop, Swap, Pop],
-                        expr.1.clone(),
-                    );
+                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
+                    .then_instruction(Instruction::Label(end_label), expr.span())
+                    .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
 
                 self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
+
+                debug_assert!(
+                    self.vars.cur_scope_len() == scope_size_before,
+                    "Variables were left on the stack within loop"
+                );
 
                 program
             }
@@ -494,7 +508,7 @@ impl Compiler {
         // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
         // variables are allowed.
         let var = self.vars.get(name).ok_or_else(|| CompileError::Spanned {
-            span: expr.1.clone(),
+            span: expr.span(),
             msg: format!("No such variable '{name}' in scope"),
         })?;
 
@@ -505,7 +519,7 @@ impl Compiler {
             VarType::Global(addr) => vec![ConstantInt(*addr as isize)],
         };
 
-        Ok(Program::from_instructions(addr_instrs, expr.1.clone()))
+        Ok(Program::from_instructions(addr_instrs, expr.span()))
     }
 
     fn compile_var_load(
@@ -515,10 +529,9 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         Ok(self
             .compile_var_address(name, expr)?
-            .then_instruction(Load, expr.1.clone()))
+            .then_instruction(Load, expr.span()))
     }
 
-    // FIXME: Same as above
     fn compile_var_assign(
         &mut self,
         expr: &Spanned<Expr>,
@@ -528,8 +541,11 @@ impl Compiler {
         let mut program = Program::new();
 
         if self.vars.get(name).is_none() {
-            // Allocate stack space for new local variable if it doesn't exist
-            program.add_instruction(Value(IrValue::Null), expr.1.clone());
+            // Allocate stack space for new local variable if it doesn't exist. Should only be used
+            // for temporary compiler variables, such as loop iterators and storing stack pointers.
+            debug_assert!(name.starts_with("!"));
+
+            program.add_instruction(Value(IrValue::Uninit), expr.1.clone());
 
             let offset = self.vars.cur_scope_len();
             self.vars.set_local(name.clone(), offset);
@@ -538,7 +554,24 @@ impl Compiler {
         Ok(program
             .then_program(self.compile_var_address(name, expr)?)
             .then_program(value_program)
-            .then_instruction(Store, expr.1.clone()))
+            .then_instruction(Store, expr.span()))
+    }
+
+    fn compile_allocation_for_all_vars_in_scope(
+        &mut self,
+        expr: &Spanned<Expr>,
+    ) -> Program<Instruction> {
+        find_all_assignments(expr)
+            .into_iter()
+            .fold(Program::new(), |program, assignment| {
+                if self.vars.get(&assignment.0).is_some() {
+                    return program;
+                }
+
+                self.vars
+                    .set_local(assignment.0.to_string(), self.vars.cur_scope_len());
+                program.then_instruction(Value(IrValue::Uninit), assignment.span())
+            })
     }
 
     pub fn new_label(&mut self) -> Label {
@@ -568,13 +601,13 @@ impl Compiler {
     }
 
     pub fn cur_loop_id(&self) -> usize {
+        dbg!(self.local_loop_vars().collect::<Vec<_>>());
         self.local_loop_vars()
             .max_by_key(|(_, offset)| **offset)
             .map(|(name, _)| {
                 name.strip_prefix("!loop_")
                     .unwrap()
-                    .strip_suffix("_iter")
-                    .unwrap()
+                    .trim_end_matches("_iter")
                     .parse()
                     .expect("loop name is not a number")
             })
@@ -706,3 +739,82 @@ pub enum CompileError {
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Label(pub usize);
+
+fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
+    fn find_all_assignments_inner(expr: &Spanned<Expr>) -> Vec<Spanned<&str>> {
+        match &expr.0 {
+            Expr::Let(local, val) => {
+                let mut res = find_all_assignments_inner(val);
+                res.push(Spanned(local, expr.span()));
+                res
+            }
+
+            Expr::Break | Expr::Continue | Expr::Value(_) | Expr::ParseError | Expr::Local(_) => {
+                vec![]
+            }
+
+            Expr::List(items) => items.iter().flat_map(find_all_assignments_inner).collect(),
+
+            Expr::Index(value, index) => {
+                let mut res = find_all_assignments_inner(value);
+                res.extend(find_all_assignments_inner(index));
+                res
+            }
+
+            Expr::If(cond, a, b) => {
+                let mut res = find_all_assignments_inner(cond);
+                res.extend(find_all_assignments_inner(a));
+                res.extend(find_all_assignments_inner(b));
+                res
+            }
+
+            Expr::While(cond, body) => {
+                let mut res = find_all_assignments_inner(cond);
+                res.extend(find_all_assignments_inner(body));
+                res
+            }
+
+            Expr::For(loop_var, iterable, body) => {
+                let mut res = vec![Spanned(loop_var.as_str(), expr.span())];
+                res.extend(find_all_assignments_inner(iterable));
+                res.extend(find_all_assignments_inner(body));
+                res
+            }
+
+            Expr::Call(func, args) => {
+                let mut res = find_all_assignments_inner(func);
+                res.extend(args.iter().flat_map(find_all_assignments_inner));
+                res
+            }
+
+            Expr::MethodCall(target, _, args) => {
+                let mut res = find_all_assignments_inner(target);
+                res.extend(args.iter().flat_map(find_all_assignments_inner));
+                res
+            }
+
+            Expr::Unary(_, sub_expr) => find_all_assignments_inner(sub_expr),
+
+            Expr::Binary(lhs, _, rhs) => {
+                let mut res = find_all_assignments_inner(lhs);
+                res.extend(find_all_assignments_inner(rhs));
+                res
+            }
+
+            Expr::Sequence(exprs) => exprs.iter().flat_map(find_all_assignments_inner).collect(),
+
+            Expr::Block(sub_expr) => find_all_assignments_inner(sub_expr),
+
+            Expr::Return(val) => find_all_assignments_inner(val),
+
+            Expr::Print(sub_expr) => find_all_assignments_inner(sub_expr),
+        }
+    }
+
+    let mut seen = HashSet::new();
+    find_all_assignments_inner(expr)
+        .into_iter()
+        .filter(|Spanned(name, _)| seen.insert(*name))
+        .map(|Spanned(name, span)| Spanned(name.to_string(), span))
+        .collect()
+}

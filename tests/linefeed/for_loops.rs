@@ -1,8 +1,6 @@
-use indoc::indoc;
-
 use crate::helpers::{
     eval_and_assert,
-    output::{contains, empty, equals},
+    output::{empty, equals},
 };
 
 eval_and_assert!(

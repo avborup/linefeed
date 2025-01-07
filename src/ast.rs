@@ -101,3 +101,9 @@ impl PartialOrd for Func {
         None
     }
 }
+
+impl<T> Spanned<T> {
+    pub fn span(&self) -> Span {
+        self.1.clone()
+    }
+}

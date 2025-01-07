@@ -78,7 +78,9 @@ where
     pub fn set(&mut self, key: K, val: V) {
         match self.get_mut(&key) {
             Some(existing) => *existing.inner() = val,
-            None => self.set_local(key, val),
+            None => {
+                self.set_local(key, val);
+            }
         }
     }
 
@@ -86,8 +88,8 @@ where
         self.scopes.last().unwrap().get(name)
     }
 
-    pub fn set_local(&mut self, name: K, val: V) {
-        self.scopes.last_mut().unwrap().insert(name, val);
+    pub fn set_local(&mut self, name: K, val: V) -> Option<V> {
+        self.scopes.last_mut().unwrap().insert(name, val)
     }
 
     pub fn cur_scope_len(&self) -> usize {

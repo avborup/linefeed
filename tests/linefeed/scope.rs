@@ -76,5 +76,5 @@ eval_and_assert!(
         x = x + 1; # error
     "#},
     empty(), // compilation fails, so no output
-    contains("Error: No such variable 'x' in scope")
+    contains("Type mismatch: Cannot add types 'uninitialized' and 'number'")
 );

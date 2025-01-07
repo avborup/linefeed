@@ -138,8 +138,19 @@ where
                     self.pop_stack()?;
                 }
 
+                Bytecode::RemoveIndex => {
+                    let index = self.pop_stack()?.address()?;
+                    debug_assert!(index < self.stack.len());
+                    self.stack.remove(index);
+                }
+
                 Bytecode::Swap => {
                     self.swap();
+                }
+
+                Bytecode::Dup => {
+                    let val = self.peek_stack()?.clone();
+                    self.push_stack(val);
                 }
 
                 Bytecode::GetStackPtr => {
@@ -329,6 +340,8 @@ where
             match val {
                 RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
                 RuntimeValue::Str(s) => eprint!("{}", format!("{s:?}").green()),
+                RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
+                RuntimeValue::List(l) => eprint!("{}", format!("[..; {}]", l.len()).blue()),
                 _ => eprint!("{}", format!("{val}").blue()),
             }
         }
