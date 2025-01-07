@@ -46,7 +46,7 @@ impl Iterator for RangeIterator {
     type Item = RuntimeValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        assert!(self.range.step.abs() == 1);
+        debug_assert!(self.range.step.abs() == 1);
 
         let (value, step, end) = (self.value, self.range.step, self.range.end);
 

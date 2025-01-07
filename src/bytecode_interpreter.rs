@@ -304,7 +304,7 @@ where
     }
 
     pub fn swap(&mut self) {
-        assert!(self.stack.len() >= 2);
+        debug_assert!(self.stack.len() >= 2);
         let len = self.stack.len();
         self.stack.swap(len - 1, len - 2);
     }

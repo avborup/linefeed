@@ -46,7 +46,7 @@ where
 
     pub fn pop_scope(&mut self) {
         self.scopes.pop();
-        assert!(!self.scopes.is_empty(), "Cannot pop the last scope");
+        debug_assert!(!self.scopes.is_empty(), "Cannot pop the last scope");
     }
 
     pub fn get(&self, key: &K) -> Option<VarType<&V>> {
@@ -100,7 +100,7 @@ where
 
     pub fn remove_local(&mut self, name: &K) {
         let res = self.scopes.last_mut().unwrap().remove(name);
-        assert!(
+        debug_assert!(
             res.is_some(),
             "Variable {name:?} not found in the current scope"
         );
