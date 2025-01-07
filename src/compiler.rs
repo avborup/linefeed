@@ -338,6 +338,9 @@ impl Compiler {
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
             }
 
+            // For an explanation of the stack layout for while loops, see the comment below for
+            // for loops. The only difference is that no iterator is needed, so the stack pointer
+            // is not added with 1.
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
@@ -353,15 +356,11 @@ impl Compiler {
                     .then_instruction(Pop, expr.1.clone());
 
                 let program = register_loop
-                    // result of last iteration: null if no iterations or popped and replaced by
-                    // upcoming iterations
                     .then_instruction(Value(IrValue::Null), expr.1.clone())
                     .then_instruction(Instruction::Label(cond_label), expr.1.clone())
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.1.clone())
                     .then_program(self.compile_expr(body)?)
-                    // last expression in the block will leave a new value on the stack, so pop
-                    // the current "last value" off
                     .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.1.clone())
                     .then_instructions(
                         vec![Instruction::Label(end_label), Swap, Pop],
@@ -382,6 +381,7 @@ impl Compiler {
             // So, to initialise:
             //    1. (the loop variable is already allocated at the start of the function)
             //    2. Allocate tmp OLD_SP, the stack pointer at the start of the loop (for continue/break)
+            //       - The stack pointer should point to the "null" position above.
             //    3. Allocate tmp ITERATOR, the iterator for the loop
             //    4. Place an output value on the stack, initially null in case of no iterations
             //
@@ -396,7 +396,9 @@ impl Compiler {
             // For all this, it is crucial that all variables in scope are pre-allocated!
             // Otherwise, the top of the stack is messed up by variables allocated inside the loop.
             //
-            // FIXME: Handle continue/break in the above
+            // To perform break/continue, simply truncate the stack to after ITERATOR (thus
+            // discarding all local state after the iteration was started), then jumping to either
+            // the next iteration or the end of the loop.
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
@@ -602,6 +604,7 @@ impl Compiler {
     }
 
     pub fn cur_loop_id(&self) -> usize {
+        dbg!(self.local_loop_vars().collect::<Vec<_>>());
         self.local_loop_vars()
             .max_by_key(|(_, offset)| **offset)
             .map(|(name, _)| {
