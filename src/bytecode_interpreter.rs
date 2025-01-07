@@ -341,6 +341,7 @@ where
                 RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
                 RuntimeValue::Str(s) => eprint!("{}", format!("{s:?}").green()),
                 RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
+                RuntimeValue::List(l) => eprint!("{}", format!("[..; {}]", l.len()).blue()),
                 _ => eprint!("{}", format!("{val}").blue()),
             }
         }
