@@ -90,7 +90,8 @@ pub struct Compiler {
 impl Compiler {
     pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program<Bytecode>, CompileError> {
         let program = self
-            .compile_expr(expr)?
+            .compile_allocation_for_all_vars_in_scope(expr)
+            .then_program(self.compile_expr(expr)?)
             .then_instruction(Stop, expr.1.end..expr.1.end);
 
         assert_eq!(program.instructions.len(), program.source_map.len());
@@ -142,6 +143,7 @@ impl Compiler {
                         ],
                         expr.1.clone(),
                     )
+                    .then_program(self.compile_allocation_for_all_vars_in_scope(&func.body))
                     .then_program(self.compile_expr(&func.body)?)
                     .then_instructions(
                         vec![Return, Instruction::Label(post_func_label)],
@@ -415,14 +417,6 @@ impl Compiler {
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
-                let register_loop_var = self
-                    .compile_var_assign(
-                        expr,
-                        loop_var,
-                        Program::from_instructions(vec![Value(IrValue::Null)], expr.1.clone()),
-                    )?
-                    .then_instruction(Pop, expr.1.clone());
-
                 let baseline_var_offset = self.vars.cur_scope_len();
 
                 let loop_id = self.new_loop_id();
@@ -456,8 +450,7 @@ impl Compiler {
                     )?
                     .then_instruction(Pop, expr.1.clone());
 
-                let program = register_loop_var
-                    .then_program(register_loop)
+                let program = register_loop
                     .then_program(register_iterable)
                     .then_program(register_output)
                     .then_instruction(Instruction::Label(iter_label), expr.1.clone())
@@ -487,10 +480,10 @@ impl Compiler {
                         .then_instructions(vec![Pop, Goto(iter_label)], expr.1.clone()),
                     )
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
-                    .then_program(self.compile_var_load(expr, &loop_name)?.then_instructions(
-                        vec![Dup, Dup, RemoveIndex, RemoveIndex, RemoveIndex],
-                        expr.1.clone(),
-                    ));
+                    .then_program(
+                        self.compile_var_load(expr, &loop_name)?
+                            .then_instructions(vec![Dup, RemoveIndex, RemoveIndex], expr.1.clone()),
+                    );
 
                 self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
@@ -568,7 +561,7 @@ impl Compiler {
         // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
         // variables are allowed.
         let var = self.vars.get(name).ok_or_else(|| CompileError::Spanned {
-            span: expr.1.clone(),
+            span: expr.span(),
             msg: format!("No such variable '{name}' in scope"),
         })?;
 
@@ -579,7 +572,7 @@ impl Compiler {
             VarType::Global(addr) => vec![ConstantInt(*addr as isize)],
         };
 
-        Ok(Program::from_instructions(addr_instrs, expr.1.clone()))
+        Ok(Program::from_instructions(addr_instrs, expr.span()))
     }
 
     fn compile_var_load(
@@ -589,10 +582,9 @@ impl Compiler {
     ) -> Result<Program<Instruction>, CompileError> {
         Ok(self
             .compile_var_address(name, expr)?
-            .then_instruction(Load, expr.1.clone()))
+            .then_instruction(Load, expr.span()))
     }
 
-    // FIXME: Same as above
     fn compile_var_assign(
         &mut self,
         expr: &Spanned<Expr>,
@@ -602,7 +594,9 @@ impl Compiler {
         let mut program = Program::new();
 
         if self.vars.get(name).is_none() {
-            // Allocate stack space for new local variable if it doesn't exist
+            // Allocate stack space for new local variable if it doesn't exist. Should only be used
+            // for temporary compiler variables, such as loop iterators and storing stack pointers.
+            debug_assert!(name.starts_with("!"));
 
             program.add_instruction(Value(IrValue::Uninit), expr.1.clone());
 
@@ -613,7 +607,24 @@ impl Compiler {
         Ok(program
             .then_program(self.compile_var_address(name, expr)?)
             .then_program(value_program)
-            .then_instruction(Store, expr.1.clone()))
+            .then_instruction(Store, expr.span()))
+    }
+
+    fn compile_allocation_for_all_vars_in_scope(
+        &mut self,
+        expr: &Spanned<Expr>,
+    ) -> Program<Instruction> {
+        find_all_assignments(expr)
+            .into_iter()
+            .fold(Program::new(), |program, assignment| {
+                if self.vars.get(&assignment.0).is_some() {
+                    return program;
+                }
+
+                self.vars
+                    .set_local(assignment.0.to_string(), self.vars.cur_scope_len());
+                program.then_instruction(Value(IrValue::Uninit), assignment.span())
+            })
     }
 
     pub fn new_label(&mut self) -> Label {
