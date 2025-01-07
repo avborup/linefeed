@@ -351,21 +351,18 @@ impl Compiler {
                     .compile_var_assign(
                         expr,
                         &loop_name,
-                        Program::from_instructions(vec![GetStackPtr], expr.1.clone()),
+                        Program::from_instructions(vec![GetStackPtr], expr.span()),
                     )?
-                    .then_instruction(Pop, expr.1.clone());
+                    .then_instruction(Pop, expr.span());
 
                 let program = register_loop
-                    .then_instruction(Value(IrValue::Null), expr.1.clone())
-                    .then_instruction(Instruction::Label(cond_label), expr.1.clone())
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(cond_label), expr.span())
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.1.clone())
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.1.clone())
-                    .then_instructions(
-                        vec![Instruction::Label(end_label), Swap, Pop],
-                        expr.1.clone(),
-                    );
+                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
+                    .then_instructions(vec![Instruction::Label(end_label), Swap, Pop], expr.span());
 
                 self.vars.remove_local(&loop_name);
 
@@ -413,38 +410,38 @@ impl Compiler {
                         &loop_name,
                         Program::from_instructions(
                             vec![GetStackPtr, Value(IrValue::Int(1)), Add],
-                            expr.1.clone(),
+                            expr.span(),
                         ),
                     )?
-                    .then_instruction(Pop, expr.1.clone());
+                    .then_instruction(Pop, expr.span());
 
                 let iterable_name = format!("{loop_name}_iter");
                 let iterator = self
                     .compile_expr(iterable)?
-                    .then_instruction(ToIter, iterable.1.clone());
+                    .then_instruction(ToIter, iterable.span());
                 let register_iterable = self
                     .compile_var_assign(expr, &iterable_name, iterator)?
-                    .then_instruction(Pop, iterable.1.clone());
+                    .then_instruction(Pop, iterable.span());
 
                 let program = register_loop
                     .then_program(register_iterable)
-                    .then_instruction(Value(IrValue::Null), expr.1.clone())
-                    .then_instruction(Instruction::Label(iter_label), expr.1.clone())
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(
                         self.compile_var_load(expr, &iterable_name)?
-                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.1.clone()),
+                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span()),
                     )
                     .then_program(
                         self.compile_var_assign(
                             expr,
                             loop_var,
-                            Program::from_instruction(Swap, expr.1.clone()),
+                            Program::from_instruction(Swap, expr.span()),
                         )?
-                        .then_instruction(Pop, expr.1.clone()),
+                        .then_instruction(Pop, expr.span()),
                     )
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.1.clone())
-                    .then_instruction(Instruction::Label(end_label), expr.1.clone())
+                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
+                    .then_instruction(Instruction::Label(end_label), expr.span())
                     .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
 
                 self.vars.remove_local(&iterable_name);
