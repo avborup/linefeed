@@ -373,51 +373,34 @@ impl Compiler {
                 program
             }
 
-            // FIXME: Loops are brooooken
-            //   - Nested variables? Kaboom.
-            //   - Nested loops? Kaboom.
-            //   - Break/continue? Work flawlessly actually, since they clean up the stack.
-            //   - Nested loops leave an extra value on the stack per nested loop.
-            //   - Also an issue for while loops.
-            //   - Can't figure it out right now, so that's it for today.
-            //
             // The stack layout for a for loop is as follows:
-            //    Initialisation:     LOOP_VAR  OLD_SP  ITERATOR  OUTPUT
-            //    First iteration:    LOOP_VAR  OLD_SP  ITERATOR  OUTPUT  LAST_EXPR
-            //    Cleanup first:      LOOP_VAR  OLD_SP  ITERATOR  LAST_EXPR (<- into OUTPUT location)
-            //    Cleanup last:       LOOP_VAR  OUTPUT
+            //    Initialisation:     OLD_SP  ITERATOR  null
+            //    First iteration:    OLD_SP  ITERATOR  null  LAST_EXPR
+            //    Cleanup first:      OLD_SP  ITERATOR  LAST_EXPR
+            //    Cleanup last:       LAST_EXPR
             //
             // So, to initialise:
-            //    1. Allocate LOOP_VAR, the loop variable
-            //    2. Allocate OLD_SP, the stack pointer at the start of the loop (for continue/break)
-            //    3. Allocate ITERATOR, the iterator for the loop
-            //    4. Allocate OUTPUT, the result of the loop - i.e. "last expression"
+            //    1. (the loop variable is already allocated at the start of the function)
+            //    2. Allocate tmp OLD_SP, the stack pointer at the start of the loop (for continue/break)
+            //    3. Allocate tmp ITERATOR, the iterator for the loop
+            //    4. Allocate tmp OUTPUT, the result of the loop - i.e. "last expression"
             //
             // At the end of each iteration, replace the "last expression" with the new value:
-            //    1. Store LAST_EXPR in OUTPUT variable
-            //    2. Pop it off the stack
-            //
-            // Why use a temporary variable for the output? Because OUTPUT might not be the top of
-            // the stack after an iteration. For example, what happens to the stack if variables
-            // are allocated inside the loop?
-            //    Initialisation:     LOOP_VAR  OLD_SP  ITERATOR  OUTPUT
-            //    First iteration:    LOOP_VAR  OLD_SP  ITERATOR  OUTPUT  FOO_VAR  BAR_VAR  LAST_EXPR
-            //    Cleanup first:      LOOP_VAR  OLD_SP  ITERATOR  LAST_EXPR  FOO_VAR  BAR_VAR
-            //    Cleanup last:       LOOP_VAR  FOO_VAR  BAR_VAR  OUTPUT
+            //    1. Just swap, pop
             //
             // To finalise loop and clean up temporary variables:
-            //    1. Fix the stack, discarding OLD_SP and ITERATOR and moving OUTPUT to the top:
-            //      1. Load OUTPUT onto the top of the stack
-            //      2. Remove value at OLD_SP thrice to remove the three temporary variables
-            //    2. Fix compiler variable state:
-            //      1. Un-register variables for OLD_SP, ITERATOR, and OUTPUT in scope
-            //      2. Shift all local addresses after LOOP_VAR down (because of the un-register)
+            //    1. Fix the stack, discarding OLD_SP and ITERATOR:
+            //      - Swap, pop, swap, pop
+            //    2. Fix compiler variable state un-register variables for OLD_SP, ITERATOR, and OUTPUT in scope
+            //
+            // For all this, it is crucial that all variables in scope are pre-allocated!
+            // Otherwise, the top of the stack is messed up by variables allocated inside the loop.
             //
             // FIXME: Handle continue/break in the above
             Expr::For(loop_var, iterable, body) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
-                let baseline_var_offset = self.vars.cur_scope_len();
+                let scope_size_before = self.vars.cur_scope_len();
 
                 let loop_id = self.new_loop_id();
                 let loop_name = self.loop_name(loop_id);
@@ -459,10 +442,6 @@ impl Compiler {
                             .then_instructions(vec![NextIter, IfFalse(end_label)], expr.1.clone()),
                     )
                     .then_program(
-                        // FIXME: problem here is that variables are being allocated on each
-                        // iteration... but we only need it to be allocated on the FIRST iteration.
-                        // Subsequent iterations should just use the existing variable. FFS. Do we
-                        // need to analyse expression to get all declared variables?
                         self.compile_var_assign(
                             expr,
                             loop_var,
@@ -480,30 +459,16 @@ impl Compiler {
                         .then_instructions(vec![Pop, Goto(iter_label)], expr.1.clone()),
                     )
                     .then_instruction(Instruction::Label(end_label), expr.1.clone())
-                    .then_program(
-                        self.compile_var_load(expr, &loop_name)?
-                            .then_instructions(vec![Dup, RemoveIndex, RemoveIndex], expr.1.clone()),
-                    );
+                    .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
 
                 self.vars.remove_local(&iterable_name);
                 self.vars.remove_local(&loop_name);
                 self.vars.remove_local(&output_name);
 
-                const NUM_TEMP_VARS: usize = 3;
-
-                let shifted_var_offsets = self
-                    .vars
-                    .iter_local()
-                    .filter(|(_, &offset)| offset > baseline_var_offset)
-                    .map(|(name, offset)| (name.clone(), offset - NUM_TEMP_VARS))
-                    .collect::<Vec<_>>();
-
-                dbg!(baseline_var_offset, &shifted_var_offsets);
-
-                shifted_var_offsets.into_iter().for_each(|(name, offset)| {
-                    let old_val = self.vars.set_local(name, offset);
-                    debug_assert!(old_val.is_some());
-                });
+                debug_assert!(
+                    self.vars.cur_scope_len() == scope_size_before,
+                    "Variables were left on the stack within loop"
+                );
 
                 program
             }
