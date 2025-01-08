@@ -180,7 +180,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Call(Box::new(f), args.0), span)
                 });
 
-            let method_call = atom
+            let method_call = (func_call.clone().or(atom.clone()))
                 .clone()
                 .then(
                     just(Token::Ctrl('.'))

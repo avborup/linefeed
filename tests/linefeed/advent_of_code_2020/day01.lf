@@ -1,4 +1,4 @@
-inp = (input()).lines();
+inp = input().lines();
 n = 6;
 
 rep = [];
