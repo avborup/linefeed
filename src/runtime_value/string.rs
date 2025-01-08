@@ -34,6 +34,16 @@ impl RuntimeString {
         self.map_str(|s| s.to_uppercase())
     }
 
+    pub fn split(&self, delimiter: &RuntimeString) -> RuntimeList {
+        let parts = self
+            .as_str()
+            .split(delimiter.as_str())
+            .map(|s| RuntimeValue::Str(Self::new(s)))
+            .collect();
+
+        RuntimeList::from_vec(parts)
+    }
+
     pub fn concat(&self, other: &RuntimeString) -> Self {
         Self::new(format!("{}{}", self.as_str(), other.as_str()))
     }

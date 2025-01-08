@@ -3,6 +3,7 @@ pub enum Method {
     Append,
     ToUpperCase,
     ToLowerCase,
+    Split,
 }
 
 impl Method {
@@ -11,6 +12,7 @@ impl Method {
             Method::Append => "append",
             Method::ToUpperCase => "upper",
             Method::ToLowerCase => "lower",
+            Method::Split => "split",
         }
     }
 
@@ -19,6 +21,7 @@ impl Method {
             "append" => Some(Method::Append),
             "upper" => Some(Method::ToUpperCase),
             "lower" => Some(Method::ToLowerCase),
+            "split" => Some(Method::Split),
             _ => None,
         }
     }
@@ -29,6 +32,7 @@ impl Method {
             Self::Append => Some(1),
             Self::ToUpperCase => Some(0),
             Self::ToLowerCase => Some(0),
+            Self::Split => Some(1),
         }
     }
 }

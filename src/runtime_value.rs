@@ -354,4 +354,21 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::Str(s.to_lowercase()))
     }
+
+    pub fn split(&self, by: &Self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Str(s) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Split, self));
+        };
+
+        let RuntimeValue::Str(delimiter) = by else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot split string by type '{}'",
+                by.kind_str()
+            )));
+        };
+
+        let list = s.split(delimiter);
+
+        Ok(RuntimeValue::List(list))
+    }
 }

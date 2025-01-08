@@ -68,6 +68,7 @@ pub enum Bytecode {
     Append,
     ToUpperCase,
     ToLowerCase,
+    Split,
 }
 
 impl Bytecode {
@@ -120,6 +121,7 @@ impl Bytecode {
                 Method::Append => Bytecode::Append,
                 Method::ToUpperCase => Bytecode::ToUpperCase,
                 Method::ToLowerCase => Bytecode::ToLowerCase,
+                Method::Split => Bytecode::Split,
             },
         };
 

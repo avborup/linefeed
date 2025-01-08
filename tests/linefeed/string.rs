@@ -29,3 +29,22 @@ eval_and_assert!(
     equals("hi mom!"),
     empty()
 );
+
+eval_and_assert!(
+    split_works_for_newline,
+    indoc! {r#"
+        res = "line 1\nline 2\nline 3\n".split("\n");
+        print(res);
+    "#},
+    equals(r#"["line 1", "line 2", "line 3", ""]"#),
+    empty()
+);
+
+eval_and_assert!(
+    split_works_for_empty_delimiter,
+    indoc! {r#"
+        print("abcde".split(""));
+    "#},
+    equals(r#"["", "a", "b", "c", "d", "e", ""]"#),
+    empty()
+);
