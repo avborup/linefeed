@@ -10,22 +10,24 @@ use crate::{
     runtime_value::{string::RuntimeString, RuntimeValue},
 };
 
-pub struct BytecodeInterpreter<O: Write, E: Write> {
+pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
     program: Program<Bytecode>,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
     pc: usize,
     bp: usize,
+    pub stdin: I,
     pub stdout: O,
     pub stderr: E,
     pub instructions_executed: usize,
 }
 
-impl BytecodeInterpreter<std::io::Stdout, std::io::Stderr> {
+impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
     pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
             stack: vec![],
+            stdin: std::io::stdin(),
             stdout: std::io::stdout(),
             stderr: std::io::stderr(),
             pc: 0,
@@ -50,19 +52,22 @@ macro_rules! unary_mapper_method {
     }};
 }
 
-impl<O, E> BytecodeInterpreter<O, E>
+impl<I, O, E> BytecodeInterpreter<I, O, E>
 where
+    I: Read,
     O: Write,
     E: Write,
 {
-    pub fn with_output<OO: Write, EE: Write>(
+    pub fn with_handles<II: Read, OO: Write, EE: Write>(
         self,
+        stdin: II,
         stdout: OO,
         stderr: EE,
-    ) -> BytecodeInterpreter<OO, EE> {
+    ) -> BytecodeInterpreter<II, OO, EE> {
         BytecodeInterpreter {
             program: self.program,
             stack: self.stack,
+            stdin,
             stdout,
             stderr,
             pc: self.pc,
@@ -286,7 +291,7 @@ where
 
                 Bytecode::ReadInput => {
                     let mut input = String::new();
-                    std::io::stdin().read_to_string(&mut input).map_err(|e| {
+                    self.stdin.read_to_string(&mut input).map_err(|e| {
                         RuntimeError::InternalBug(format!("Failed to read stdin: {e}"))
                     })?;
 

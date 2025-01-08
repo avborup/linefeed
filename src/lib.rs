@@ -1,4 +1,4 @@
-use std::io::{self, Write};
+use std::io::{self, Read, Write};
 
 use ariadne::{Color, Fmt, Label, Report, ReportKind, Source};
 use chumsky::{error::Simple, Parser, Stream};
@@ -26,12 +26,18 @@ pub mod scoped_map;
 pub mod stdlib_fn;
 
 pub fn run(src: impl AsRef<str>) {
+    let mut stdin = io::stdin();
     let mut stdout = io::stdout();
     let mut stderr = io::stderr();
-    run_with_output(src, &mut stdout, &mut stderr);
+    run_with_handles(src, &mut stdin, &mut stdout, &mut stderr);
 }
 
-pub fn run_with_output(src: impl AsRef<str>, mut stdout: impl Write, mut stderr: impl Write) {
+pub fn run_with_handles(
+    src: impl AsRef<str>,
+    mut stdin: impl Read,
+    mut stdout: impl Write,
+    mut stderr: impl Write,
+) {
     let mut compiler = Compiler::default();
 
     let parse_start = Instant::now();
@@ -62,7 +68,7 @@ pub fn run_with_output(src: impl AsRef<str>, mut stdout: impl Write, mut stderr:
     let run_start = Instant::now();
 
     let mut bytecode_interpreter =
-        BytecodeInterpreter::new(program).with_output(&mut stdout, &mut stderr);
+        BytecodeInterpreter::new(program).with_handles(&mut stdin, &mut stdout, &mut stderr);
 
     let res = bytecode_interpreter
         .run()
