@@ -48,3 +48,21 @@ eval_and_assert!(
     equals(r#"["", "a", "b", "c", "d", "e", ""]"#),
     empty()
 );
+
+eval_and_assert!(
+    string_lines_works,
+    indoc! {r#"
+        # Trailing newline
+        res1 = "line 1\nline 2\nline 3\n".lines();
+        print(res1);
+
+        # Same as non-trailing newline
+        res2 = "line 1\nline 2\nline 3".lines();
+        print(res2);
+    "#},
+    equals(indoc! {r#"
+        ["line 1", "line 2", "line 3"]
+        ["line 1", "line 2", "line 3"]
+    "#}),
+    empty()
+);

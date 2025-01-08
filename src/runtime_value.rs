@@ -371,4 +371,12 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::List(list))
     }
+
+    pub fn lines(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Str(s) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Split, self));
+        };
+
+        Ok(RuntimeValue::List(s.lines()))
+    }
 }

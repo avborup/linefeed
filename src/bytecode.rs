@@ -69,6 +69,7 @@ pub enum Bytecode {
     ToUpperCase,
     ToLowerCase,
     Split,
+    SplitLines,
 }
 
 impl Bytecode {
@@ -122,6 +123,7 @@ impl Bytecode {
                 Method::ToUpperCase => Bytecode::ToUpperCase,
                 Method::ToLowerCase => Bytecode::ToLowerCase,
                 Method::Split => Bytecode::Split,
+                Method::SplitLines => Bytecode::SplitLines,
             },
         };
 

@@ -4,6 +4,7 @@ pub enum Method {
     ToUpperCase,
     ToLowerCase,
     Split,
+    SplitLines,
 }
 
 impl Method {
@@ -13,6 +14,7 @@ impl Method {
             Method::ToUpperCase => "upper",
             Method::ToLowerCase => "lower",
             Method::Split => "split",
+            Method::SplitLines => "lines",
         }
     }
 
@@ -22,6 +24,7 @@ impl Method {
             "upper" => Some(Method::ToUpperCase),
             "lower" => Some(Method::ToLowerCase),
             "split" => Some(Method::Split),
+            "lines" => Some(Method::SplitLines),
             _ => None,
         }
     }
@@ -33,6 +36,7 @@ impl Method {
             Self::ToUpperCase => Some(0),
             Self::ToLowerCase => Some(0),
             Self::Split => Some(1),
+            Self::SplitLines => Some(0),
         }
     }
 }

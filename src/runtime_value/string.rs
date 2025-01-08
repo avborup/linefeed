@@ -44,6 +44,16 @@ impl RuntimeString {
         RuntimeList::from_vec(parts)
     }
 
+    pub fn lines(&self) -> RuntimeList {
+        let parts = self
+            .as_str()
+            .lines()
+            .map(|s| RuntimeValue::Str(Self::new(s)))
+            .collect();
+
+        RuntimeList::from_vec(parts)
+    }
+
     pub fn concat(&self, other: &RuntimeString) -> Self {
         Self::new(format!("{}{}", self.as_str(), other.as_str()))
     }
