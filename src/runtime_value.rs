@@ -227,24 +227,25 @@ impl RuntimeValue {
     }
 }
 
+fn write_items<'a, T: std::fmt::Display>(
+    f: &mut std::fmt::Formatter,
+    items: impl Iterator<Item = T>,
+    formatter: impl Fn(&mut std::fmt::Formatter, &T) -> std::fmt::Result,
+) -> std::fmt::Result {
+    let mut first = true;
+    for x in items {
+        if !first {
+            write!(f, ", ")?;
+        }
+        first = false;
+
+        formatter(f, &x)?;
+    }
+    Ok(())
+}
+
 impl std::fmt::Display for RuntimeValue {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        fn write_items<T: std::fmt::Display>(
-            f: &mut std::fmt::Formatter,
-            items: impl Iterator<Item = T>,
-        ) -> std::fmt::Result {
-            let mut first = true;
-            for x in items {
-                if !first {
-                    write!(f, ", ")?;
-                }
-                first = false;
-
-                write!(f, "{x}")?;
-            }
-            Ok(())
-        }
-
         match self {
             RuntimeValue::Null => write!(f, "null"),
             RuntimeValue::Uninit => write!(f, "uninitialized"),
@@ -254,18 +255,54 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::Str(s) => write!(f, "{s}"),
             RuntimeValue::List(xs) => {
                 write!(f, "[")?;
-                write_items(f, xs.as_slice().iter())?;
+                write_items(f, xs.as_slice().iter(), |f, x| x.repr_fmt(f))?;
                 write!(f, "]")
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
-                write_items(f, xs.borrow().iter())?;
+                write_items(f, xs.borrow().iter(), |f, x| x.repr_fmt(f))?;
                 write!(f, "}}")
             }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
             RuntimeValue::Range(range) => write!(f, "{range}"),
             RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
         }
+    }
+}
+
+impl RuntimeValue {
+    /// The "repr" string is the equivalent of the Rust Debug format, but from the POV of the
+    /// language user. Much like Python. We don't use the Rust Debug format because we want it for
+    /// debugging the compiler, interpreter, etc.
+    pub fn repr_fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            RuntimeValue::Str(s) => write!(f, "{:?}", s.as_str()),
+            _ => {
+                use std::fmt::Display;
+                self.fmt(f)
+            }
+        }
+    }
+
+    pub fn repr_string(&self) -> String {
+        use std::fmt;
+
+        // A little hack to obtain access to a concrete formatter instance:
+        // https://users.rust-lang.org/t/reusing-an-fmt-formatter/8531/4
+        pub struct Fmt<F>(pub F)
+        where
+            F: Fn(&mut fmt::Formatter) -> fmt::Result;
+
+        impl<F> fmt::Debug for Fmt<F>
+        where
+            F: Fn(&mut fmt::Formatter) -> fmt::Result,
+        {
+            fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                (self.0)(f)
+            }
+        }
+
+        format!("{:?}", Fmt(|f| self.repr_fmt(f)))
     }
 }
 
