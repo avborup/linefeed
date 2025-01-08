@@ -1,12 +1,10 @@
-rep = [
-  1721,
-  979,
-  366,
-  299,
-  675,
-  1456,
-];
+inp = (input()).lines();
 n = 6;
+
+rep = [];
+for i in inp {
+  rep.append(int(i));
+};
 
 part1 = "?";
 part2 = "?";
