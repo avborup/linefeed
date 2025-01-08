@@ -56,6 +56,7 @@ pub enum Bytecode {
 
     // Builtins
     PrintValue(usize),
+    ReadInput,
     Index,
     NextIter,
     ToIter,
@@ -110,6 +111,7 @@ impl Bytecode {
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::StdlibCall(func, num_args) => match func {
                 StdlibFn::Print => Bytecode::PrintValue(num_args),
+                StdlibFn::Input => Bytecode::ReadInput,
             },
             Instruction::MethodCall(method, _num_args) => match method {
                 Method::Append => Bytecode::Append,

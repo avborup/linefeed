@@ -1,4 +1,7 @@
-use std::io::Write;
+use std::{
+    io::{Read, Write},
+    rc::Rc,
+};
 
 use yansi::Paint;
 
@@ -89,27 +92,6 @@ where
 
             match instr {
                 Bytecode::Stop => break Ok(()),
-
-                Bytecode::PrintValue(num_args) => {
-                    let num_args = *num_args;
-
-                    let vals = (0..num_args)
-                        .map(|_| self.pop_stack())
-                        .collect::<Result<Vec<_>, _>>()?;
-
-                    let mut last_val = None;
-                    for val in vals.into_iter().rev() {
-                        if last_val.is_some() {
-                            write!(self.stdout, " ").unwrap();
-                        }
-                        write!(self.stdout, "{val}").unwrap();
-
-                        last_val = Some(val);
-                    }
-                    writeln!(self.stdout).unwrap();
-
-                    self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
-                }
 
                 Bytecode::ConstantInt(i) => {
                     self.push_stack(RuntimeValue::Int(*i));
@@ -275,9 +257,38 @@ where
                 }
 
                 Bytecode::ToIter => unary_mapper_method!(self, to_iter),
-
                 Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
+
+                Bytecode::PrintValue(num_args) => {
+                    let num_args = *num_args;
+
+                    let vals = (0..num_args)
+                        .map(|_| self.pop_stack())
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let mut last_val = None;
+                    for val in vals.into_iter().rev() {
+                        if last_val.is_some() {
+                            write!(self.stdout, " ").unwrap();
+                        }
+                        write!(self.stdout, "{val}").unwrap();
+
+                        last_val = Some(val);
+                    }
+                    writeln!(self.stdout).unwrap();
+
+                    self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
+                }
+
+                Bytecode::ReadInput => {
+                    let mut input = String::new();
+                    std::io::stdin().read_to_string(&mut input).map_err(|e| {
+                        RuntimeError::InternalBug(format!("Failed to read stdin: {e}"))
+                    })?;
+
+                    self.push_stack(RuntimeValue::Str(Rc::new(input)));
+                }
 
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
