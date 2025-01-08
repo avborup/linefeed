@@ -470,6 +470,19 @@ impl Compiler {
                         msg: format!("Method {method_name:?} is unknown"),
                     })?;
 
+                if let Some(expected_num_args) = method.num_args() {
+                    if args.len() != expected_num_args {
+                        return Err(CompileError::Spanned {
+                            span: expr.span(),
+                            msg: format!(
+                                "Method {} expects {expected_num_args} arguments, but got {}",
+                                method.name(),
+                                args.len()
+                            ),
+                        });
+                    }
+                }
+
                 let program = args
                     .iter()
                     .map(|arg| self.compile_expr(arg))

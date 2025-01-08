@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -27,4 +27,14 @@ eval_and_assert!(
     "#},
     equals("[1, 2, 3, 4]"),
     empty()
+);
+
+eval_and_assert!(
+    append_fails_on_no_argument,
+    indoc! {r#"
+        foo = [1, 2];
+        foo.append();
+    "#},
+    empty(),
+    contains("Method append expects 1 arguments, but got 0")
 );

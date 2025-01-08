@@ -23,7 +23,7 @@ impl Method {
         }
     }
 
-    /// Returns the number of arguments this function expects or `None` if it is variadic.
+    /// Returns the number of arguments this method expects or `None` if it is variadic.
     pub fn num_args(&self) -> Option<usize> {
         match self {
             Self::Append => Some(1),
