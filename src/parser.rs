@@ -139,13 +139,6 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .or(let_)
                 .or(ident.map(Expr::Local))
                 .or(list)
-                // In Nano Rust, `print` is just a keyword, just like Python 2, for simplicity
-                .or(just(Token::Print)
-                    .ignore_then(
-                        expr.clone()
-                            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))),
-                    )
-                    .map(|expr| Expr::Print(Box::new(expr))))
                 .map_with_span(Spanned)
                 // Atoms can also just be normal expressions, but surrounded with parentheses
                 .or(expr

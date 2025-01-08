@@ -12,6 +12,7 @@ use crate::{
     method::Method,
     runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
     scoped_map::{ScopedMap, VarType},
+    stdlib_fn::StdlibFn,
 };
 
 #[derive(Debug, Clone)]
@@ -61,11 +62,9 @@ pub enum Instruction {
     Call(usize),
     Return,
 
-    // Methods
-    Method(Method),
-
-    // Builtins
-    PrintValue,
+    // Standard library functions and built-ins
+    StdlibCall(StdlibFn, usize),
+    MethodCall(Method, usize),
     Index,
     NextIter,
     ToIter,
@@ -156,6 +155,12 @@ impl Compiler {
             }
 
             Expr::Call(func, args) => {
+                if let Expr::Local(name) = &func.0 {
+                    if let Some(stdlib_fn) = StdlibFn::from_name(name) {
+                        return self.compile_stdlib_call(stdlib_fn, args, expr);
+                    }
+                }
+
                 let func_program = self.compile_expr(func)?;
 
                 args.iter()
@@ -211,10 +216,6 @@ impl Compiler {
 
                 program
             }
-
-            Expr::Print(sub_expr) => self
-                .compile_expr(sub_expr)?
-                .then_instruction(PrintValue, expr.span()),
 
             Expr::Block(sub_expr) => self.compile_expr(sub_expr)?,
 
@@ -309,7 +310,7 @@ impl Compiler {
                     ),
                     |acc, p| {
                         acc.then_program(p)
-                            .then_instruction(Method(Method::Append), expr.span())
+                            .then_instruction(MethodCall(Method::Append, 1), expr.span())
                     },
                 ),
 
@@ -463,7 +464,7 @@ impl Compiler {
             Expr::MethodCall(target, method_name, args) => {
                 let target_program = self.compile_expr(target)?;
 
-                let method_instr =
+                let method =
                     Method::from_name(method_name).ok_or_else(|| CompileError::Spanned {
                         span: expr.span(),
                         msg: format!("Method {method_name:?} is unknown"),
@@ -476,8 +477,7 @@ impl Compiler {
                     .into_iter()
                     .fold(target_program, Program::then_program);
 
-                // TODO: pass along how many args were given
-                program.then_instruction(Method(method_instr), expr.span())
+                program.then_instruction(MethodCall(method, args.len()), expr.span())
             }
 
             Expr::ParseError => {
@@ -643,6 +643,35 @@ impl Compiler {
             .compile_var_load(expr, &loop_name)?
             .then_instructions(vec![SetStackPtr, Goto(jump_to)], expr.span()))
     }
+
+    fn compile_stdlib_call(
+        &mut self,
+        stdlib_fn: StdlibFn,
+        args: &[Spanned<Expr>],
+        expr: &Spanned<Expr>,
+    ) -> Result<Program<Instruction>, CompileError> {
+        if let Some(expected_num_args) = stdlib_fn.num_args() {
+            if args.len() != expected_num_args {
+                return Err(CompileError::Spanned {
+                    span: expr.span(),
+                    msg: format!(
+                        "Function {} expects {expected_num_args} arguments, but got {}",
+                        stdlib_fn.name(),
+                        args.len()
+                    ),
+                });
+            }
+        }
+
+        let program = args
+            .iter()
+            .map(|arg| self.compile_expr(arg))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .fold(Program::new(), Program::then_program);
+
+        Ok(program.then_instruction(StdlibCall(stdlib_fn, args.len()), expr.span()))
+    }
 }
 
 fn repeat_span(span: Span, count: usize) -> Vec<Span> {
@@ -806,8 +835,6 @@ fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             Expr::Block(sub_expr) => find_all_assignments_inner(sub_expr),
 
             Expr::Return(val) => find_all_assignments_inner(val),
-
-            Expr::Print(sub_expr) => find_all_assignments_inner(sub_expr),
         }
     }
 

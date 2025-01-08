@@ -9,6 +9,7 @@ mod logical;
 mod math;
 mod method;
 mod postfix_control_flow;
+mod print;
 mod return_;
 mod scope;
 mod string;

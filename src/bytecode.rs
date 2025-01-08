@@ -5,6 +5,7 @@ use crate::{
     ir_value::IrValue,
     method::Method,
     runtime_value::{function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, RuntimeValue},
+    stdlib_fn::StdlibFn,
 };
 
 #[derive(Debug, Clone)]
@@ -54,7 +55,7 @@ pub enum Bytecode {
     Return,
 
     // Builtins
-    PrintValue,
+    PrintValue(usize),
     Index,
     NextIter,
     ToIter,
@@ -104,11 +105,13 @@ impl Bytecode {
             Instruction::SetStackPtr => Bytecode::SetStackPtr,
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
-            Instruction::PrintValue => Bytecode::PrintValue,
             Instruction::Index => Bytecode::Index,
             Instruction::NextIter => Bytecode::NextIter,
             Instruction::ToIter => Bytecode::ToIter,
-            Instruction::Method(method) => match method {
+            Instruction::StdlibCall(func, num_args) => match func {
+                StdlibFn::Print => Bytecode::PrintValue(num_args),
+            },
+            Instruction::MethodCall(method, _num_args) => match method {
                 Method::Append => Bytecode::Append,
                 Method::ToUpperCase => Bytecode::ToUpperCase,
                 Method::ToLowerCase => Bytecode::ToLowerCase,

@@ -165,12 +165,11 @@ impl<O: Write, E: Write> Interpreter<O, E> {
                 .iter()
                 .try_fold(Value::Null, |_, expr| self.eval_expr(expr))?,
 
-            Expr::Print(a) => {
-                let val = self.eval_expr(a)?;
-                writeln!(self.stdout, "{val}").unwrap();
-                val
-            }
-
+            // Expr::Print(a) => {
+            //     let val = self.eval_expr(a)?;
+            //     writeln!(self.stdout, "{val}").unwrap();
+            //     val
+            // }
             _ => unimplemented!("{:?}", expr.0),
         })
     }

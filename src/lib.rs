@@ -23,6 +23,7 @@ pub mod method;
 pub mod parser;
 pub mod runtime_value;
 pub mod scoped_map;
+pub mod stdlib_fn;
 
 pub fn run(src: impl AsRef<str>) {
     let mut stdout = io::stdout();

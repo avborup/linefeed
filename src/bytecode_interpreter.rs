@@ -90,10 +90,25 @@ where
             match instr {
                 Bytecode::Stop => break Ok(()),
 
-                Bytecode::PrintValue => {
-                    let val = self.pop_stack()?;
-                    writeln!(self.stdout, "{val}").unwrap();
-                    self.push_stack(val);
+                Bytecode::PrintValue(num_args) => {
+                    let num_args = *num_args;
+
+                    let vals = (0..num_args)
+                        .map(|_| self.pop_stack())
+                        .collect::<Result<Vec<_>, _>>()?;
+
+                    let mut last_val = None;
+                    for val in vals.into_iter().rev() {
+                        if last_val.is_some() {
+                            write!(self.stdout, " ").unwrap();
+                        }
+                        write!(self.stdout, "{val}").unwrap();
+
+                        last_val = Some(val);
+                    }
+                    writeln!(self.stdout).unwrap();
+
+                    self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
                 }
 
                 Bytecode::ConstantInt(i) => {

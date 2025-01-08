@@ -21,7 +21,6 @@ pub enum Expr {
     If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Block(Box<Spanned<Self>>),
     Sequence(Vec<Spanned<Self>>),
-    Print(Box<Spanned<Self>>),
     Return(Box<Spanned<Self>>),
     While(Box<Spanned<Self>>, Box<Spanned<Self>>),
     For(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
