@@ -1,12 +1,13 @@
-use std::{
-    io::{Read, Write},
-    rc::Rc,
-};
+use std::io::{Read, Write};
 
 use yansi::Paint;
 
 use crate::{
-    ast::Span, bytecode::Bytecode, compiler::Program, method::Method, runtime_value::RuntimeValue,
+    ast::Span,
+    bytecode::Bytecode,
+    compiler::Program,
+    method::Method,
+    runtime_value::{string::RuntimeString, RuntimeValue},
 };
 
 pub struct BytecodeInterpreter<O: Write, E: Write> {
@@ -287,7 +288,7 @@ where
                         RuntimeError::InternalBug(format!("Failed to read stdin: {e}"))
                     })?;
 
-                    self.push_stack(RuntimeValue::Str(Rc::new(input)));
+                    self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
 
                 to_implement => {
@@ -364,8 +365,8 @@ where
             }
 
             match val {
-                RuntimeValue::Int(i) => eprint!("{}", format!("{i}").yellow()),
-                RuntimeValue::Str(s) => eprint!("{}", format!("{s:?}").green()),
+                RuntimeValue::Int(_) => eprint!("{}", val.repr_string().yellow()),
+                RuntimeValue::Str(_) => eprint!("{}", val.repr_string().green()),
                 RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
                 RuntimeValue::List(l) => eprint!("{}", format!("[..; {}]", l.len()).blue()),
                 _ => eprint!("{}", format!("{val}").blue()),

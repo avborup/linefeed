@@ -6,6 +6,7 @@ use crate::{
     runtime_value::{
         function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
         number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, set::RuntimeSet,
+        string::RuntimeString,
     },
 };
 
@@ -16,6 +17,7 @@ pub mod number;
 pub mod operations;
 pub mod range;
 pub mod set;
+pub mod string;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue {
@@ -24,7 +26,7 @@ pub enum RuntimeValue {
     Bool(bool),
     Int(isize),
     Num(RuntimeNumber),
-    Str(Rc<String>),
+    Str(RuntimeString),
     List(RuntimeList),
     Set(RuntimeSet),
     Function(Rc<RuntimeFunction>),
@@ -59,12 +61,10 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) + (*b))),
-            (RuntimeValue::Str(a), RuntimeValue::Str(b)) => {
-                Ok(RuntimeValue::Str(Rc::new(format!("{a}{b}"))))
-            }
-            (RuntimeValue::Str(a), RuntimeValue::Num(b)) => {
-                Ok(RuntimeValue::Str(Rc::new(format!("{a}{b}"))))
-            }
+            (RuntimeValue::Str(a), RuntimeValue::Str(b)) => Ok(RuntimeValue::Str(a.concat(b))),
+            (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
+                a.concat(&RuntimeString::new(b.to_string())),
+            )),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
@@ -341,7 +341,7 @@ impl RuntimeValue {
             ));
         };
 
-        Ok(RuntimeValue::Str(Rc::new(s.to_uppercase())))
+        Ok(RuntimeValue::Str(s.to_uppercase()))
     }
 
     pub fn to_lowercase(&self) -> Result<Self, RuntimeError> {
@@ -352,6 +352,6 @@ impl RuntimeValue {
             ));
         };
 
-        Ok(RuntimeValue::Str(Rc::new(s.to_lowercase())))
+        Ok(RuntimeValue::Str(s.to_lowercase()))
     }
 }

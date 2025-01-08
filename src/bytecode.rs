@@ -4,7 +4,10 @@ use crate::{
     compiler::{CompileError, Instruction, Label, Program},
     ir_value::IrValue,
     method::Method,
-    runtime_value::{function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, RuntimeValue},
+    runtime_value::{
+        function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, string::RuntimeString,
+        RuntimeValue,
+    },
     stdlib_fn::StdlibFn,
 };
 
@@ -133,7 +136,7 @@ impl Bytecode {
             IrValue::Bool(b) => RuntimeValue::Bool(b),
             IrValue::Int(i) => RuntimeValue::Int(i),
             IrValue::Num(n) => RuntimeValue::Num(n),
-            IrValue::Str(s) => RuntimeValue::Str(Rc::new(s)),
+            IrValue::Str(s) => RuntimeValue::Str(RuntimeString::new(s)),
             IrValue::List(xs) => {
                 let items =
                     xs.0.into_iter()
