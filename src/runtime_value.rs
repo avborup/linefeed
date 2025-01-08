@@ -147,6 +147,21 @@ impl RuntimeValue {
         }
     }
 
+    pub fn length(&self) -> Result<Self, RuntimeError> {
+        let res = match self {
+            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::Float(list.len() as f64)),
+            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::Float(s.len() as f64)),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot get length of '{}'",
+                    self.kind_str()
+                )))
+            }
+        };
+
+        Ok(res)
+    }
+
     pub fn eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
         Ok(RuntimeValue::Bool(self == other))
     }

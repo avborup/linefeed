@@ -267,6 +267,7 @@ where
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
                 Bytecode::Split => binary_op!(self, split),
                 Bytecode::SplitLines => unary_mapper_method!(self, lines),
+                Bytecode::Length => unary_mapper_method!(self, length),
 
                 Bytecode::PrintValue(num_args) => {
                     let num_args = *num_args;

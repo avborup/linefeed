@@ -71,6 +71,7 @@ pub enum Bytecode {
     ToLowerCase,
     Split,
     SplitLines,
+    Length,
 }
 
 impl Bytecode {
@@ -126,6 +127,7 @@ impl Bytecode {
                 Method::ToLowerCase => Bytecode::ToLowerCase,
                 Method::Split => Bytecode::Split,
                 Method::SplitLines => Bytecode::SplitLines,
+                Method::Length => Bytecode::Length,
             },
         };
 

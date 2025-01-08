@@ -5,6 +5,7 @@ pub enum Method {
     ToLowerCase,
     Split,
     SplitLines,
+    Length,
 }
 
 impl Method {
@@ -15,6 +16,7 @@ impl Method {
             Method::ToLowerCase => "lower",
             Method::Split => "split",
             Method::SplitLines => "lines",
+            Method::Length => "len",
         }
     }
 
@@ -25,6 +27,7 @@ impl Method {
             "lower" => Some(Method::ToLowerCase),
             "split" => Some(Method::Split),
             "lines" => Some(Method::SplitLines),
+            "len" => Some(Method::Length),
             _ => None,
         }
     }
@@ -37,6 +40,7 @@ impl Method {
             Self::ToLowerCase => Some(0),
             Self::Split => Some(1),
             Self::SplitLines => Some(0),
+            Self::Length => Some(0),
         }
     }
 }

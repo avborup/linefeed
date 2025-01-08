@@ -1,5 +1,5 @@
 inp = input().lines();
-n = 6;
+n = inp.len();
 
 rep = [];
 for i in inp {
