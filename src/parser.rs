@@ -133,12 +133,22 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
                 .map(Expr::List);
 
+            let list_comprehension = expr
+                .clone()
+                .then(just(Token::For).ignore_then(ident))
+                .then(just(Token::In).ignore_then(expr.clone()))
+                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
+                .map(|((body, loop_var), iter)| {
+                    Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
+                });
+
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
                 .or(func)
                 .or(let_)
                 .or(ident.map(Expr::Local))
                 .or(list)
+                .or(list_comprehension)
                 .map_with_span(Spanned)
                 // Atoms can also just be normal expressions, but surrounded with parentheses
                 .or(expr
@@ -300,7 +310,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 })
                 .labelled("return");
 
-            range.or(logical).or(return_)
+            choice((range, logical, return_))
         });
 
         let postfix_if = raw_expr

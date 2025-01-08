@@ -26,6 +26,7 @@ pub enum Expr {
     For(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Break,
     Continue,
+    ListComprehension(Box<Spanned<Expr>>, String, Box<Spanned<Expr>>),
 }
 
 #[derive(Clone, Debug, PartialEq, PartialOrd)]
