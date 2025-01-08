@@ -2,6 +2,7 @@
 pub enum StdlibFn {
     Print,
     Input,
+    ParseInt,
 }
 
 impl StdlibFn {
@@ -9,6 +10,7 @@ impl StdlibFn {
         match self {
             Self::Print => "print",
             Self::Input => "input",
+            Self::ParseInt => "int",
         }
     }
 
@@ -16,6 +18,7 @@ impl StdlibFn {
         match name {
             "print" => Some(Self::Print),
             "input" => Some(Self::Input),
+            "int" => Some(Self::ParseInt),
             _ => None,
         }
     }
@@ -25,6 +28,7 @@ impl StdlibFn {
         match self {
             Self::Print => None,
             Self::Input => Some(0), // TODO: in the future future, read from an optional file path here?
+            Self::ParseInt => Some(1),
         }
     }
 }

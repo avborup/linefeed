@@ -15,6 +15,10 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn floor(&self) -> Self {
+        Self::Float(self.float().floor())
+    }
+
     pub fn bool(&self) -> bool {
         match self {
             Int(i) => *i != 0,
@@ -35,6 +39,15 @@ impl RuntimeNumber {
             (Int(a), Float(b)) => Float((*a as f64) % b),
             (Float(a), Int(b)) => Float(a % (*b as f64)),
             (Float(a), Float(b)) => Float(a % b),
+        }
+    }
+
+    pub fn parse_int(s: &str) -> Result<Self, RuntimeError> {
+        match s.parse::<isize>() {
+            Ok(i) => Ok(Float(i as f64)),
+            Err(err) => Err(RuntimeError::ParseError(format!(
+                "Failed to parse integer: '{err}'",
+            ))),
         }
     }
 }
@@ -60,6 +73,8 @@ impl PartialEq for RuntimeNumber {
 }
 
 use RuntimeNumber::*;
+
+use crate::bytecode_interpreter::RuntimeError;
 
 // Fuck it, we ball
 impl Eq for RuntimeNumber {}

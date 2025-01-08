@@ -1,6 +1,9 @@
 use std::rc::Rc;
 
-use crate::runtime_value::{list::RuntimeList, RuntimeValue};
+use crate::{
+    bytecode_interpreter::RuntimeError,
+    runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RuntimeString(Rc<String>);
@@ -56,6 +59,10 @@ impl RuntimeString {
 
     pub fn concat(&self, other: &RuntimeString) -> Self {
         Self::new(format!("{}{}", self.as_str(), other.as_str()))
+    }
+
+    pub fn parse_int(&self) -> Result<RuntimeNumber, RuntimeError> {
+        RuntimeNumber::parse_int(self.as_str())
     }
 }
 

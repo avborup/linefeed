@@ -293,6 +293,8 @@ where
                     self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
 
+                Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
+
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
@@ -401,6 +403,7 @@ pub enum RuntimeError {
     TypeMismatch(String),
     InternalBug(String),
     IndexOutOfBounds(isize, usize),
+    ParseError(String),
 }
 
 impl RuntimeError {
@@ -443,6 +446,9 @@ impl std::fmt::Display for RuntimeError {
             }
             RuntimeError::IndexOutOfBounds(i, len) => {
                 write!(f, "Index {i} out of bounds, length is {len}")
+            }
+            RuntimeError::ParseError(msg) => {
+                write!(f, "Parse error: {msg}")
             }
         }
     }

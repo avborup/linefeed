@@ -210,6 +210,21 @@ impl RuntimeValue {
         }
     }
 
+    pub fn parse_int(&self) -> Result<RuntimeValue, RuntimeError> {
+        let res = match self {
+            RuntimeValue::Num(n) => RuntimeValue::Num(n.floor()),
+            RuntimeValue::Str(s) => RuntimeValue::Num(s.parse_int()?),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot parse '{}' as integer",
+                    self.kind_str()
+                )))
+            }
+        };
+
+        Ok(res)
+    }
+
     pub fn bool(&self) -> bool {
         match self {
             RuntimeValue::Bool(b) => *b,
