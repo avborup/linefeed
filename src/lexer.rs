@@ -67,7 +67,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .map(Token::Num);
 
     let str_ = just('"')
-        .ignore_then(filter(|c| *c != '"').repeated())
+        .ignore_then(choice((just(r"\n").to('\n'), filter(|c| *c != '"'))).repeated())
         .then_ignore(just('"'))
         .collect::<String>()
         .map(Token::Str);
