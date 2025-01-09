@@ -27,3 +27,38 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    regex_find_all_integers,
+    indoc! {r#"
+        print(/\d+/.find_all("123 321 423 idk 312,1231.123"));
+    "#},
+    equals(r#"[["123"], ["321"], ["423"], ["312"], ["1231"], ["123"]]"#),
+    empty()
+);
+
+eval_and_assert!(
+    regex_find_all_negative_integers,
+    indoc! {r#"
+        print(/-\d+/.find_all("123 -321 423 idk -312,1231.123"));
+    "#},
+    equals(r#"[["-321"], ["-312"]]"#),
+    empty()
+);
+
+eval_and_assert!(
+    regex_find_all_groups,
+    indoc! {r#"
+        inp = "1-3 a: abcde\n"
+            + "1-3 b: cdefg\n"
+            + "2-9 c: ccccccccc\n";
+
+        matches = /(\d+)-(\d+) (\w): (\w+)/.find_all(inp);
+
+        print(matches);
+    "#},
+    equals(
+        r#"[["1-3 a: abcde", "1", "3", "a", "abcde"], ["1-3 b: cdefg", "1", "3", "b", "cdefg"], ["2-9 c: ccccccccc", "2", "9", "c", "ccccccccc"]]"#
+    ),
+    empty()
+);

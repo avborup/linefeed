@@ -7,6 +7,7 @@ pub enum Method {
     SplitLines,
     Length,
     Count,
+    FindRegexMatches,
 }
 
 impl Method {
@@ -19,6 +20,7 @@ impl Method {
             Method::SplitLines => "lines",
             Method::Length => "len",
             Method::Count => "count",
+            Method::FindRegexMatches => "find_all",
         }
     }
 
@@ -31,6 +33,7 @@ impl Method {
             "lines" => Some(Method::SplitLines),
             "len" => Some(Method::Length),
             "count" => Some(Method::Count),
+            "find_all" => Some(Method::FindRegexMatches),
             _ => None,
         }
     }
@@ -45,6 +48,7 @@ impl Method {
             Self::SplitLines => Some(0),
             Self::Length => Some(0),
             Self::Count => Some(1),
+            Self::FindRegexMatches => Some(1),
         }
     }
 }

@@ -2,6 +2,8 @@ use std::{ops::Deref, rc::Rc};
 
 use regex::Regex;
 
+use crate::runtime_value::{list::RuntimeList, string::RuntimeString, RuntimeValue};
+
 #[derive(Debug, Clone)]
 pub struct RuntimeRegex(Rc<Regex>);
 
@@ -20,6 +22,28 @@ impl RuntimeRegex {
 
     pub fn as_str(&self) -> &str {
         self.0.as_str()
+    }
+
+    pub fn find_matches(&self, s: &RuntimeString) -> RuntimeList {
+        let s = s.as_str();
+
+        let mut matches = Vec::new();
+
+        for m in self.0.captures_iter(s) {
+            let group_values = m
+                .iter()
+                .map(|group| {
+                    group.map_or(RuntimeValue::Null, |g| {
+                        RuntimeValue::Str(RuntimeString::new(g.as_str()))
+                    })
+                })
+                .collect::<Vec<_>>();
+
+            // TODO: Push tuples when they're implemented
+            matches.push(RuntimeValue::List(RuntimeList::from_vec(group_values)));
+        }
+
+        RuntimeList::from_vec(matches)
     }
 }
 

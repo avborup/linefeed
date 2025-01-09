@@ -463,4 +463,24 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::List(s.lines()))
     }
+
+    pub fn find_regex_matches(&self, input: &Self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Regex(regex) = self else {
+            return Err(RuntimeError::invalid_method_for_type(
+                Method::FindRegexMatches,
+                self,
+            ));
+        };
+
+        let RuntimeValue::Str(input) = input else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot match regex against type '{}'",
+                input.kind_str()
+            )));
+        };
+
+        let matches = regex.find_matches(input);
+
+        Ok(RuntimeValue::List(matches))
+    }
 }
