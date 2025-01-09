@@ -122,6 +122,13 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 })
                 .labelled("function");
 
+            let destructure_assign = ident
+                .separated_by(just(Token::Ctrl(',')))
+                .at_least(2)
+                .then_ignore(just(Token::op("=")))
+                .then(raw_expr.clone().or(block_expr.clone()))
+                .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)));
+
             // Variable assignment
             let assign_op = choice((
                 just(Token::op("=")).to("="),
@@ -132,7 +139,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 just(Token::op("%=")).to("%="),
             ));
 
-            let let_ = ident
+            let single_assign = ident
                 .then(assign_op)
                 .then(raw_expr.clone().or(block_expr.clone()))
                 .map_with_span(|((name, op), val), span: Span| {
@@ -157,6 +164,8 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
                     Expr::Let(name, Box::new(new_val))
                 });
+
+            let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
 
             let list = items
                 .clone()

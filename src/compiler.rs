@@ -842,6 +842,16 @@ fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 res
             }
 
+            Expr::Destructure(locals, val) => {
+                let mut res = find_all_assignments_inner(val);
+                res.extend(
+                    locals
+                        .iter()
+                        .map(|local| Spanned(local.as_str(), expr.span())),
+                );
+                res
+            }
+
             Expr::Break | Expr::Continue | Expr::Value(_) | Expr::ParseError | Expr::Local(_) => {
                 vec![]
             }

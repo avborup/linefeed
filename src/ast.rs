@@ -14,6 +14,7 @@ pub enum Expr {
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(String),
     Let(String, Box<Spanned<Self>>),
+    Destructure(Vec<String>, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
