@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{ops::Deref, rc::Rc};
 
 use crate::{
     bytecode_interpreter::RuntimeError,
@@ -23,6 +23,10 @@ impl RuntimeString {
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
+    }
+
+    pub fn deep_clone(&self) -> Self {
+        Self::new(self.0.deref().clone())
     }
 
     fn map_str(&self, f: impl FnOnce(&str) -> String) -> Self {

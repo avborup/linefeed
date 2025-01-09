@@ -28,6 +28,10 @@ impl RuntimeList {
         self.0.borrow().len()
     }
 
+    pub fn deep_clone(&self) -> Self {
+        Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
+    }
+
     pub fn index(&self, index: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         let RuntimeValue::Num(n) = index else {
             return Err(RuntimeError::TypeMismatch(format!(

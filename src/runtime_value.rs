@@ -255,6 +255,19 @@ impl RuntimeValue {
             RuntimeValue::Iterator(_) => true,
         }
     }
+
+    pub fn deep_clone(&self) -> Self {
+        match self {
+            RuntimeValue::Null => RuntimeValue::Null,
+            RuntimeValue::Uninit => RuntimeValue::Uninit,
+            RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
+            RuntimeValue::Int(n) => RuntimeValue::Int(*n),
+            RuntimeValue::Num(n) => RuntimeValue::Num(*n),
+            RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
+            RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
+            _ => unimplemented!("deep_clone for {:?}", self),
+        }
+    }
 }
 
 fn write_items<'a, T: std::fmt::Display>(

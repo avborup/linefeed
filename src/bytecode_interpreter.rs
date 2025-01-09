@@ -103,13 +103,12 @@ where
                     self.push_stack(RuntimeValue::Int(*i));
                 }
 
-                // TODO: Perform a "deep" clone here. Otherwise, the same, shared value is inserted onto the
-                // stack. For things with mutable access, this is BAD. Assign list repeatedly to a
-                // variable? Same list is shared, it's not a new list. Value is no longer referenced on
-                // the stack? Too bad, it's still in the program instructions, so it'll keep living.
-                // Must deep clone.
                 Bytecode::Value(val) => {
-                    self.push_stack(val.clone());
+                    // Perform a "deep" clone here. Otherwise, the same, shared value is inserted onto the
+                    // stack. For things with mutable access, this is BAD. Assign list repeatedly to a
+                    // variable? Same list is shared, it's not a new list. Value is no longer referenced on
+                    // the stack? Too bad, it's still in the program instructions, so it'll keep living.
+                    self.push_stack(val.deep_clone());
                 }
 
                 Bytecode::Add => binary_op!(self, add),
