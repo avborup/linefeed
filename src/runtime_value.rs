@@ -290,6 +290,7 @@ impl RuntimeValue {
             RuntimeValue::Num(n) => RuntimeValue::Num(*n),
             RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
+            RuntimeValue::Function(_) => self.clone(),
             _ => unimplemented!("deep_clone for {:?}", self),
         }
     }
