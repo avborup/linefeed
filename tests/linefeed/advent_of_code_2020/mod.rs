@@ -15,3 +15,15 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+#[cfg(feature = "aoc-secret")]
+eval_and_assert!(
+    day01_secret,
+    include_str!("day01.lf"),
+    include_str!("inputs/day01-secret.txt"),
+    equals(indoc! {r#"
+        Part 1: 1018944
+        Part 2: 8446464
+    "#}),
+    empty()
+);
