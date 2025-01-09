@@ -190,7 +190,20 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Call(Box::new(f), args.0), span)
                 });
 
-            let method_call = (func_call.clone().or(atom.clone()))
+            let index = expr
+                .clone()
+                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
+            let index_into = atom
+                .clone()
+                .then(index.clone().repeated().at_least(1))
+                .foldl(|val, idx| {
+                    let span = val.1.start..idx.1.end;
+                    Spanned(Expr::Index(Box::new(val), Box::new(idx)), span)
+                });
+
+            let call_or_index = choice((func_call, index_into, atom.clone()));
+
+            let method_call = call_or_index
                 .clone()
                 .then(
                     just(Token::Ctrl('.'))
@@ -204,18 +217,7 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::MethodCall(Box::new(val), method, args.0), span)
                 });
 
-            let index = expr
-                .clone()
-                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
-            let index_into = atom
-                .clone()
-                .then(index.clone().repeated().at_least(1))
-                .foldl(|val, idx| {
-                    let span = val.1.start..idx.1.end;
-                    Spanned(Expr::Index(Box::new(val), Box::new(idx)), span)
-                });
-
-            let call_or_index = choice((method_call, index_into, func_call, atom.clone()));
+            let with_method_call = choice((method_call, call_or_index.clone()));
 
             let prod_op = choice((
                 just(Token::op("*")).to(BinaryOp::Mul),
@@ -241,10 +243,10 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
 
             let unary = neg.or(not);
 
-            let product = call_or_index
+            let product = with_method_call
                 .clone()
                 .or(unary)
-                .then(prod_op.then(call_or_index).repeated())
+                .then(prod_op.then(with_method_call).repeated())
                 .foldl(|a, (op, b)| {
                     let span = a.1.start..b.1.end;
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
