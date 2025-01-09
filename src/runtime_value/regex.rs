@@ -2,7 +2,9 @@ use std::{ops::Deref, rc::Rc};
 
 use regex::Regex;
 
-use crate::runtime_value::{list::RuntimeList, string::RuntimeString, RuntimeValue};
+use crate::runtime_value::{
+    list::RuntimeList, number::RuntimeNumber, string::RuntimeString, RuntimeValue,
+};
 
 #[derive(Debug, Clone)]
 pub struct RuntimeRegex(Rc<Regex>);
@@ -34,6 +36,18 @@ impl RuntimeRegex {
                 .iter()
                 .map(|group| {
                     group.map_or(RuntimeValue::Null, |g| {
+                        // In competitive programming, and especially in Advent of Code, if a match
+                        // is a valid integer, the use-case is almost always to parse it as an
+                        // integer afterwards. So we provide a shortcut for that, which keeps
+                        // Linefeed code cleaner.
+                        if let Ok(num) = g
+                            .as_str()
+                            .parse::<isize>()
+                            .map(|n| RuntimeValue::Num(RuntimeNumber::Int(n)))
+                        {
+                            return num;
+                        }
+
                         RuntimeValue::Str(RuntimeString::new(g.as_str()))
                     })
                 })
