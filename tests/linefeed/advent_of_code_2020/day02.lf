@@ -1,9 +1,8 @@
 part1, part2 = [0, 0];
 
-for line in input().lines() {
-  reqs, password = line.split(": ");
-  minmax, char = reqs.split(" ");
-  min, max = [int(x) for x in minmax.split("-")];
+for line in /(\d+)-(\d+) (\w): (\w+)/.find_all(input()) {
+  _, min, max, char, password = line;
+  min, max = [int(min), int(max)];
 
   count = password.count(char);
   part1 += 1 if count >= min and count <= max;
