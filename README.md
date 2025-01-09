@@ -6,6 +6,10 @@ A language specifically tailored for writing clean solutions for Advent of Code.
 > [!WARNING]  
 > It is currently in a _**very**_ early, exploratory stage.
 
+## Examples
+
+To demonstrate the syntax and features of Linefeed, solutions for Advent of Code 2020 have been implemented in Linefeed. They can be found in [`tests/linefeed/advent_of_code_2020`](https://github.com/avborup/linefeed/tree/main/tests/linefeed/advent_of_code_2020).
+
 ## Planned features
 
 See https://github.com/avborup/linefeed/issues/1 for a tracking issue.
