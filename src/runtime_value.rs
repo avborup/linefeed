@@ -126,6 +126,7 @@ impl RuntimeValue {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
             RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
             RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
+            RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot iterate over '{}'",
