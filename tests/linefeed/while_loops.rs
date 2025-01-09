@@ -165,3 +165,34 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    while_loop_yields_last_iteration,
+    indoc::indoc! {r#"
+        i = -1;
+        res = while (i = i + 1) < 5 {
+          "iter"+i;
+        };
+        print(res);
+
+        i = -1;
+        res = while (i = i + 1) < 5 {
+          break if i == 3;
+          "iter"+i;
+        };
+        print(res);
+
+        i = -1;
+        res = while (i = i + 1) < 5 {
+          continue if i == 3;
+          "iter"+i;
+        };
+        print(res);
+    "#},
+    equals(indoc::indoc! {r#"
+        iter4
+        iter2
+        iter4
+    "#}),
+    empty()
+);

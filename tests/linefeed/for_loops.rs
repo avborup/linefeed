@@ -118,3 +118,31 @@ eval_and_assert!(
     empty(),
     empty()
 );
+
+eval_and_assert!(
+    for_loop_yields_last_iteration,
+    indoc::indoc! {r#"
+        res = for i in 1..5 {
+          "iter"+i;
+        };
+        print(res);
+
+        res = for i in 1..5 {
+          break if i == 3;
+          "iter"+i;
+        };
+        print(res);
+
+        res = for i in 1..5 {
+          continue if i == 3;
+          "iter"+i;
+        };
+        print(res);
+    "#},
+    equals(indoc::indoc! {r#"
+        iter4
+        iter2
+        iter4
+    "#}),
+    empty()
+);

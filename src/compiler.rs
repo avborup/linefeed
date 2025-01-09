@@ -110,7 +110,7 @@ impl Compiler {
 
             Expr::Let(name, val) => {
                 let val_program = self.compile_expr(val)?;
-                self.compile_assign_existing_var(expr, name, val_program)?
+                self.compile_var_assign(expr, name, val_program)?
             }
 
             Expr::Value(AstValue::Func(func)) => {
@@ -341,7 +341,7 @@ impl Compiler {
 
             // For an explanation of the stack layout for while loops, see the comment below for
             // for loops. The only difference is that no iterator is needed, so the stack pointer
-            // is not added with 1.
+            // is only added with 1 (only 1 tmp variable).
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
@@ -349,10 +349,13 @@ impl Compiler {
                 let loop_name = self.loop_name(loop_id);
                 self.loop_labels.insert(loop_id, (cond_label, end_label));
                 let register_loop = self
-                    .allocate_or_reassign_var(
+                    .compile_var_assign(
                         expr,
                         &loop_name,
-                        Program::from_instructions(vec![GetStackPtr], expr.span()),
+                        Program::from_instructions(
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            expr.span(),
+                        ),
                     )?
                     .then_instruction(Pop, expr.span());
 
@@ -406,11 +409,11 @@ impl Compiler {
                 let loop_name = self.loop_name(loop_id);
                 self.loop_labels.insert(loop_id, (iter_label, end_label));
                 let register_loop = self
-                    .allocate_or_reassign_var(
+                    .compile_var_assign(
                         expr,
                         &loop_name,
                         Program::from_instructions(
-                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            vec![GetStackPtr, Value(IrValue::Int(2)), Add],
                             expr.span(),
                         ),
                     )?
@@ -421,21 +424,17 @@ impl Compiler {
                     .compile_expr(iterable)?
                     .then_instruction(ToIter, iterable.span());
                 let register_iterable = self
-                    .allocate_or_reassign_var(expr, &iterable_name, iterator)?
+                    .compile_var_assign(expr, &iterable_name, iterator)?
                     .then_instruction(Pop, iterable.span());
 
                 let program = register_loop
                     .then_program(register_iterable)
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
-                    .then_program(
-                        self.compile_var_load(expr, &iterable_name)?
-                            .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span()),
-                    )
-                    .then_program(
-                        self.compile_var_address(loop_var, expr)?
-                            .then_instructions(vec![Store, Pop], expr.span()),
-                    )
+                    .then_program(self.compile_var_load(expr, &iterable_name)?)
+                    .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
+                    .then_program(self.compile_var_address(loop_var, expr)?)
+                    .then_instructions(vec![Store, Pop], expr.span())
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span())
@@ -541,21 +540,7 @@ impl Compiler {
             .then_instruction(Load, expr.span()))
     }
 
-    fn compile_assign_existing_var(
-        &mut self,
-        expr: &Spanned<Expr>,
-        name: &String,
-        value_program: Program<Instruction>,
-    ) -> Result<Program<Instruction>, CompileError> {
-        // Reverse order because the "body" may allocate temporary variables, which would
-        // overwrite the stack position of the address to be stored. Might be a good idea to
-        // just redefine the expected order in the VM.
-        Ok(value_program
-            .then_program(self.compile_var_address(name, expr)?)
-            .then_instruction(Store, expr.span()))
-    }
-
-    fn allocate_or_reassign_var(
+    fn compile_var_assign(
         &mut self,
         expr: &Spanned<Expr>,
         name: &String,
@@ -575,9 +560,9 @@ impl Compiler {
         };
 
         Ok(program
-            .then_program(self.compile_var_address(name, expr)?)
             .then_program(value_program)
-            .then_instructions(vec![Swap, Store], expr.span()))
+            .then_program(self.compile_var_address(name, expr)?)
+            .then_instruction(Store, expr.span()))
     }
 
     fn compile_allocation_for_all_vars_in_scope(
