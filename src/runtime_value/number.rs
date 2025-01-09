@@ -46,7 +46,7 @@ impl RuntimeNumber {
         match s.parse::<isize>() {
             Ok(i) => Ok(Float(i as f64)),
             Err(err) => Err(RuntimeError::ParseError(format!(
-                "Failed to parse integer: '{err}'",
+                "{s:?} is not a valid integer, {err}",
             ))),
         }
     }
