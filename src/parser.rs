@@ -123,10 +123,40 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                 .labelled("function");
 
             // Variable assignment
+            let assign_op = choice((
+                just(Token::op("=")).to("="),
+                just(Token::op("+=")).to("+="),
+                just(Token::op("-=")).to("-="),
+                just(Token::op("*=")).to("*="),
+                just(Token::op("/=")).to("/="),
+                just(Token::op("%=")).to("%="),
+            ));
+
             let let_ = ident
-                .then_ignore(just(Token::op("=")))
+                .then(assign_op)
                 .then(raw_expr.clone().or(block_expr.clone()))
-                .map(|(name, val)| Expr::Let(name, Box::new(val)));
+                .map_with_span(|((name, op), val), span: Span| {
+                    let new_val = match op {
+                        "=" => val,
+                        _ => Spanned(
+                            Expr::Binary(
+                                Box::new(Spanned(Expr::Local(name.clone()), span.clone())),
+                                match op {
+                                    "+=" => BinaryOp::Add,
+                                    "-=" => BinaryOp::Sub,
+                                    "*=" => BinaryOp::Mul,
+                                    "/=" => BinaryOp::Div,
+                                    "%=" => BinaryOp::Mod,
+                                    _ => unreachable!(),
+                                },
+                                Box::new(val),
+                            ),
+                            span,
+                        ),
+                    };
+
+                    Expr::Let(name, Box::new(new_val))
+                });
 
             let list = items
                 .clone()
