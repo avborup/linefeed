@@ -273,7 +273,7 @@ where
                 Bytecode::SplitLines => unary_mapper_method!(self, lines),
                 Bytecode::Length => unary_mapper_method!(self, length),
                 Bytecode::Count => binary_op!(self, count),
-                Bytecode::FindRegexMatches => binary_op!(self, find_regex_matches),
+                Bytecode::FindAll => binary_op!(self, find_all),
 
                 Bytecode::PrintValue(num_args) => {
                     let num_args = *num_args;

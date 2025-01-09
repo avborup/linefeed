@@ -74,7 +74,7 @@ pub enum Bytecode {
     SplitLines,
     Length,
     Count,
-    FindRegexMatches,
+    FindAll,
 }
 
 impl Bytecode {
@@ -133,7 +133,7 @@ impl Bytecode {
                 Method::SplitLines => Bytecode::SplitLines,
                 Method::Length => Bytecode::Length,
                 Method::Count => Bytecode::Count,
-                Method::FindRegexMatches => Bytecode::FindRegexMatches,
+                Method::FindAll => Bytecode::FindAll,
             },
         };
 

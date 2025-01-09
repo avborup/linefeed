@@ -1,6 +1,6 @@
 part1, part2 = [0, 0];
 
-for line in /(\d+)-(\d+) (\w): (\w+)/.find_all(input()) {
+for line in input().find_all(/(\d+)-(\d+) (\w): (\w+)/) {
   _, min, max, char, password = line;
   min, max = [int(min), int(max)];
 
