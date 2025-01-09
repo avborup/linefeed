@@ -46,6 +46,7 @@ pub enum Instruction {
     Greater,
     GreaterEq,
     Range,
+    Xor,
 
     // Unary operations
     Not,
@@ -285,6 +286,7 @@ impl Compiler {
                     BinaryOp::Greater => Greater,
                     BinaryOp::GreaterEq => GreaterEq,
                     BinaryOp::Range => Range,
+                    BinaryOp::Xor => Xor,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.span(),

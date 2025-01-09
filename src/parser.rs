@@ -312,9 +312,11 @@ pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>>
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
                 });
 
-            let and_op = just(Token::And).to(BinaryOp::And);
-            let or_op = just(Token::Or).to(BinaryOp::Or);
-            let logical_op = or_op.or(and_op);
+            let logical_op = choice((
+                just(Token::And).to(BinaryOp::And),
+                just(Token::Or).to(BinaryOp::Or),
+                just(Token::Xor).to(BinaryOp::Xor),
+            ));
 
             let logical = compare
                 .clone()

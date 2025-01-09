@@ -111,6 +111,15 @@ impl RuntimeValue {
         }
     }
 
+    pub fn xor(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Bool(a), RuntimeValue::Bool(b)) => Ok(RuntimeValue::Bool(a ^ b)),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "xor", self, other,
+            )),
+        }
+    }
+
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, index) {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
