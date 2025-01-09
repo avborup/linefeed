@@ -1,10 +1,5 @@
-inp = input().lines();
-n = inp.len();
-
-rep = [];
-for i in inp {
-  rep.append(int(i));
-};
+rep = [int(x) for x in input().lines()];
+n = rep.len();
 
 part1 = "?";
 part2 = "?";

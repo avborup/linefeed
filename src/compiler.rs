@@ -456,6 +456,60 @@ impl Compiler {
                 self.compile_loop_jump("continue", expr, |(cond_label, _)| cond_label)?
             }
 
+            Expr::ListComprehension(body, loop_var, iterable) => {
+                let (iter_label, end_label) = (self.new_label(), self.new_label());
+
+                let scope_size_before = self.vars.cur_scope_len();
+
+                let loop_id = self.new_loop_id();
+                let loop_name = self.loop_name(loop_id);
+                self.loop_labels.insert(loop_id, (iter_label, end_label));
+                let register_loop = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_name,
+                        Program::from_instructions(
+                            vec![GetStackPtr, Value(IrValue::Int(2)), Add],
+                            expr.span(),
+                        ),
+                    )?
+                    .then_instruction(Pop, expr.span());
+
+                let iterable_name = format!("{loop_name}_iter");
+                let iterator = self
+                    .compile_expr(iterable)?
+                    .then_instruction(ToIter, iterable.span());
+                let register_iterable = self
+                    .compile_var_assign(expr, &iterable_name, iterator)?
+                    .then_instruction(Pop, iterable.span());
+
+                let program = register_loop
+                    .then_program(register_iterable)
+                    .then_instruction(Value(IrValue::List(IrList(Vec::new()))), expr.span())
+                    .then_instruction(Instruction::Label(iter_label), expr.span())
+                    .then_program(self.compile_var_load(expr, &iterable_name)?)
+                    .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
+                    .then_program(self.compile_var_address(loop_var, expr)?)
+                    .then_instructions(vec![Store, Pop], expr.span())
+                    .then_program(self.compile_expr(body)?)
+                    .then_instructions(
+                        vec![MethodCall(Method::Append, 1), Goto(iter_label)],
+                        expr.span(),
+                    )
+                    .then_instruction(Instruction::Label(end_label), expr.span())
+                    .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
+
+                self.vars.remove_local(&iterable_name);
+                self.vars.remove_local(&loop_name);
+
+                debug_assert!(
+                    self.vars.cur_scope_len() == scope_size_before,
+                    "Variables were left on the stack within loop"
+                );
+
+                program
+            }
+
             Expr::MethodCall(target, method_name, args) => {
                 let target_program = self.compile_expr(target)?;
 
