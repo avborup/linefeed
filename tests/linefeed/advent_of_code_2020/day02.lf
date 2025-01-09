@@ -1,14 +1,9 @@
-part1 = 0;
-part2 = 0;
+part1, part2 = [0, 0];
 
 for line in input().lines() {
-  colon = line.split(": ");
-  reqs = colon[0].split(" ");
-  minmax = [int(x) for x in reqs[0].split("-")];
-  min = minmax[0];
-  max = minmax[1];
-  char = reqs[1];
-  password = colon[1];
+  reqs, password = line.split(": ");
+  minmax, char = reqs.split(" ");
+  min, max = [int(x) for x in minmax.split("-")];
 
   count = password.count(char);
   part1 += 1 if count >= min and count <= max;

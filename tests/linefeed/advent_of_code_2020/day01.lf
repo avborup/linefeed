@@ -1,8 +1,7 @@
 rep = [int(x) for x in input().lines()];
 n = rep.len();
 
-part1 = "?";
-part2 = "?";
+part1, part2 = "??";
 
 for i in 0..n {
   for j in i+1..n {
