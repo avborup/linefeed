@@ -6,6 +6,7 @@ pub enum Method {
     Split,
     SplitLines,
     Length,
+    Count,
 }
 
 impl Method {
@@ -17,6 +18,7 @@ impl Method {
             Method::Split => "split",
             Method::SplitLines => "lines",
             Method::Length => "len",
+            Method::Count => "count",
         }
     }
 
@@ -28,6 +30,7 @@ impl Method {
             "split" => Some(Method::Split),
             "lines" => Some(Method::SplitLines),
             "len" => Some(Method::Length),
+            "count" => Some(Method::Count),
             _ => None,
         }
     }
@@ -41,6 +44,7 @@ impl Method {
             Self::Split => Some(1),
             Self::SplitLines => Some(0),
             Self::Length => Some(0),
+            Self::Count => Some(1),
         }
     }
 }

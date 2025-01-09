@@ -2,6 +2,7 @@ pub mod helpers;
 
 mod advent_of_code_2020;
 mod comparison;
+mod count;
 mod for_loops;
 mod functions;
 mod list;

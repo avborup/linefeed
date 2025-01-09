@@ -163,6 +163,24 @@ impl RuntimeValue {
         Ok(res)
     }
 
+    pub fn count(&self, item: &Self) -> Result<Self, RuntimeError> {
+        let res = match (self, item) {
+            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::Float(
+                list.as_slice().iter().filter(|x| *x == item).count() as f64,
+            )),
+            (RuntimeValue::Str(s), RuntimeValue::Str(sub)) => RuntimeValue::Num(s.count(sub)),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot count '{}' in '{}'",
+                    item.kind_str(),
+                    self.kind_str()
+                )))
+            }
+        };
+
+        Ok(res)
+    }
+
     pub fn eq_bool(&self, other: &Self) -> Result<Self, RuntimeError> {
         Ok(RuntimeValue::Bool(self == other))
     }

@@ -72,6 +72,7 @@ pub enum Bytecode {
     Split,
     SplitLines,
     Length,
+    Count,
 }
 
 impl Bytecode {
@@ -128,6 +129,7 @@ impl Bytecode {
                 Method::Split => Bytecode::Split,
                 Method::SplitLines => Bytecode::SplitLines,
                 Method::Length => Bytecode::Length,
+                Method::Count => Bytecode::Count,
             },
         };
 
