@@ -5,8 +5,8 @@ use crate::{
     ir_value::IrValue,
     method::Method,
     runtime_value::{
-        function::RuntimeFunction, list::RuntimeList, set::RuntimeSet, string::RuntimeString,
-        RuntimeValue,
+        function::RuntimeFunction, list::RuntimeList, regex::RuntimeRegex, set::RuntimeSet,
+        string::RuntimeString, RuntimeValue,
     },
     stdlib_fn::StdlibFn,
 };
@@ -169,6 +169,7 @@ impl Bytecode {
                 location: label_mapper.get(func.location)?,
                 arity: func.arity,
             })),
+            IrValue::Regex(r) => RuntimeValue::Regex(RuntimeRegex::new(r)),
         };
 
         Ok(res)

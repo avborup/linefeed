@@ -5,8 +5,8 @@ use crate::{
     method::Method,
     runtime_value::{
         function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
-        number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, set::RuntimeSet,
-        string::RuntimeString,
+        number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, regex::RuntimeRegex,
+        set::RuntimeSet, string::RuntimeString,
     },
 };
 
@@ -16,6 +16,7 @@ pub mod list;
 pub mod number;
 pub mod operations;
 pub mod range;
+pub mod regex;
 pub mod set;
 pub mod string;
 
@@ -27,6 +28,7 @@ pub enum RuntimeValue {
     Int(isize),
     Num(RuntimeNumber),
     Str(RuntimeString),
+    Regex(RuntimeRegex),
     List(RuntimeList),
     Set(RuntimeSet),
     Function(Rc<RuntimeFunction>),
@@ -49,6 +51,7 @@ impl RuntimeValue {
             RuntimeValue::Int(_) => "integer",
             RuntimeValue::Num(_) => "number",
             RuntimeValue::Str(_) => "str",
+            RuntimeValue::Regex(_) => "regex",
             RuntimeValue::List(_) => "list",
             RuntimeValue::Set(_) => "set",
             RuntimeValue::Function(_) => "function",
@@ -287,6 +290,7 @@ impl RuntimeValue {
             RuntimeValue::Function(_) => true,
             RuntimeValue::Range(_) => true,
             RuntimeValue::Iterator(_) => true,
+            RuntimeValue::Regex(_) => true,
         }
     }
 
@@ -300,6 +304,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
+            RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
         }
     }
@@ -344,6 +349,7 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
             RuntimeValue::Range(range) => write!(f, "{range}"),
             RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
+            RuntimeValue::Regex(regex) => write!(f, "{regex}"),
         }
     }
 }

@@ -9,6 +9,7 @@ pub enum Token {
     Bool(bool),
     Num(String),
     Str(String),
+    Regex(String),
     Op(String),
     Ctrl(char),
     Ident(String),
@@ -41,6 +42,7 @@ impl fmt::Display for Token {
             Token::Bool(x) => write!(f, "{}", x),
             Token::Num(n) => write!(f, "{}", n),
             Token::Str(s) => write!(f, "{}", s),
+            Token::Regex(r) => write!(f, "{}", r),
             Token::Op(s) => write!(f, "{}", s),
             Token::Ctrl(c) => write!(f, "{}", c),
             Token::Ident(s) => write!(f, "{}", s),
@@ -80,6 +82,12 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Str);
 
+    let regex_str = just('/')
+        .ignore_then(filter(|c| *c != '/').repeated())
+        .then_ignore(just('/'))
+        .collect::<String>()
+        .map(Token::Regex);
+
     let str_ = raw_str.or(simple_str);
 
     let range = just("..").to(Token::op(".."));
@@ -115,6 +123,7 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
 
     let token = num
         .or(str_)
+        .or(regex_str)
         .or(range)
         .or(op)
         .or(ctrl)

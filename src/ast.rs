@@ -36,6 +36,7 @@ pub enum Value {
     Bool(bool),
     Num(f64),
     Str(String),
+    Regex(String),
     List(Vec<Value>),
     Func(Rc<Func>),
 }
@@ -47,6 +48,7 @@ impl std::fmt::Display for Value {
             Self::Bool(x) => write!(f, "{}", x),
             Self::Num(x) => write!(f, "{}", x),
             Self::Str(x) => write!(f, "{}", x),
+            Self::Regex(x) => write!(f, "{}", x),
             Self::List(xs) => write!(
                 f,
                 "[{}]",

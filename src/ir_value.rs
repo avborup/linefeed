@@ -1,3 +1,5 @@
+use regex::Regex;
+
 use crate::{
     ast::Value as AstValue,
     compiler::Label,
@@ -12,6 +14,7 @@ pub enum IrValue {
     Int(isize),
     Num(RuntimeNumber),
     Str(String),
+    Regex(Regex),
     List(IrList),
     Set(IrList),
     Function(RuntimeFunction<Label>),
@@ -34,6 +37,9 @@ impl TryFrom<&AstValue> for IrValue {
                 IrValue::List(IrList(items))
             }
             AstValue::Func(_) => return Err("Functions are not simple values".to_string()),
+            AstValue::Regex(s) => Regex::new(s)
+                .map(IrValue::Regex)
+                .map_err(|e| format!("Invalid regex: {}", e))?,
         };
 
         Ok(res)
