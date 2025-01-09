@@ -88,3 +88,18 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    raw_string_works,
+    indoc! {r#"
+        foo = r"hello\nworld";
+        print(foo);
+        regex = r"\d+";
+        print(regex);
+    "#},
+    equals(indoc! {r#"
+        hello\nworld
+        \d+
+    "#}),
+    empty()
+);

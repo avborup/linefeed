@@ -68,11 +68,19 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .collect::<String>()
         .map(Token::Num);
 
-    let str_ = just('"')
+    let raw_str = just("r\"")
+        .ignore_then(filter(|c| *c != '"').repeated())
+        .then_ignore(just('"'))
+        .collect::<String>()
+        .map(Token::Str);
+
+    let simple_str = just('"')
         .ignore_then(choice((just(r"\n").to('\n'), filter(|c| *c != '"'))).repeated())
         .then_ignore(just('"'))
         .collect::<String>()
         .map(Token::Str);
+
+    let str_ = raw_str.or(simple_str);
 
     let range = just("..").to(Token::op(".."));
 
