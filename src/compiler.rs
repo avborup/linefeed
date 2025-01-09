@@ -544,6 +544,28 @@ impl Compiler {
                 program.then_instruction(MethodCall(method, args.len()), expr.span())
             }
 
+            // Destructuring works on anything that can be indexed by numbers, assigning each
+            // variable to its corresponding index in the iterable, with index-out-of-bounds errors
+            // on runtime, of course. This also means that "too many elements" is not a concern,
+            // and extra elements are just ignored.
+            Expr::Destructure(names, val) => {
+                let val_program = self.compile_expr(val)?;
+
+                names
+                    .iter()
+                    .map(|name| self.compile_var_address(name, expr))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .into_iter()
+                    .enumerate()
+                    .fold(val_program, |program, (i, address)| {
+                        let index = Value(IrValue::Num(RuntimeNumber::Float(i as f64)));
+                        program
+                            .then_instructions(vec![Dup, index, Index], expr.span())
+                            .then_program(address)
+                            .then_instructions(vec![Store, Pop], expr.span())
+                    })
+            }
+
             Expr::ParseError => {
                 return Err(CompileError::Spanned {
                     msg: "Parse error".to_string(),
