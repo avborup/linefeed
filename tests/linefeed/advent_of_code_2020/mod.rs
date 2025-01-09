@@ -27,3 +27,26 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    day02,
+    include_str!("day02.lf"),
+    include_str!("inputs/day02.txt"),
+    equals(indoc! {r#"
+        Part 1: 514579
+        Part 2: ...
+    "#}),
+    empty()
+);
+
+#[cfg(feature = "aoc-secret")]
+eval_and_assert!(
+    day01_secret,
+    include_str!("day02.lf"),
+    include_str!("inputs/day02-secret.txt"),
+    equals(indoc! {r#"
+        Part 1: 620
+        Part 2: ...
+    "#}),
+    empty()
+);

@@ -1,0 +1,19 @@
+part1 = 0;
+
+for line in input().lines() {
+  colon = line.split(": ");
+  reqs = colon[0].split(" ");
+  minmax = [int(x) for x in reqs[0].split("-")];
+  min = minmax[0];
+  max = minmax[1];
+  char = reqs[1];
+
+  count = 0;
+  for c in colon[1] {
+    count = count + 1 if c == char;
+  };
+
+  part1 = part1 + 1 if count >= min and count <= max;
+};
+
+print("Part 1: " + part1);
