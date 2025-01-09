@@ -73,6 +73,31 @@ impl RuntimeString {
         let n = self.as_str().matches(substr.as_str()).count();
         RuntimeNumber::Float(n as f64)
     }
+
+    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeString, RuntimeError> {
+        let n = index.floor_int();
+
+        let i = if n.is_negative() {
+            self.len() as isize - n.abs()
+        } else {
+            n
+        };
+
+        if i < 0 || i as usize >= self.len() {
+            return Err(RuntimeError::IndexOutOfBounds(n, self.len()));
+        }
+
+        // Not quite the best for Rust's UTF-8 strings, but all inputs for Linefeed's use-cases
+        // will be valid ASCII, so indexing into the bytes directly should be fine for now.
+        let byte = self.as_str().as_bytes().get(i as usize).ok_or_else(|| {
+            RuntimeError::InternalBug(format!(
+                "Index {i} is out of bounds for string of length {}",
+                self.len()
+            ))
+        })?;
+
+        Ok(Self::new(char::from(*byte)))
+    }
 }
 
 impl std::fmt::Display for RuntimeString {

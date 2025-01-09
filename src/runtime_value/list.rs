@@ -5,7 +5,7 @@ use std::{
 
 use crate::{
     bytecode_interpreter::RuntimeError,
-    runtime_value::{operations::LfAppend, RuntimeValue},
+    runtime_value::{number::RuntimeNumber, operations::LfAppend, RuntimeValue},
 };
 
 #[derive(Debug, Clone)]
@@ -32,34 +32,27 @@ impl RuntimeList {
         Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
 
-    pub fn index(&self, index: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-        let RuntimeValue::Num(n) = index else {
-            return Err(RuntimeError::TypeMismatch(format!(
-                "Expected index to be a number, found {}",
-                index.kind_str()
-            )));
-        };
-
-        let n = n.floor_int();
-        let len = self.0.borrow().len();
-
-        if n.unsigned_abs() >= self.0.borrow().len() {
-            return Err(RuntimeError::IndexOutOfBounds(n, len));
-        }
+    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
+        let n = index.floor_int();
 
         let i = if n.is_negative() {
-            self.0.borrow().len() - n.unsigned_abs()
+            self.len() as isize - n.abs()
         } else {
-            n as usize
+            n
         };
+
+        if i < 0 || i as usize >= self.len() {
+            return Err(RuntimeError::IndexOutOfBounds(n, self.len()));
+        }
 
         let value = self
             .0
             .borrow()
-            .get(i)
+            .get(i as usize)
             .ok_or_else(|| {
                 RuntimeError::InternalBug(format!(
-                    "Index {i} is out of bounds for list of length {len}",
+                    "Index {i} is out of bounds for list of length {}",
+                    self.len()
                 ))
             })?
             .clone();

@@ -112,13 +112,19 @@ impl RuntimeValue {
     }
 
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
-        match self {
-            RuntimeValue::List(list) => list.index(index),
-            _ => Err(RuntimeError::TypeMismatch(format!(
-                "Cannot index into '{}'",
-                self.kind_str()
-            ))),
-        }
+        let res = match (self, index) {
+            (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
+            (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot index into '{}' with type '{}'",
+                    self.kind_str(),
+                    index.kind_str()
+                )))
+            }
+        };
+
+        Ok(res)
     }
 
     pub fn to_iter(&self) -> Result<Self, RuntimeError> {

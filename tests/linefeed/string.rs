@@ -66,3 +66,25 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    string_index_works,
+    indoc! {r#"
+        foo = "hello world";
+
+        print(foo[0]);
+        print(foo[1]);
+        print(foo[10]);
+
+        print(foo[-1]);
+        print(foo[-11]);
+    "#},
+    equals(indoc! {r#"
+        h
+        e
+        d
+        d
+        h
+    "#}),
+    empty()
+);
