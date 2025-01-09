@@ -33,20 +33,20 @@ eval_and_assert!(
     include_str!("day02.lf"),
     include_str!("inputs/day02.txt"),
     equals(indoc! {r#"
-        Part 1: 514579
-        Part 2: ...
+        Part 1: 2
+        Part 2: 1
     "#}),
     empty()
 );
 
 #[cfg(feature = "aoc-secret")]
 eval_and_assert!(
-    day01_secret,
+    day02_secret,
     include_str!("day02.lf"),
     include_str!("inputs/day02-secret.txt"),
     equals(indoc! {r#"
         Part 1: 620
-        Part 2: ...
+        Part 2: 727
     "#}),
     empty()
 );
