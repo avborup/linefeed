@@ -8,7 +8,6 @@ use crate::{
     ast::{Expr, Span, Spanned},
     bytecode_interpreter::BytecodeInterpreter,
     compiler::{CompileError, Compiler},
-    interpreter::Interpreter,
     parser::expr_parser,
 };
 
@@ -16,7 +15,6 @@ pub mod ast;
 pub mod bytecode;
 pub mod bytecode_interpreter;
 pub mod compiler;
-pub mod interpreter;
 pub mod ir_value;
 pub mod lexer;
 pub mod method;
@@ -84,25 +82,6 @@ pub fn run_with_handles(
     eprintln!(
         "Parse time: {parse_time:?}, Compile time: {compile_time:?}, Run time: {run_time:?}. {instrs_executed} instructions executed.",
     );
-}
-
-pub fn run_with_interpreter(
-    mut interpreter: Interpreter<impl Write, impl Write>,
-    src: impl AsRef<str>,
-) {
-    let parse_start = Instant::now();
-    let ast = parse(src.as_ref());
-    let parse_time = Instant::now().duration_since(parse_start);
-
-    let run_start = Instant::now();
-    let res = ast.and_then(|ast| interpreter.run(&ast).map_err(|e| vec![e]));
-    let run_time = Instant::now().duration_since(run_start);
-
-    if let Err(errs) = res {
-        pretty_print_errors(interpreter.stderr, src, errs);
-    }
-
-    eprintln!("Parse time: {:?}, Run time: {:?}", parse_time, run_time);
 }
 
 pub fn parse(src: impl AsRef<str>) -> Result<Spanned<Expr>, Vec<Simple<String>>> {
