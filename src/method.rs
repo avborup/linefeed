@@ -5,6 +5,7 @@ pub enum Method {
     ToLowerCase,
     Split,
     SplitLines,
+    Join,
     Length,
     Count,
     FindAll,
@@ -21,6 +22,7 @@ impl Method {
             Method::Length => "len",
             Method::Count => "count",
             Method::FindAll => "find_all",
+            Method::Join => "join",
         }
     }
 
@@ -34,6 +36,7 @@ impl Method {
             "len" => Some(Method::Length),
             "count" => Some(Method::Count),
             "find_all" => Some(Method::FindAll),
+            "join" => Some(Method::Join),
             _ => None,
         }
     }
@@ -49,6 +52,7 @@ impl Method {
             Self::Length => Some(0),
             Self::Count => Some(1),
             Self::FindAll => Some(1),
+            Self::Join => Some(1),
         }
     }
 }

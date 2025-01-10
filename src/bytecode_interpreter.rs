@@ -271,6 +271,7 @@ where
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
                 Bytecode::Split => binary_op!(self, split),
                 Bytecode::SplitLines => unary_mapper_method!(self, lines),
+                Bytecode::Join => binary_op!(self, join),
                 Bytecode::Length => unary_mapper_method!(self, length),
                 Bytecode::Count => binary_op!(self, count),
                 Bytecode::FindAll => binary_op!(self, find_all),

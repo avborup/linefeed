@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, ops::Deref, rc::Rc};
+use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
 use crate::{
     bytecode_interpreter::RuntimeError,
@@ -310,7 +310,7 @@ impl RuntimeValue {
     }
 }
 
-fn write_items<'a, T: std::fmt::Display>(
+fn write_items<T: std::fmt::Display>(
     f: &mut std::fmt::Formatter,
     items: impl Iterator<Item = T>,
     formatter: impl Fn(&mut std::fmt::Formatter, &T) -> std::fmt::Result,
@@ -462,6 +462,38 @@ impl RuntimeValue {
         };
 
         Ok(RuntimeValue::List(s.lines()))
+    }
+
+    pub fn join(&self, separator: &Self) -> Result<Self, RuntimeError> {
+        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Join, self));
+        };
+
+        let separator = match separator {
+            RuntimeValue::Str(s) => s.as_str(),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot join by type '{}'",
+                    separator.kind_str()
+                )))
+            }
+        };
+
+        let mut output = Vec::new();
+        let mut first = true;
+        while let Some(val) = iter.next() {
+            if !first {
+                write!(&mut output, "{separator}")
+                    .map_err(|e| RuntimeError::InternalBug(e.to_string()))?;
+            }
+            first = false;
+
+            write!(&mut output, "{val}").map_err(|e| RuntimeError::InternalBug(e.to_string()))?;
+        }
+
+        let s = String::from_utf8(output).map_err(|e| RuntimeError::InternalBug(e.to_string()))?;
+
+        Ok(RuntimeValue::Str(RuntimeString::new(s)))
     }
 
     pub fn find_all(&self, search: &Self) -> Result<Self, RuntimeError> {
