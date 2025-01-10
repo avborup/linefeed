@@ -628,6 +628,12 @@ impl Compiler {
 
             program.add_instruction(Value(IrValue::Uninit), expr.span());
 
+            // TODO: Fix stack issues with local variable assignment. This assumes that there are
+            // no temporary values on the stack (i.e. only variables are currently on the stack).
+            // But this breaks for expressions like "something" + sum([x for x in xs]) because the
+            // comprehension defines temporary variables, which overwrite the slack space for the
+            // "something" string. Yikes. The variable would need to be stored on the current top
+            // of the stack, not at offset "how many vars exist right now".
             let offset = self.vars.cur_scope_len();
             self.vars.set_local(name.clone(), offset);
         };

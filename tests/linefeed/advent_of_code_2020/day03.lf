@@ -13,5 +13,8 @@ fn count_slope(slope) {
   trees
 };
 
-print("Part 1: " + count_slope([3, 1]));
-print("Part 2: " + mul([count_slope(slope) for slope in slopes]));
+part1 = count_slope([3, 1]);
+part2 = mul([count_slope(slope) for slope in slopes]);
+
+print("Part 1: " + part1);
+print("Part 2: " + part2);
