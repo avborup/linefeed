@@ -69,7 +69,7 @@ eval_and_assert!(
     include_str!("inputs/day03-secret.txt"),
     equals(indoc! {r#"
         Part 1: 244
-        Part 2: ...
+        Part 2: 9406609920
     "#}),
     empty()
 );
