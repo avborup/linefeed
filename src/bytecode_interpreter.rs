@@ -54,13 +54,9 @@ macro_rules! unary_mapper_method {
 
 macro_rules! method_with_optional_arg {
     ($vm:expr, $method:ident, $num_args:expr) => {{
-        let mut args = (0..$num_args)
-            .map(|_| $vm.pop_stack())
-            .collect::<Result<Vec<_>, _>>()?;
-
+        let mut args = $vm.pop_args($num_args)?;
         let arg = args.pop();
         let target = $vm.pop_stack()?;
-
         $vm.push_stack(target.$method(arg)?);
     }};
 }
@@ -290,14 +286,10 @@ where
                 Bytecode::FindAll => binary_op!(self, find_all),
 
                 Bytecode::PrintValue(num_args) => {
-                    let num_args = *num_args;
-
-                    let vals = (0..num_args)
-                        .map(|_| self.pop_stack())
-                        .collect::<Result<Vec<_>, _>>()?;
+                    let vals = self.pop_args(*num_args)?;
 
                     let mut last_val = None;
-                    for val in vals.into_iter().rev() {
+                    for val in vals {
                         if last_val.is_some() {
                             write!(self.stdout, " ").unwrap();
                         }
@@ -338,6 +330,14 @@ where
 
     pub fn peek_stack(&self) -> Result<&RuntimeValue, RuntimeError> {
         self.stack.last().ok_or(RuntimeError::StackUnderflow)
+    }
+
+    pub fn pop_args(&mut self, num_args: usize) -> Result<Vec<RuntimeValue>, RuntimeError> {
+        let mut args = (0..num_args)
+            .map(|_| self.pop_stack())
+            .collect::<Result<Vec<_>, _>>()?;
+        args.reverse();
+        Ok(args)
     }
 
     // TODO: It's probably very slow to check this every time, but it provides good diagnostics.
