@@ -285,6 +285,9 @@ where
                 Bytecode::Count => binary_op!(self, count),
                 Bytecode::FindAll => binary_op!(self, find_all),
 
+                Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
+                Bytecode::ToList => unary_mapper_method!(self, to_list),
+
                 Bytecode::PrintValue(num_args) => {
                     let vals = self.pop_args(*num_args)?;
 
@@ -316,8 +319,6 @@ where
 
                     self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
-
-                Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
 
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));

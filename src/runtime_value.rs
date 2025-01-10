@@ -507,4 +507,19 @@ impl RuntimeValue {
             _ => Err(RuntimeError::invalid_method_for_type(Method::FindAll, self)),
         }
     }
+
+    pub fn to_list(&self) -> Result<Self, RuntimeError> {
+        if let RuntimeValue::List(_) = self {
+            return Ok(self.clone());
+        }
+
+        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot convert type {} to a list",
+                self.kind_str()
+            )));
+        };
+
+        Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
+    }
 }

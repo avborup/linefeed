@@ -6,6 +6,7 @@ pub enum StdlibFn {
     Input,
     ParseInt,
     Repr,
+    ToList,
 }
 
 impl StdlibFn {
@@ -15,6 +16,7 @@ impl StdlibFn {
             Self::Input => "input",
             Self::ParseInt => "int",
             Self::Repr => "repr",
+            Self::ToList => "list",
         }
     }
 
@@ -24,6 +26,7 @@ impl StdlibFn {
             "input" => Some(Self::Input),
             "int" => Some(Self::ParseInt),
             "repr" => Some(Self::Repr),
+            "list" => Some(Self::ToList),
             _ => None,
         }
     }
@@ -35,6 +38,7 @@ impl StdlibFn {
             Self::Input => 0..=0, // TODO: in the future future, read from an optional file path here?
             Self::ParseInt => 1..=1,
             Self::Repr => 1..=1,
+            Self::ToList => 1..=1,
         }
     }
 }

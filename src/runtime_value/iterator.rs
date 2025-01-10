@@ -14,6 +14,14 @@ impl RuntimeIterator {
     pub fn next(&self) -> Option<RuntimeValue> {
         self.0.borrow_mut().next()
     }
+
+    pub fn to_vec(&self) -> Vec<RuntimeValue> {
+        let mut out = Vec::new();
+        while let Some(value) = self.next() {
+            out.push(value);
+        }
+        out
+    }
 }
 
 struct ListIterator {
