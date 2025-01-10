@@ -522,4 +522,36 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
     }
+
+    pub fn iter_sum(&self) -> Result<Self, RuntimeError> {
+        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot sum over type {}",
+                self.kind_str()
+            )));
+        };
+
+        let mut sum = RuntimeValue::Num(RuntimeNumber::Int(0));
+        while let Some(val) = iter.next() {
+            sum = sum.add(&val)?;
+        }
+
+        Ok(sum)
+    }
+
+    pub fn iter_product(&self) -> Result<Self, RuntimeError> {
+        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot multiply over type {}",
+                self.kind_str()
+            )));
+        };
+
+        let mut prod = RuntimeValue::Num(RuntimeNumber::Int(1));
+        while let Some(val) = iter.next() {
+            prod = prod.mul(&val)?;
+        }
+
+        Ok(prod)
+    }
 }

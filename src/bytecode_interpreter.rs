@@ -287,6 +287,8 @@ where
 
                 Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
                 Bytecode::ToList => unary_mapper_method!(self, to_list),
+                Bytecode::Product => unary_mapper_method!(self, iter_product),
+                Bytecode::Sum => unary_mapper_method!(self, iter_sum),
 
                 Bytecode::PrintValue(num_args) => {
                     let vals = self.pop_args(*num_args)?;

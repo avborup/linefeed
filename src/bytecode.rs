@@ -66,6 +66,8 @@ pub enum Bytecode {
     ToIter,
     ParseInt,
     ToList,
+    Product,
+    Sum,
     ReprString,
 
     // Methods
@@ -129,6 +131,8 @@ impl Bytecode {
                 StdlibFn::ParseInt => Bytecode::ParseInt,
                 StdlibFn::ToList => Bytecode::ToList,
                 StdlibFn::Repr => Bytecode::ReprString,
+                StdlibFn::Product => Bytecode::Product,
+                StdlibFn::Sum => Bytecode::Sum,
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append => Bytecode::Append,

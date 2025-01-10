@@ -15,10 +15,7 @@ fn count_slope(slope) {
 };
 
 part1 = count_slope([3, 1]);
-part2 = 1;
-for slope in slopes {
-  part2 *= count_slope(slope);
-};
+part2 = mul([count_slope(slope) for slope in slopes]);
 
 print("Part 1: " + part1);
 print("Part 2: " + part2);
