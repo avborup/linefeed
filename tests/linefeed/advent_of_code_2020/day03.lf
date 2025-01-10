@@ -1,0 +1,13 @@
+grid = [line for line in input().lines()];
+H, W = [grid.len(), grid[0].len()];
+
+part1, part2 = [0, 0];
+px, py = [0, 0];
+while py < H {
+    part1 += 1 if grid[py][px] == "#";
+    px = (px + 3) % W;
+    py += 1;
+};
+
+print("Part 1: " + part1);
+print("Part 2: " + part2);
