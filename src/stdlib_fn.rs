@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 #[derive(Debug, Clone)]
 pub enum StdlibFn {
     Print,
@@ -23,12 +25,12 @@ impl StdlibFn {
         }
     }
 
-    /// Returns the number of arguments this function expects or `None` if it is variadic.
-    pub fn num_args(&self) -> Option<usize> {
+    /// Returns the number of arguments this function expects.
+    pub fn num_args(&self) -> RangeInclusive<usize> {
         match self {
-            Self::Print => None,
-            Self::Input => Some(0), // TODO: in the future future, read from an optional file path here?
-            Self::ParseInt => Some(1),
+            Self::Print => 0..=usize::MAX,
+            Self::Input => 0..=0, // TODO: in the future future, read from an optional file path here?
+            Self::ParseInt => 1..=1,
         }
     }
 }

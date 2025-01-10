@@ -52,6 +52,19 @@ macro_rules! unary_mapper_method {
     }};
 }
 
+macro_rules! method_with_optional_arg {
+    ($vm:expr, $method:ident, $num_args:expr) => {{
+        let mut args = (0..$num_args)
+            .map(|_| $vm.pop_stack())
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let arg = args.pop();
+        let target = $vm.pop_stack()?;
+
+        $vm.push_stack(target.$method(arg)?);
+    }};
+}
+
 impl<I, O, E> BytecodeInterpreter<I, O, E>
 where
     I: Read,
@@ -271,7 +284,7 @@ where
                 Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
                 Bytecode::Split => binary_op!(self, split),
                 Bytecode::SplitLines => unary_mapper_method!(self, lines),
-                Bytecode::Join => binary_op!(self, join),
+                Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
                 Bytecode::Length => unary_mapper_method!(self, length),
                 Bytecode::Count => binary_op!(self, count),
                 Bytecode::FindAll => binary_op!(self, find_all),

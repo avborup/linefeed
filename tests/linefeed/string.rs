@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -102,4 +102,28 @@ eval_and_assert!(
         \d+
     "#}),
     empty()
+);
+
+eval_and_assert!(
+    string_join_works,
+    indoc! {r#"
+        print(["a", "b", "c"].join(", "));
+        print(["a", "b", "c"].join());
+        print([1, 2, 3].join());
+    "#},
+    equals(indoc! {r#"
+        a, b, c
+        abc
+        123
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    string_join_too_many_args_yields_error,
+    indoc! {r#"
+        print([1,2,3].join(" ", "extra"));
+    "#},
+    empty(),
+    contains("Method join expects 0-1 arguments, but got 2")
 );

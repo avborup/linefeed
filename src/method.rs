@@ -1,3 +1,5 @@
+use std::ops::RangeInclusive;
+
 #[derive(Debug, Clone)]
 pub enum Method {
     Append,
@@ -41,18 +43,18 @@ impl Method {
         }
     }
 
-    /// Returns the number of arguments this method expects or `None` if it is variadic.
-    pub fn num_args(&self) -> Option<usize> {
+    /// Returns the number of arguments this method expects.
+    pub fn num_args(&self) -> RangeInclusive<usize> {
         match self {
-            Self::Append => Some(1),
-            Self::ToUpperCase => Some(0),
-            Self::ToLowerCase => Some(0),
-            Self::Split => Some(1),
-            Self::SplitLines => Some(0),
-            Self::Length => Some(0),
-            Self::Count => Some(1),
-            Self::FindAll => Some(1),
-            Self::Join => Some(1),
+            Self::Append => 1..=1,
+            Self::ToUpperCase => 0..=0,
+            Self::ToLowerCase => 0..=0,
+            Self::Split => 1..=1,
+            Self::SplitLines => 0..=0,
+            Self::Length => 0..=0,
+            Self::Count => 1..=1,
+            Self::FindAll => 1..=1,
+            Self::Join => 0..=1,
         }
     }
 }

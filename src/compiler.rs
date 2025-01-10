@@ -3,6 +3,7 @@
 use std::{
     collections::{HashMap, HashSet},
     iter,
+    ops::RangeInclusive,
 };
 
 use crate::{
@@ -521,17 +522,11 @@ impl Compiler {
                         msg: format!("Method {method_name:?} is unknown"),
                     })?;
 
-                if let Some(expected_num_args) = method.num_args() {
-                    if args.len() != expected_num_args {
-                        return Err(CompileError::Spanned {
-                            span: expr.span(),
-                            msg: format!(
-                                "Method {} expects {expected_num_args} arguments, but got {}",
-                                method.name(),
-                                args.len()
-                            ),
-                        });
-                    }
+                if let Err(msg) = validate_num_args(method.num_args(), args.len()) {
+                    return Err(CompileError::Spanned {
+                        span: expr.span(),
+                        msg: format!("Method {} {msg}", method.name()),
+                    });
                 }
 
                 let program = args
@@ -736,17 +731,11 @@ impl Compiler {
         args: &[Spanned<Expr>],
         expr: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
-        if let Some(expected_num_args) = stdlib_fn.num_args() {
-            if args.len() != expected_num_args {
-                return Err(CompileError::Spanned {
-                    span: expr.span(),
-                    msg: format!(
-                        "Function {} expects {expected_num_args} arguments, but got {}",
-                        stdlib_fn.name(),
-                        args.len()
-                    ),
-                });
-            }
+        if let Err(msg) = validate_num_args(stdlib_fn.num_args(), args.len()) {
+            return Err(CompileError::Spanned {
+                span: expr.span(),
+                msg: format!("Function {} {msg}", stdlib_fn.name()),
+            });
         }
 
         let program = args
@@ -757,6 +746,30 @@ impl Compiler {
             .fold(Program::new(), Program::then_program);
 
         Ok(program.then_instruction(StdlibCall(stdlib_fn, args.len()), expr.span()))
+    }
+}
+
+fn validate_num_args(
+    expected_num_args: RangeInclusive<usize>,
+    actual_num_args: usize,
+) -> Result<(), String> {
+    if !expected_num_args.contains(&actual_num_args) {
+        let (min, max) = (expected_num_args.start(), expected_num_args.end());
+
+        let expected_formatted = format!(
+            "{min}{}",
+            if min != max {
+                format!("-{max}")
+            } else {
+                String::new()
+            }
+        );
+
+        Err(format!(
+            "expects {expected_formatted} arguments, but got {actual_num_args}"
+        ))
+    } else {
+        Ok(())
     }
 }
 

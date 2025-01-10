@@ -464,20 +464,22 @@ impl RuntimeValue {
         Ok(RuntimeValue::List(s.lines()))
     }
 
-    pub fn join(&self, separator: &Self) -> Result<Self, RuntimeError> {
+    pub fn join(&self, separator: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
         let Ok(Self::Iterator(iter)) = self.to_iter() else {
             return Err(RuntimeError::invalid_method_for_type(Method::Join, self));
         };
 
         let separator = match separator {
-            RuntimeValue::Str(s) => s.as_str(),
-            _ => {
+            Some(RuntimeValue::Str(s)) => s,
+            None => RuntimeString::new(String::new()),
+            Some(val) => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot join by type '{}'",
-                    separator.kind_str()
+                    val.kind_str()
                 )))
             }
         };
+        let separator = separator.as_str();
 
         let mut output = Vec::new();
         let mut first = true;
