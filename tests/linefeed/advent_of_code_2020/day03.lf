@@ -8,14 +8,10 @@ fn count_slope(slope) {
   px, py, trees = [0, 0, 0];
   while py < H {
       trees += 1 if grid[py][px] == "#";
-      px = (px + dx) % W;
-      py += dy;
+      px, py = [(px + dx) % W, py + dy];
   };
   trees
 };
 
-part1 = count_slope([3, 1]);
-part2 = mul([count_slope(slope) for slope in slopes]);
-
-print("Part 1: " + part1);
-print("Part 2: " + part2);
+print("Part 1: " + count_slope([3, 1]));
+print("Part 2: " + mul([count_slope(slope) for slope in slopes]));
