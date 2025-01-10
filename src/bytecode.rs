@@ -65,6 +65,7 @@ pub enum Bytecode {
     NextIter,
     ToIter,
     ParseInt,
+    ReprString,
 
     // Methods
     Append,
@@ -125,6 +126,7 @@ impl Bytecode {
                 StdlibFn::Print => Bytecode::PrintValue(num_args),
                 StdlibFn::Input => Bytecode::ReadInput,
                 StdlibFn::ParseInt => Bytecode::ParseInt,
+                StdlibFn::Repr => Bytecode::ReprString,
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append => Bytecode::Append,

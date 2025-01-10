@@ -302,6 +302,12 @@ where
                     self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
                 }
 
+                Bytecode::ReprString => {
+                    let val = self.pop_stack()?;
+                    let repr = val.repr_string();
+                    self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
+                }
+
                 Bytecode::ReadInput => {
                     let mut input = String::new();
                     self.stdin.read_to_string(&mut input).map_err(|e| {

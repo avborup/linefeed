@@ -5,6 +5,7 @@ pub enum StdlibFn {
     Print,
     Input,
     ParseInt,
+    Repr,
 }
 
 impl StdlibFn {
@@ -13,6 +14,7 @@ impl StdlibFn {
             Self::Print => "print",
             Self::Input => "input",
             Self::ParseInt => "int",
+            Self::Repr => "repr",
         }
     }
 
@@ -21,6 +23,7 @@ impl StdlibFn {
             "print" => Some(Self::Print),
             "input" => Some(Self::Input),
             "int" => Some(Self::ParseInt),
+            "repr" => Some(Self::Repr),
             _ => None,
         }
     }
@@ -31,6 +34,7 @@ impl StdlibFn {
             Self::Print => 0..=usize::MAX,
             Self::Input => 0..=0, // TODO: in the future future, read from an optional file path here?
             Self::ParseInt => 1..=1,
+            Self::Repr => 1..=1,
         }
     }
 }
