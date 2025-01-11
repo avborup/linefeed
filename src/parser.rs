@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::ast::{BinaryOp, Span, Spanned, TmpExpr as Expr, TmpFunc, TmpValue as Value, UnaryOp};
+use crate::ast::{BinaryOp, Expr, Func, Span, Spanned, UnaryOp, Value};
 use crate::lexer::TmpToken as Token;
 
 pub fn expr_parser<'src, I>(
@@ -115,7 +115,7 @@ where
                         .or(raw_expr.clone()),
                 )
                 .map_with(|((name, args), body), e| {
-                    let val = Expr::Value(Value::Func(TmpFunc {
+                    let val = Expr::Value(Value::Func(Func {
                         args,
                         body: Rc::new(body),
                     }));

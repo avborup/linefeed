@@ -7,10 +7,11 @@ pub type Span = SimpleSpan;
 #[derive(Clone, Debug)]
 pub struct Spanned<T>(pub T, pub Span);
 
-#[derive(Clone, Debug)]
-pub enum TmpExpr<'src> {
+// An expression node in the AST. Children are spanned so we can generate useful errors.
+#[derive(Debug)]
+pub enum Expr<'src> {
     ParseError,
-    Value(TmpValue<'src>),
+    Value(Value<'src>),
     List(Vec<Spanned<Self>>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
@@ -32,53 +33,17 @@ pub enum TmpExpr<'src> {
 }
 
 #[derive(Clone, Debug)]
-pub enum TmpValue<'src> {
+pub enum Value<'src> {
     Null,
     Bool(bool),
     Num(f64),
     Str(&'src str),
     Regex(&'src str),
-    List(Vec<TmpValue<'src>>),
-    Func(TmpFunc<'src>),
+    List(Vec<Self>),
+    Func(Func<'src>),
 }
 
-// An expression node in the AST. Children are spanned so we can generate useful runtime errors.
-#[derive(Debug)]
-pub enum Expr {
-    ParseError,
-    Value(Value),
-    List(Vec<Spanned<Self>>),
-    Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Local(String),
-    Let(String, Box<Spanned<Self>>),
-    Destructure(Vec<String>, Box<Spanned<Self>>),
-    Unary(UnaryOp, Box<Spanned<Self>>),
-    Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
-    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
-    MethodCall(Box<Spanned<Self>>, String, Vec<Spanned<Self>>),
-    If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Block(Box<Spanned<Self>>),
-    Sequence(Vec<Spanned<Self>>),
-    Return(Box<Spanned<Self>>),
-    While(Box<Spanned<Self>>, Box<Spanned<Self>>),
-    For(String, Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Break,
-    Continue,
-    ListComprehension(Box<Spanned<Expr>>, String, Box<Spanned<Expr>>),
-}
-
-#[derive(Clone, Debug, PartialEq, PartialOrd)]
-pub enum Value {
-    Null,
-    Bool(bool),
-    Num(f64),
-    Str(String),
-    Regex(String),
-    List(Vec<Value>),
-    Func(Rc<Func>),
-}
-
-impl std::fmt::Display for Value {
+impl<'src> std::fmt::Display for Value<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Null => write!(f, "null"),
@@ -124,26 +89,19 @@ pub enum UnaryOp {
     Not,
 }
 
-// A function node in the AST.
 #[derive(Debug, Clone)]
-pub struct Func {
-    pub args: Vec<String>,
-    pub body: Rc<Spanned<Expr>>,
-}
-
-#[derive(Debug, Clone)]
-pub struct TmpFunc<'src> {
+pub struct Func<'src> {
     pub args: Vec<&'src str>,
-    pub body: Rc<Spanned<TmpExpr<'src>>>,
+    pub body: Rc<Spanned<Expr<'src>>>,
 }
 
-impl PartialEq for Func {
+impl<'src> PartialEq for Func<'src> {
     fn eq(&self, _: &Self) -> bool {
         false
     }
 }
 
-impl PartialOrd for Func {
+impl<'src> PartialOrd for Func<'src> {
     fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
         None
     }
