@@ -125,7 +125,7 @@ impl Compiler {
                 self.vars.start_scope();
 
                 for (offset, arg) in func.args.iter().enumerate() {
-                    self.vars.set_local(arg.clone(), offset);
+                    self.vars.set_local(arg.to_string(), offset);
                 }
 
                 let func_label = self.new_label();
@@ -584,12 +584,13 @@ impl Compiler {
     // base-pointer-relative addressing
     fn compile_var_address(
         &mut self,
-        name: &String,
+        name: &str,
         expr: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
         // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
         // variables are allowed.
-        let var = self.vars.get(name).ok_or_else(|| CompileError::Spanned {
+        let key = name.to_string();
+        let var = self.vars.get(&key).ok_or_else(|| CompileError::Spanned {
             span: expr.span(),
             msg: format!("No such variable '{name}' in scope"),
         })?;
@@ -607,7 +608,7 @@ impl Compiler {
     fn compile_var_load(
         &mut self,
         expr: &Spanned<Expr>,
-        name: &String,
+        name: &str,
     ) -> Result<Program<Instruction>, CompileError> {
         Ok(self
             .compile_var_address(name, expr)?
@@ -617,12 +618,13 @@ impl Compiler {
     fn compile_var_assign(
         &mut self,
         expr: &Spanned<Expr>,
-        name: &String,
+        name: &str,
         value_program: Program<Instruction>,
     ) -> Result<Program<Instruction>, CompileError> {
         let mut program = Program::new();
 
-        if self.vars.get(name).is_none() {
+        let key = name.to_string();
+        if self.vars.get(&key).is_none() {
             // Allocate stack space for new local variable if it doesn't exist. Should only be used
             // for temporary compiler variables, such as loop iterators and storing stack pointers.
             debug_assert!(name.starts_with("!"));
@@ -636,7 +638,7 @@ impl Compiler {
             // "something" string. Yikes. The variable would need to be stored on the current top
             // of the stack, not at offset "how many vars exist right now".
             let offset = self.vars.cur_scope_len();
-            self.vars.set_local(name.clone(), offset);
+            self.vars.set_local(key, offset);
         };
 
         Ok(program
@@ -876,7 +878,7 @@ pub enum CompileError {
 pub struct Label(pub usize);
 
 fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
-    fn find_all_assignments_inner(expr: &Spanned<Expr>) -> Vec<Spanned<&str>> {
+    fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
         match &expr.0 {
             Expr::Let(local, val) => {
                 let mut res = find_all_assignments_inner(val);
@@ -886,11 +888,7 @@ fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
 
             Expr::Destructure(locals, val) => {
                 let mut res = find_all_assignments_inner(val);
-                res.extend(
-                    locals
-                        .iter()
-                        .map(|local| Spanned(local.as_str(), expr.span())),
-                );
+                res.extend(locals.iter().map(|local| Spanned(*local, expr.span())));
                 res
             }
 
@@ -920,14 +918,14 @@ fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::For(loop_var, iterable, body) => {
-                let mut res = vec![Spanned(loop_var.as_str(), expr.span())];
+                let mut res = vec![Spanned(*loop_var, expr.span())];
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res
             }
 
             Expr::ListComprehension(body, loop_var, iterable) => {
-                let mut res = vec![Spanned(loop_var.as_str(), expr.span())];
+                let mut res = vec![Spanned(*loop_var, expr.span())];
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res

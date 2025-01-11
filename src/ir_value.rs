@@ -23,7 +23,7 @@ pub enum IrValue {
 #[derive(Debug, Clone)]
 pub struct IrList(pub Vec<IrValue>);
 
-impl TryFrom<&AstValue> for IrValue {
+impl<'src> TryFrom<&AstValue<'src>> for IrValue {
     type Error = String;
 
     fn try_from(val: &AstValue) -> Result<Self, Self::Error> {
@@ -31,7 +31,7 @@ impl TryFrom<&AstValue> for IrValue {
             AstValue::Null => IrValue::Null,
             AstValue::Bool(b) => IrValue::Bool(*b),
             AstValue::Num(n) => IrValue::Num(RuntimeNumber::Float(*n)),
-            AstValue::Str(s) => IrValue::Str(s.clone()),
+            AstValue::Str(s) => IrValue::Str(s.to_string()),
             AstValue::List(xs) => {
                 let items = xs.iter().map(IrValue::try_from).collect::<Result<_, _>>()?;
                 IrValue::List(IrList(items))
