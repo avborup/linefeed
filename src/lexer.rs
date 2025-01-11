@@ -1,18 +1,18 @@
 use chumsky::prelude::*;
 use std::fmt;
 
-use crate::ast::Span;
+use crate::ast::{Span, Spanned};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Token {
+#[derive(Clone, Debug, PartialEq)]
+pub enum Token<'src> {
     Null,
     Bool(bool),
-    Num(String),
+    Num(f64),
     Str(String),
     Regex(String),
-    Op(String),
+    Op(&'src str),
     Ctrl(char),
-    Ident(String),
+    Ident(&'src str),
     If,
     Else,
     Or,
@@ -29,13 +29,7 @@ pub enum Token {
     Continue,
 }
 
-impl Token {
-    pub fn op(s: impl Into<String>) -> Token {
-        Token::Op(s.into())
-    }
-}
-
-impl fmt::Display for Token {
+impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Token::Null => write!(f, "null"),
@@ -64,43 +58,47 @@ impl fmt::Display for Token {
     }
 }
 
-pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
+pub fn lexer<'src>(
+) -> impl Parser<'src, &'src str, Vec<Spanned<Token<'src>>>, extra::Err<Rich<'src, char, Span>>> {
     let num = text::int(10)
-        .chain::<char, _, _>(just('.').chain(text::digits(10)).or_not().flatten())
-        .collect::<String>()
+        .then(just('.').then(text::digits(10)).or_not())
+        .to_slice()
+        .from_str()
+        .unwrapped()
         .map(Token::Num);
 
     let raw_str = just("r\"")
-        .ignore_then(filter(|c| *c != '"').repeated())
+        .ignore_then(none_of('"').repeated().collect())
         .then_ignore(just('"'))
-        .collect::<String>()
         .map(Token::Str);
 
     let simple_str = just('"')
-        .ignore_then(choice((just(r"\n").to('\n'), filter(|c| *c != '"'))).repeated())
+        .ignore_then(
+            choice((just(r"\n").to('\n'), none_of('"')))
+                .repeated()
+                .collect(),
+        )
         .then_ignore(just('"'))
-        .collect::<String>()
         .map(Token::Str);
 
     let regex_str = just('/')
-        .ignore_then(filter(|c| *c != '/').repeated())
+        .ignore_then(none_of('/').repeated().collect())
         .then_ignore(just('/'))
-        .collect::<String>()
         .map(Token::Regex);
 
     let str_ = raw_str.or(simple_str);
 
-    let range = just("..").to(Token::op(".."));
+    let range = just("..").to(Token::Op(".."));
 
     let op = one_of("+-*/!=<>%")
         .repeated()
         .at_least(1)
-        .collect::<String>()
+        .to_slice()
         .map(Token::Op);
 
     let ctrl = one_of("()[]{};,|.").map(Token::Ctrl);
 
-    let ident = text::ident().map(|ident: String| match ident.as_str() {
+    let ident = text::ident().map(|ident: &str| match ident {
         "if" => Token::If,
         "else" => Token::Else,
         "true" => Token::Bool(true),
@@ -128,13 +126,17 @@ pub fn lexer() -> impl Parser<char, Vec<(Token, Span)>, Error = Simple<char>> {
         .or(op)
         .or(ctrl)
         .or(ident)
-        .recover_with(skip_then_retry_until([]));
+        .recover_with(skip_then_retry_until(any().ignored(), end()))
+        .boxed();
 
-    let comment = just('#').then(take_until(just('\n'))).padded();
+    let comment = just('#')
+        .then(any().and_is(just('\n').not()).repeated())
+        .padded();
 
     token
-        .map_with_span(|tok, span| (tok, span))
+        .map_with(|tok, e| Spanned(tok, e.span()))
         .padded_by(comment.repeated())
         .padded()
         .repeated()
+        .collect()
 }
