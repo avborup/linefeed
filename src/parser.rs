@@ -19,13 +19,15 @@ where
                 (Token::Ctrl('['), Token::Ctrl(']')),
             ],
             |span| Spanned(Expr::ParseError, span),
-        );
+        )
+        .memoized();
 
         let block = expr
             .clone()
             .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
             .map_with(|expr, e| Spanned(Expr::Block(Box::new(expr)), e.span()))
             .recover_with(via_parser(nested_braces_delim.clone()))
+            .memoized()
             .boxed();
 
         let if_ = recursive(|if_| {
@@ -70,6 +72,7 @@ where
             });
 
         let block_expr = choice((block.clone(), if_, while_, for_))
+            .memoized()
             .boxed()
             .labelled("block expression");
 
@@ -93,6 +96,7 @@ where
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing()
                 .collect::<Vec<_>>()
+                .memoized()
                 .boxed();
 
             // Argument lists are just identifiers separated by commas, surrounded by parentheses
@@ -102,6 +106,7 @@ where
                 .collect::<Vec<_>>()
                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
                 .labelled("function args")
+                .memoized()
                 .boxed();
 
             let func = just(Token::Fn)
@@ -126,6 +131,7 @@ where
                     }
                 })
                 .labelled("function")
+                .memoized()
                 .boxed();
 
             let destructure_assign = ident
@@ -135,6 +141,7 @@ where
                 .then_ignore(just(Token::Op("=")))
                 .then(raw_expr.clone().or(block_expr.clone()))
                 .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)))
+                .memoized()
                 .boxed();
 
             // TODO: This should probably be in the lexer
@@ -173,14 +180,18 @@ where
 
                     Expr::Let(name, Box::new(new_val))
                 })
+                .memoized()
                 .boxed();
 
-            let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
+            let let_ = choice((destructure_assign, single_assign))
+                .memoized()
+                .labelled("assignment");
 
             let list = items
                 .clone()
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
-                .map(Expr::List);
+                .map(Expr::List)
+                .memoized();
 
             let list_comprehension = expr
                 .clone()
@@ -190,6 +201,7 @@ where
                 .map(|((body, loop_var), iter)| {
                     Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
                 })
+                .memoized()
                 .boxed();
 
             // 'Atoms' are expressions that contain no ambiguity
@@ -206,12 +218,14 @@ where
                     .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))))
                 // Attempt to recover anything that looks like a parenthesised expression but contains errors
                 .recover_with(via_parser(nested_braces_delim))
+                .memoized()
                 .boxed(); // Boxing significantly improves compile time
 
             let call_with_args = items
                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
                 .map_with(|args, e| Spanned(args, e.span()))
                 .labelled("function call args")
+                .memoized()
                 .boxed();
 
             // Function calls have very high precedence so we prioritise them
@@ -222,6 +236,7 @@ where
                     |f, args, e| Spanned(Expr::Call(Box::new(f), args.0), e.span()),
                 )
                 .labelled("function call")
+                .memoized()
                 .boxed();
 
             let index = expr
@@ -234,7 +249,7 @@ where
                 })
                 .boxed();
 
-            let call_or_index = choice((func_call, index_into, atom.clone()));
+            let call_or_index = choice((func_call, index_into, atom.clone())).memoized();
 
             let method_call = call_or_index
                 .clone()
@@ -248,6 +263,7 @@ where
                         Spanned(Expr::MethodCall(Box::new(val), method, args.0), e.span())
                     },
                 )
+                .memoized()
                 .boxed();
 
             let with_method_call = choice((method_call, call_or_index)).boxed();
@@ -291,6 +307,7 @@ where
                 .foldl_with(sum_op.then(product).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
                 })
+                .memoized()
                 .boxed();
 
             let cmp_op = choice((
@@ -307,6 +324,7 @@ where
                 .foldl_with(cmp_op.then(sum).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
                 })
+                .memoized()
                 .boxed();
 
             let logical_op = choice((
@@ -320,6 +338,7 @@ where
                 .foldl_with(logical_op.then(compare).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
                 })
+                .memoized()
                 .boxed();
 
             let range_op = just(Token::Op("..")).to(BinaryOp::Range);
@@ -343,8 +362,9 @@ where
                 .labelled("return")
                 .boxed();
 
-            choice((range, logical, return_))
-        });
+            choice((range, logical, return_)).memoized()
+        })
+        .memoized();
 
         let postfix_if = raw_expr
             .clone()
@@ -379,7 +399,7 @@ where
         // TODO: What does this parser even do anymore? Discard it and keep only the below?
         let block_chain = block_expr
             .clone()
-            .then(block_expr.repeated().collect::<Vec<_>>())
+            .then(block_expr.repeated().collect::<Vec<_>>().memoized())
             .map_with(|(a, mut b), e| {
                 let span: Span = e.span();
                 let e = if b.is_empty() {
@@ -390,6 +410,7 @@ where
                 };
                 Spanned(Expr::Block(Box::new(e)), span)
             })
+            .memoized()
             .boxed();
 
         block_chain
@@ -401,7 +422,8 @@ where
                 just(Token::Ctrl(';'))
                     .ignore_then(expr.or_not())
                     .repeated()
-                    .collect::<Vec<_>>(),
+                    .collect::<Vec<_>>()
+                    .memoized(),
             )
             .map_with(|(a, b), e| {
                 if b.is_empty() {
@@ -412,7 +434,9 @@ where
                     Spanned(Expr::Sequence(seq), e.span())
                 }
             })
+            .memoized()
             .boxed()
     })
+    .memoized()
     .then_ignore(end())
 }
