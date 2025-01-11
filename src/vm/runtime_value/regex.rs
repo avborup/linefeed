@@ -13,6 +13,18 @@ pub struct RuntimeRegex(Rc<RegexConfig>);
 #[derive(Debug, Clone)]
 pub struct RegexConfig {
     pub regex: Regex,
+    pub modifiers: RegexModifiers,
+}
+
+#[derive(Debug, Clone)]
+pub struct RegexModifiers {
+    pub case_insensitive: bool,
+
+    // This is custom to linefeed, and not part of the regex crate.
+    //
+    // In competitive programming, and especially in Advent of Code, if a match is a valid integer,
+    // the use-case is almost always to parse it as an integer afterwards. So we provide a shortcut
+    // for that, which keeps Linefeed code cleaner.
     pub parse_nums: bool,
 }
 
@@ -43,10 +55,6 @@ impl RuntimeRegex {
                 .iter()
                 .map(|group| {
                     group.map_or(RuntimeValue::Null, |g| {
-                        // In competitive programming, and especially in Advent of Code, if a match
-                        // is a valid integer, the use-case is almost always to parse it as an
-                        // integer afterwards. So we provide a shortcut for that, which keeps
-                        // Linefeed code cleaner.
                         if let Ok(num) = g
                             .as_str()
                             .parse::<isize>()

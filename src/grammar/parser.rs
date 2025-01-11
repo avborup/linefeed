@@ -2,8 +2,11 @@ use std::rc::Rc;
 
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::grammar::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp};
 use crate::lexer::Token;
+use crate::{
+    grammar::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp},
+    vm::runtime_value::regex::RegexModifiers,
+};
 
 pub fn expr_parser<'src, I>(
 ) -> impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>> + Clone
@@ -84,7 +87,6 @@ where
                 Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
                 Token::Num(n) => Expr::Value(AstValue::Num(n)),
                 Token::Str(s) => Expr::Value(AstValue::Str(s)),
-                Token::Regex(r) => Expr::Value(AstValue::Regex(r)),
                 // TODO: for cleanliness, this should probably not be a "value" - make a separate
                 // keyword parser?
                 Token::Break => Expr::Break,
@@ -212,8 +214,23 @@ where
                 .map(Expr::Tuple)
                 .memoized();
 
+            let regex_modifiers =
+                ident
+                    .map(|ident| ident.chars().collect::<Vec<_>>())
+                    .map(|mods| RegexModifiers {
+                        case_insensitive: mods.contains(&'i'),
+                        parse_nums: mods.contains(&'n'),
+                    });
+
+            let regex = select! { Token::Regex(r) => r }
+                .then(regex_modifiers)
+                .map(|(r, m)| Expr::Value(AstValue::Regex(r, m)))
+                .memoized()
+                .labelled("regex");
+
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
+                .or(regex)
                 .or(let_)
                 .or(list)
                 .or(tuple)

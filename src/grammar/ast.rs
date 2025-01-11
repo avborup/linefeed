@@ -2,6 +2,8 @@ use std::rc::Rc;
 
 use chumsky::span::SimpleSpan;
 
+use crate::vm::runtime_value::regex::RegexModifiers;
+
 pub type Span = SimpleSpan;
 
 #[derive(Clone, Debug)]
@@ -39,7 +41,7 @@ pub enum AstValue<'src> {
     Bool(bool),
     Num(f64),
     Str(String),
-    Regex(String),
+    Regex(String, RegexModifiers),
     List(Vec<Self>),
     Tuple(Vec<Self>),
     Func(Func<'src>),

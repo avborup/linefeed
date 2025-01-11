@@ -1,4 +1,4 @@
-use regex::Regex;
+use regex::RegexBuilder;
 
 use crate::{
     compiler::Label,
@@ -36,11 +36,13 @@ impl<'src> TryFrom<&AstValue<'src>> for IrValue {
             AstValue::Str(s) => IrValue::Str(s.to_string()),
             AstValue::List(xs) => IrValue::List(collect_try_from(xs)?),
             AstValue::Tuple(xs) => IrValue::Tuple(collect_try_from(xs)?),
-            AstValue::Regex(s) => Regex::new(s)
+            AstValue::Regex(s, modifiers) => RegexBuilder::new(s)
+                .case_insensitive(modifiers.case_insensitive)
+                .build()
                 .map(|r| {
                     IrValue::Regex(RegexConfig {
                         regex: r,
-                        parse_nums: true,
+                        modifiers: modifiers.clone(),
                     })
                 })
                 .map_err(|e| format!("Invalid regex: {e}"))?,
