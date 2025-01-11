@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::ast::{Span, Spanned, TmpExpr as Expr, TmpValue as Value};
+use crate::ast::{BinaryOp, Span, Spanned, TmpExpr as Expr, TmpFunc, TmpValue as Value, UnaryOp};
 use crate::lexer::TmpToken as Token;
 
 pub fn expr_parser<'src, I>(
@@ -9,435 +11,380 @@ where
     I: ValueInput<'src, Token = Token<'src>, Span = Span>,
 {
     recursive(|expr| {
-        let val = select! {
-            Token::Null => Value::Null,
-            Token::Bool(x) => Value::Bool(x),
-            Token::Num(n) => Value::Num(n),
-            Token::Str(s) => Value::Str(s),
-        }
-        .map_with(|val, e| Spanned(Expr::Value(val), e.span()))
-        .labelled("value");
+        let nested_braces_delim = nested_delimiters(
+            Token::Ctrl('{'),
+            Token::Ctrl('}'),
+            [
+                (Token::Ctrl('('), Token::Ctrl(')')),
+                (Token::Ctrl('['), Token::Ctrl(']')),
+            ],
+            |span| Spanned(Expr::ParseError, span),
+        );
+
+        let block = expr
+            .clone()
+            .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
+            .map_with(|expr, e| Spanned(Expr::Block(Box::new(expr)), e.span()))
+            .recover_with(via_parser(nested_braces_delim.clone()));
+
+        let if_ = recursive(|if_| {
+            just(Token::If)
+                .ignore_then(expr.clone())
+                .then(block.clone())
+                .then(
+                    just(Token::Else)
+                        .ignore_then(block.clone().or(if_))
+                        .or_not(),
+                )
+                .map_with(|((cond, a), b), e| {
+                    let span: Span = e.span();
+                    Spanned(
+                        Expr::If(
+                            Box::new(cond),
+                            Box::new(a),
+                            Box::new(match b {
+                                Some(b) => b,
+                                // If an `if` expression has no trailing `else` block, we magic up one that just produces null
+                                None => Spanned(Expr::Value(Value::Null), span.to_end()),
+                            }),
+                        ),
+                        e.span(),
+                    )
+                })
+        });
+
+        let while_ = just(Token::While)
+            .ignore_then(expr.clone())
+            .then(block.clone())
+            .map_with(|(cond, a), e| Spanned(Expr::While(Box::new(cond), Box::new(a)), e.span()));
 
         let ident = select! { Token::Ident(ident) => ident }.labelled("identifier");
 
-        let let_ = ident
-            .then_ignore(just(Token::Op("=")))
-            .then(expr)
-            .map_with(|(name, val), e| Spanned(Expr::Let(name, Box::new(val)), e.span()));
+        let for_ = just(Token::For)
+            .ignore_then(ident)
+            .then(just(Token::In).ignore_then(expr.clone()))
+            .then(block.clone())
+            .map_with(|((var, iter), body), e| {
+                Spanned(Expr::For(var, Box::new(iter), Box::new(body)), e.span())
+            });
 
-        val.or(let_)
+        let block_expr = choice((block.clone(), if_, while_, for_)).labelled("block expression");
+
+        let raw_expr = recursive(|raw_expr| {
+            let val = select! {
+                Token::Null => Expr::Value(Value::Null),
+                Token::Bool(x) => Expr::Value(Value::Bool(x)),
+                Token::Num(n) => Expr::Value(Value::Num(n)),
+                Token::Str(s) => Expr::Value(Value::Str(s)),
+                Token::Regex(r) => Expr::Value(Value::Regex(r)),
+                // TODO: for cleanliness, this should probably not be a "value" - make a separate
+                // keyword parser?
+                Token::Break => Expr::Break,
+                Token::Continue => Expr::Continue,
+            }
+            .labelled("value");
+
+            // A comma-separated list of expressions
+            let items = expr
+                .clone()
+                .separated_by(just(Token::Ctrl(',')))
+                .allow_trailing()
+                .collect::<Vec<_>>();
+
+            // Argument lists are just identifiers separated by commas, surrounded by parentheses
+            let args = ident
+                .separated_by(just(Token::Ctrl(',')))
+                .allow_trailing()
+                .collect::<Vec<_>>()
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+                .labelled("function args");
+
+            let func = just(Token::Fn)
+                .ignore_then(ident.or_not().labelled("function name"))
+                .then(args)
+                .then(
+                    block_expr
+                        .clone()
+                        // Attempt to recover anything that looks like a function body but contains errors
+                        .recover_with(via_parser(nested_braces_delim.clone()))
+                        .or(raw_expr.clone()),
+                )
+                .map_with(|((name, args), body), e| {
+                    let val = Expr::Value(Value::Func(TmpFunc {
+                        args,
+                        body: Rc::new(body),
+                    }));
+
+                    match name {
+                        Some(name) => Expr::Let(name, Box::new(Spanned(val, e.span()))),
+                        None => val,
+                    }
+                })
+                .labelled("function");
+
+            let destructure_assign = ident
+                .separated_by(just(Token::Ctrl(',')))
+                .at_least(2)
+                .collect::<Vec<_>>()
+                .then_ignore(just(Token::Op("=")))
+                .then(raw_expr.clone().or(block_expr.clone()))
+                .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)));
+
+            // TODO: This should probably be in the lexer
+            // Variable assignment
+            let assign_op = choice((
+                just(Token::Op("=")).to("="),
+                just(Token::Op("+=")).to("+="),
+                just(Token::Op("-=")).to("-="),
+                just(Token::Op("*=")).to("*="),
+                just(Token::Op("/=")).to("/="),
+                just(Token::Op("%=")).to("%="),
+            ));
+
+            let single_assign = ident
+                .then(assign_op)
+                .then(raw_expr.clone().or(block_expr.clone()))
+                .map_with(|((name, op), val), e| {
+                    let new_val = match op {
+                        "=" => val,
+                        _ => Spanned(
+                            Expr::Binary(
+                                Box::new(Spanned(Expr::Local(name), e.span())),
+                                match op {
+                                    "+=" => BinaryOp::Add,
+                                    "-=" => BinaryOp::Sub,
+                                    "*=" => BinaryOp::Mul,
+                                    "/=" => BinaryOp::Div,
+                                    "%=" => BinaryOp::Mod,
+                                    _ => unreachable!(),
+                                },
+                                Box::new(val),
+                            ),
+                            e.span(),
+                        ),
+                    };
+
+                    Expr::Let(name, Box::new(new_val))
+                });
+
+            let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
+
+            let list = items
+                .clone()
+                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
+                .map(Expr::List);
+
+            let list_comprehension = expr
+                .clone()
+                .then(just(Token::For).ignore_then(ident))
+                .then(just(Token::In).ignore_then(expr.clone()))
+                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
+                .map(|((body, loop_var), iter)| {
+                    Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
+                });
+
+            // 'Atoms' are expressions that contain no ambiguity
+            let atom = val
+                .or(ident.map(Expr::Local))
+                .or(let_)
+                .or(list)
+                .or(list_comprehension)
+                .or(func)
+                .map_with(|expr, e| Spanned(expr, e.span()))
+                // Atoms can also just be normal expressions, but surrounded with parentheses
+                .or(expr
+                    .clone()
+                    .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))))
+                // Attempt to recover anything that looks like a parenthesised expression but contains errors
+                .recover_with(via_parser(nested_braces_delim))
+                .boxed(); // Boxing significantly improves compile time
+
+            let call_with_args = items
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+                .map_with(|args, e| Spanned(args, e.span()))
+                .labelled("function call args");
+
+            // Function calls have very high precedence so we prioritise them
+            let func_call = atom
+                .clone()
+                .foldl_with(
+                    call_with_args.clone().repeated().at_least(1),
+                    |f, args, e| Spanned(Expr::Call(Box::new(f), args.0), e.span()),
+                )
+                .labelled("function call");
+
+            let index = expr
+                .clone()
+                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
+            let index_into = atom
+                .clone()
+                .foldl_with(index.repeated().at_least(1), |val, idx, e| {
+                    Spanned(Expr::Index(Box::new(val), Box::new(idx)), e.span())
+                });
+
+            let call_or_index = func_call.or(index_into).or(atom.clone());
+
+            let method_call = call_or_index.clone().foldl_with(
+                just(Token::Ctrl('.'))
+                    .ignore_then(ident)
+                    .then(call_with_args)
+                    .repeated()
+                    .at_least(1),
+                |val, (method, args), e| {
+                    Spanned(Expr::MethodCall(Box::new(val), method, args.0), e.span())
+                },
+            );
+
+            let with_method_call = method_call.or(call_or_index);
+
+            let neg = just(Token::Op("-"))
+                .repeated()
+                .foldr_with(atom.clone(), |_op, rhs, e| {
+                    Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), e.span())
+                });
+
+            let not = just(Token::Not)
+                .repeated()
+                .foldr_with(atom.clone(), |_op, rhs, e| {
+                    Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), e.span())
+                });
+
+            let unary = neg.or(not);
+
+            let prod_op = choice((
+                just(Token::Op("*")).to(BinaryOp::Mul),
+                just(Token::Op("/")).to(BinaryOp::Div),
+                just(Token::Op("%")).to(BinaryOp::Mod),
+            ));
+
+            let product = with_method_call.clone().or(unary).foldl_with(
+                prod_op.then(with_method_call).repeated(),
+                |a, (op, b), e| Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span()),
+            );
+
+            let sum_op = choice((
+                just(Token::Op("+")).to(BinaryOp::Add),
+                just(Token::Op("-")).to(BinaryOp::Sub),
+            ));
+
+            let sum = product
+                .clone()
+                .foldl_with(sum_op.then(product).repeated(), |a, (op, b), e| {
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+                });
+
+            let cmp_op = choice((
+                just(Token::Op("==")).to(BinaryOp::Eq),
+                just(Token::Op("!=")).to(BinaryOp::NotEq),
+                just(Token::Op("<")).to(BinaryOp::Less),
+                just(Token::Op("<=")).to(BinaryOp::LessEq),
+                just(Token::Op(">")).to(BinaryOp::Greater),
+                just(Token::Op(">=")).to(BinaryOp::GreaterEq),
+            ));
+
+            let compare = sum
+                .clone()
+                .foldl_with(cmp_op.then(sum).repeated(), |a, (op, b), e| {
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+                });
+
+            let logical_op = choice((
+                just(Token::And).to(BinaryOp::And),
+                just(Token::Or).to(BinaryOp::Or),
+                just(Token::Xor).to(BinaryOp::Xor),
+            ));
+
+            let logical = compare
+                .clone()
+                .foldl_with(logical_op.then(compare).repeated(), |a, (op, b), e| {
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+                });
+
+            let range_op = just(Token::Op("..")).to(BinaryOp::Range);
+            let range = logical
+                .clone()
+                .then(range_op.then(logical.clone().or_not()))
+                .map_with(|(a, (op, b)), e| {
+                    let end = b.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
+                    Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), e.span())
+                })
+                .labelled("range");
+
+            let return_ = just(Token::Return)
+                .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
+                .map_with(|expr, e| {
+                    let ret_expr =
+                        expr.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
+                    Spanned(Expr::Return(Box::new(ret_expr)), e.span())
+                })
+                .labelled("return");
+
+            range.or(logical).or(return_)
+        });
+
+        let postfix_if = raw_expr
+            .clone()
+            .then(just(Token::If).ignore_then(raw_expr.clone()))
+            .map_with(|(a, b), e| {
+                Spanned(
+                    Expr::If(
+                        Box::new(b),
+                        Box::new(a),
+                        Box::new(Spanned(Expr::Value(Value::Null), e.span())),
+                    ),
+                    e.span(),
+                )
+            });
+
+        let postfix_unless = raw_expr
+            .clone()
+            .then(just(Token::Unless).ignore_then(raw_expr.clone()))
+            .map_with(|(a, b), e| {
+                Spanned(
+                    Expr::If(
+                        Box::new(Spanned(Expr::Unary(UnaryOp::Not, Box::new(b)), e.span())),
+                        Box::new(a),
+                        Box::new(Spanned(Expr::Value(Value::Null), e.span())),
+                    ),
+                    e.span(),
+                )
+            });
+
+        // TODO: What does this parser even do anymore? Discard it and keep only the below?
+        let block_chain = block_expr
+            .clone()
+            .then(block_expr.repeated().collect::<Vec<_>>())
+            .map_with(|(a, mut b), e| {
+                let span: Span = e.span();
+                let e = if b.is_empty() {
+                    a
+                } else {
+                    b.insert(0, a);
+                    Spanned(Expr::Sequence(b), span)
+                };
+                Spanned(Expr::Block(Box::new(e)), span)
+            });
+
+        block_chain
+            .or(postfix_if)
+            .or(postfix_unless)
+            // Expressions, chained by semicolons, are statements
+            .or(raw_expr.clone())
+            .then(
+                just(Token::Ctrl(';'))
+                    .ignore_then(expr.or_not())
+                    .repeated()
+                    .collect::<Vec<_>>(),
+            )
+            .map_with(|(a, b), e| {
+                if b.is_empty() {
+                    a
+                } else {
+                    let mut seq = vec![a];
+                    seq.extend(b.into_iter().flatten());
+                    Spanned(Expr::Sequence(seq), e.span())
+                }
+            })
     })
-    // pub fn expr_parser() -> impl Parser<Token, Spanned<Expr>, Error = Simple<Token>> + Clone {
-    // recursive(|expr| {
-    //     // Blocks are expressions but delimited with braces
-    //     let block = expr
-    //         .clone()
-    //         .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
-    //         .map_with_span(|expr, span| Spanned(Expr::Block(Box::new(expr)), span))
-    //         // Attempt to recover anything that looks like a block but contains errors
-    //         .recover_with(nested_delimiters(
-    //             Token::Ctrl('{'),
-    //             Token::Ctrl('}'),
-    //             [
-    //                 (Token::Ctrl('('), Token::Ctrl(')')),
-    //                 (Token::Ctrl('['), Token::Ctrl(']')),
-    //             ],
-    //             |span| Spanned(Expr::ParseError, span),
-    //         ));
-    //
-    //     let if_ = recursive(|if_| {
-    //         just(Token::If)
-    //             .ignore_then(expr.clone())
-    //             .then(block.clone())
-    //             .then(
-    //                 just(Token::Else)
-    //                     .ignore_then(block.clone().or(if_))
-    //                     .or_not(),
-    //             )
-    //             .map_with_span(|((cond, a), b), span: Span| {
-    //                 Spanned(
-    //                     Expr::If(
-    //                         Box::new(cond),
-    //                         Box::new(a),
-    //                         Box::new(match b {
-    //                             Some(b) => b,
-    //                             // If an `if` expression has no trailing `else` block, we magic up one that just produces null
-    //                             None => Spanned(Expr::Value(Value::Null), span.end..span.end),
-    //                         }),
-    //                     ),
-    //                     span,
-    //                 )
-    //             })
-    //     });
-    //
-    //     let while_ = just(Token::While)
-    //         .ignore_then(expr.clone())
-    //         .then(block.clone())
-    //         .map_with_span(|(cond, a), span: Span| {
-    //             Spanned(Expr::While(Box::new(cond), Box::new(a)), span)
-    //         });
-    //
-    //     let ident = select! { Token::Ident(ident) => ident.clone() }.labelled("identifier");
-    //
-    //     let for_ = just(Token::For)
-    //         .ignore_then(ident)
-    //         .then(just(Token::In).ignore_then(expr.clone()))
-    //         .then(block.clone())
-    //         .map_with_span(|((var, iter), body), span: Span| {
-    //             Spanned(Expr::For(var, Box::new(iter), Box::new(body)), span)
-    //         });
-    //
-    //     let block_expr = choice((block.clone(), if_, while_, for_)).labelled("block expression");
-    //
-    //     let raw_expr = recursive(|raw_expr| {
-    //         let val = select! {
-    //             Token::Null => Expr::Value(Value::Null),
-    //             Token::Bool(x) => Expr::Value(Value::Bool(x)),
-    //             Token::Num(n) => Expr::Value(Value::Num(n.parse().unwrap())),
-    //             Token::Str(s) => Expr::Value(Value::Str(s)),
-    //             Token::Regex(r) => Expr::Value(Value::Regex(r)),
-    //             Token::Break => Expr::Break,
-    //             Token::Continue => Expr::Continue,
-    //         }
-    //         .labelled("value");
-    //
-    //         // A list of expressions
-    //         let items = expr
-    //             .clone()
-    //             .separated_by(just(Token::Ctrl(',')))
-    //             .allow_trailing();
-    //
-    //         // Argument lists are just identifiers separated by commas, surrounded by parentheses
-    //         let args = ident
-    //             .separated_by(just(Token::Ctrl(',')))
-    //             .allow_trailing()
-    //             .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-    //             .labelled("function args");
-    //
-    //         let func = just(Token::Fn)
-    //             .ignore_then(ident.or_not().labelled("function name"))
-    //             .then(args)
-    //             .then(
-    //                 block_expr
-    //                     .clone()
-    //                     // Attempt to recover anything that looks like a function body but contains errors
-    //                     .recover_with(nested_delimiters(
-    //                         Token::Ctrl('{'),
-    //                         Token::Ctrl('}'),
-    //                         [
-    //                             (Token::Ctrl('('), Token::Ctrl(')')),
-    //                             (Token::Ctrl('['), Token::Ctrl(']')),
-    //                         ],
-    //                         |span| Spanned(Expr::ParseError, span),
-    //                     ))
-    //                     .or(raw_expr.clone()),
-    //             )
-    //             .map_with_span(|((name, args), body), span: Span| {
-    //                 let val = Expr::Value(Value::Func(Rc::new(Func {
-    //                     args,
-    //                     body: Rc::new(body),
-    //                 })));
-    //
-    //                 match name {
-    //                     Some(name) => Expr::Let(name, Box::new(Spanned(val, span))),
-    //                     None => val,
-    //                 }
-    //             })
-    //             .labelled("function");
-    //
-    //         let destructure_assign = ident
-    //             .separated_by(just(Token::Ctrl(',')))
-    //             .at_least(2)
-    //             .then_ignore(just(Token::op("=")))
-    //             .then(raw_expr.clone().or(block_expr.clone()))
-    //             .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)));
-    //
-    //         // Variable assignment
-    //         let assign_op = choice((
-    //             just(Token::op("=")).to("="),
-    //             just(Token::op("+=")).to("+="),
-    //             just(Token::op("-=")).to("-="),
-    //             just(Token::op("*=")).to("*="),
-    //             just(Token::op("/=")).to("/="),
-    //             just(Token::op("%=")).to("%="),
-    //         ));
-    //
-    //         let single_assign = ident
-    //             .then(assign_op)
-    //             .then(raw_expr.clone().or(block_expr.clone()))
-    //             .map_with_span(|((name, op), val), span: Span| {
-    //                 let new_val = match op {
-    //                     "=" => val,
-    //                     _ => Spanned(
-    //                         Expr::Binary(
-    //                             Box::new(Spanned(Expr::Local(name.clone()), span.clone())),
-    //                             match op {
-    //                                 "+=" => BinaryOp::Add,
-    //                                 "-=" => BinaryOp::Sub,
-    //                                 "*=" => BinaryOp::Mul,
-    //                                 "/=" => BinaryOp::Div,
-    //                                 "%=" => BinaryOp::Mod,
-    //                                 _ => unreachable!(),
-    //                             },
-    //                             Box::new(val),
-    //                         ),
-    //                         span,
-    //                     ),
-    //                 };
-    //
-    //                 Expr::Let(name, Box::new(new_val))
-    //             });
-    //
-    //         let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
-    //
-    //         let list = items
-    //             .clone()
-    //             .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
-    //             .map(Expr::List);
-    //
-    //         let list_comprehension = expr
-    //             .clone()
-    //             .then(just(Token::For).ignore_then(ident))
-    //             .then(just(Token::In).ignore_then(expr.clone()))
-    //             .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
-    //             .map(|((body, loop_var), iter)| {
-    //                 Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
-    //             });
-    //
-    //         // 'Atoms' are expressions that contain no ambiguity
-    //         let atom = val
-    //             .or(func)
-    //             .or(let_)
-    //             .or(ident.map(Expr::Local))
-    //             .or(list)
-    //             .or(list_comprehension)
-    //             .map_with_span(Spanned)
-    //             // Atoms can also just be normal expressions, but surrounded with parentheses
-    //             .or(expr
-    //                 .clone()
-    //                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')'))))
-    //             // Attempt to recover anything that looks like a parenthesised expression but contains errors
-    //             .recover_with(nested_delimiters(
-    //                 Token::Ctrl('('),
-    //                 Token::Ctrl(')'),
-    //                 [
-    //                     (Token::Ctrl('['), Token::Ctrl(']')),
-    //                     (Token::Ctrl('{'), Token::Ctrl('}')),
-    //                 ],
-    //                 |span| Spanned(Expr::ParseError, span),
-    //             ))
-    //             // Attempt to recover anything that looks like a list but contains errors
-    //             .recover_with(nested_delimiters(
-    //                 Token::Ctrl('['),
-    //                 Token::Ctrl(']'),
-    //                 [
-    //                     (Token::Ctrl('('), Token::Ctrl(')')),
-    //                     (Token::Ctrl('{'), Token::Ctrl('}')),
-    //                 ],
-    //                 |span| Spanned(Expr::ParseError, span),
-    //             ))
-    //             .boxed(); // Boxing significantly improves compile time
-    //
-    //         let call_with_args = items
-    //             .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-    //             .map_with_span(|args, span: Span| (args, span))
-    //             .labelled("function call args");
-    //
-    //         // Function calls have very high precedence so we prioritise them
-    //         let func_call = atom
-    //             .clone()
-    //             .then(call_with_args.clone().repeated().at_least(1))
-    //             .foldl(|f, args| {
-    //                 let span = f.1.start..args.1.end;
-    //                 Spanned(Expr::Call(Box::new(f), args.0), span)
-    //             });
-    //
-    //         let index = expr
-    //             .clone()
-    //             .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
-    //         let index_into = atom
-    //             .clone()
-    //             .then(index.clone().repeated().at_least(1))
-    //             .foldl(|val, idx| {
-    //                 let span = val.1.start..idx.1.end;
-    //                 Spanned(Expr::Index(Box::new(val), Box::new(idx)), span)
-    //             });
-    //
-    //         let call_or_index = choice((func_call, index_into, atom.clone()));
-    //
-    //         let method_call = call_or_index
-    //             .clone()
-    //             .then(
-    //                 just(Token::Ctrl('.'))
-    //                     .ignore_then(ident)
-    //                     .then(call_with_args)
-    //                     .repeated()
-    //                     .at_least(1),
-    //             )
-    //             .foldl(|val, (method, args)| {
-    //                 let span = val.1.start..args.1.end;
-    //                 Spanned(Expr::MethodCall(Box::new(val), method, args.0), span)
-    //             });
-    //
-    //         let with_method_call = choice((method_call, call_or_index.clone()));
-    //
-    //         let prod_op = choice((
-    //             just(Token::op("*")).to(BinaryOp::Mul),
-    //             just(Token::op("/")).to(BinaryOp::Div),
-    //             just(Token::op("%")).to(BinaryOp::Mod),
-    //         ));
-    //
-    //         let neg = just(Token::op("-"))
-    //             .repeated()
-    //             .then(atom.clone())
-    //             .foldr(|_op, rhs| {
-    //                 let range = rhs.span();
-    //                 Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), range)
-    //             });
-    //
-    //         let not = just(Token::Not)
-    //             .repeated()
-    //             .then(atom.clone())
-    //             .foldr(|_op, rhs| {
-    //                 let range = rhs.span();
-    //                 Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), range)
-    //             });
-    //
-    //         let unary = neg.or(not);
-    //
-    //         let product = with_method_call
-    //             .clone()
-    //             .or(unary)
-    //             .then(prod_op.then(with_method_call).repeated())
-    //             .foldl(|a, (op, b)| {
-    //                 let span = a.1.start..b.1.end;
-    //                 Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-    //             });
-    //
-    //         let sum_op = choice((
-    //             just(Token::op("+")).to(BinaryOp::Add),
-    //             just(Token::op("-")).to(BinaryOp::Sub),
-    //         ));
-    //
-    //         let sum = product
-    //             .clone()
-    //             .then(sum_op.then(product).repeated())
-    //             .foldl(|a, (op, b)| {
-    //                 let span = a.1.start..b.1.end;
-    //                 Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-    //             });
-    //
-    //         let cmp_op = choice((
-    //             just(Token::op("==")).to(BinaryOp::Eq),
-    //             just(Token::op("!=")).to(BinaryOp::NotEq),
-    //             just(Token::op("<")).to(BinaryOp::Less),
-    //             just(Token::op("<=")).to(BinaryOp::LessEq),
-    //             just(Token::op(">")).to(BinaryOp::Greater),
-    //             just(Token::op(">=")).to(BinaryOp::GreaterEq),
-    //         ));
-    //
-    //         let compare = sum
-    //             .clone()
-    //             .then(cmp_op.then(sum).repeated())
-    //             .foldl(|a, (op, b)| {
-    //                 let span = a.1.start..b.1.end;
-    //                 Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-    //             });
-    //
-    //         let logical_op = choice((
-    //             just(Token::And).to(BinaryOp::And),
-    //             just(Token::Or).to(BinaryOp::Or),
-    //             just(Token::Xor).to(BinaryOp::Xor),
-    //         ));
-    //
-    //         let logical = compare
-    //             .clone()
-    //             .then(logical_op.then(compare).repeated())
-    //             .foldl(|a, (op, b)| {
-    //                 let span = a.1.start..b.1.end;
-    //                 Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), span)
-    //             });
-    //
-    //         let range_op = just(Token::op("..")).to(BinaryOp::Range);
-    //         let range = logical
-    //             .clone()
-    //             .then(range_op.then(logical.clone().or_not()))
-    //             .map_with_span(|(a, (op, b)), span: Span| {
-    //                 let end = b.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), span.clone()));
-    //                 Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), span)
-    //             });
-    //
-    //         let return_ = just(Token::Return)
-    //             .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
-    //             .map_with_span(|expr, span: Span| {
-    //                 let ret_expr =
-    //                     expr.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), span.clone()));
-    //                 Spanned(Expr::Return(Box::new(ret_expr)), span)
-    //             })
-    //             .labelled("return");
-    //
-    //         choice((range, logical, return_))
-    //     });
-    //
-    //     let postfix_if = raw_expr
-    //         .clone()
-    //         .then(just(Token::If).ignore_then(raw_expr.clone()))
-    //         .map_with_span(|(a, b), span: Span| {
-    //             Spanned(
-    //                 Expr::If(
-    //                     Box::new(b),
-    //                     Box::new(a),
-    //                     Box::new(Spanned(Expr::Value(Value::Null), span.clone())),
-    //                 ),
-    //                 span,
-    //             )
-    //         });
-    //
-    //     let postfix_unless = raw_expr
-    //         .clone()
-    //         .then(just(Token::Unless).ignore_then(raw_expr.clone()))
-    //         .map_with_span(|(a, b), span: Span| {
-    //             Spanned(
-    //                 Expr::If(
-    //                     Box::new(Spanned(
-    //                         Expr::Unary(UnaryOp::Not, Box::new(b)),
-    //                         span.clone(),
-    //                     )),
-    //                     Box::new(a),
-    //                     Box::new(Spanned(Expr::Value(Value::Null), span.clone())),
-    //                 ),
-    //                 span,
-    //             )
-    //         });
-    //
-    //     let block_chain = block_expr
-    //         .clone()
-    //         .then(block_expr.clone().repeated())
-    //         .map_with_span(|(a, mut b), span: Span| {
-    //             let e = if b.is_empty() {
-    //                 a
-    //             } else {
-    //                 b.insert(0, a);
-    //                 Spanned(Expr::Sequence(b), span.clone())
-    //             };
-    //             Spanned(Expr::Block(Box::new(e)), span)
-    //         });
-    //
-    //     block_chain
-    //         .or(postfix_if)
-    //         .or(postfix_unless)
-    //         // Expressions, chained by semicolons, are statements
-    //         .or(raw_expr.clone())
-    //         .then(just(Token::Ctrl(';')).ignore_then(expr.or_not()).repeated())
-    //         .map_with_span(|(a, b), span: Span| {
-    //             if b.is_empty() {
-    //                 a
-    //             } else {
-    //                 let mut seq = vec![a];
-    //                 seq.extend(b.into_iter().flatten());
-    //                 Spanned(Expr::Sequence(seq), span.clone())
-    //             }
-    //         })
-    // })
-    // .then_ignore(end())
+    .then_ignore(end())
 }

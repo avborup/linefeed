@@ -11,16 +11,35 @@ pub struct Spanned<T>(pub T, pub Span);
 pub enum TmpExpr<'src> {
     ParseError,
     Value(TmpValue<'src>),
+    List(Vec<Spanned<Self>>),
+    Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
     Let(&'src str, Box<Spanned<Self>>),
+    Destructure(Vec<&'src str>, Box<Spanned<Self>>),
+    Unary(UnaryOp, Box<Spanned<Self>>),
+    Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
+    Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
+    MethodCall(Box<Spanned<Self>>, &'src str, Vec<Spanned<Self>>),
+    If(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Block(Box<Spanned<Self>>),
+    Sequence(Vec<Spanned<Self>>),
+    Return(Box<Spanned<Self>>),
+    While(Box<Spanned<Self>>, Box<Spanned<Self>>),
+    For(&'src str, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    Break,
+    Continue,
+    ListComprehension(Box<Spanned<Self>>, &'src str, Box<Spanned<Self>>),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub enum TmpValue<'src> {
     Null,
     Bool(bool),
     Num(f64),
     Str(&'src str),
+    Regex(&'src str),
+    List(Vec<TmpValue<'src>>),
+    Func(TmpFunc<'src>),
 }
 
 // An expression node in the AST. Children are spanned so we can generate useful runtime errors.
@@ -110,6 +129,12 @@ pub enum UnaryOp {
 pub struct Func {
     pub args: Vec<String>,
     pub body: Rc<Spanned<Expr>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TmpFunc<'src> {
+    pub args: Vec<&'src str>,
+    pub body: Rc<Spanned<TmpExpr<'src>>>,
 }
 
 impl PartialEq for Func {
