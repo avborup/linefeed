@@ -105,12 +105,9 @@ pub fn pretty_print_errors(
     src: impl AsRef<str>,
     errs: Vec<Rich<impl ToString + Clone>>,
 ) {
-    let errs = errs
-        .into_iter()
-        .map(|e| e.map_token(|c| c.to_string()))
-        .collect::<Vec<_>>();
+    let errs = errs.into_iter().map(|e| e.map_token(|c| c.to_string()));
 
-    errs.into_iter().for_each(|e| {
+    errs.for_each(|e| {
         let report = Report::build(ReportKind::Error, (), e.span().start);
 
         let report = match e.reason() {
