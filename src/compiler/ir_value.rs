@@ -3,7 +3,7 @@ use regex::Regex;
 use crate::{
     compiler::Label,
     grammar::ast::AstValue,
-    vm::runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
+    vm::runtime_value::{function::RuntimeFunction, number::RuntimeNumber, regex::RegexConfig},
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +14,7 @@ pub enum IrValue {
     Int(isize),
     Num(RuntimeNumber),
     Str(String),
-    Regex(Regex),
+    Regex(RegexConfig),
     List(Vec<IrValue>),
     Tuple(Vec<IrValue>),
     Set(Vec<IrValue>),
@@ -37,7 +37,12 @@ impl<'src> TryFrom<&AstValue<'src>> for IrValue {
             AstValue::List(xs) => IrValue::List(collect_try_from(xs)?),
             AstValue::Tuple(xs) => IrValue::Tuple(collect_try_from(xs)?),
             AstValue::Regex(s) => Regex::new(s)
-                .map(IrValue::Regex)
+                .map(|r| {
+                    IrValue::Regex(RegexConfig {
+                        regex: r,
+                        parse_nums: true,
+                    })
+                })
                 .map_err(|e| format!("Invalid regex: {e}"))?,
             AstValue::Func(_) => return Err("Functions are not simple values".to_string()),
         };

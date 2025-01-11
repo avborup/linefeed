@@ -8,21 +8,21 @@ use crate::vm::runtime_value::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeRegex(Rc<Regex>);
+pub struct RuntimeRegex(Rc<RegexConfig>);
 
-// TODO: use configuration; don't parse numbers unless specified
-pub struct RegexInner {
-    regex: Regex,
-    parse_nums: bool,
+#[derive(Debug, Clone)]
+pub struct RegexConfig {
+    pub regex: Regex,
+    pub parse_nums: bool,
 }
 
 impl RuntimeRegex {
-    pub fn new(regex: Regex) -> Self {
+    pub fn new(regex: RegexConfig) -> Self {
         Self(Rc::new(regex))
     }
 
     pub fn as_regex(&self) -> &Regex {
-        &self.0
+        &self.0.regex
     }
 
     pub fn deep_clone(&self) -> Self {
@@ -30,7 +30,7 @@ impl RuntimeRegex {
     }
 
     pub fn as_str(&self) -> &str {
-        self.0.as_str()
+        self.0.regex.as_str()
     }
 
     pub fn find_matches(&self, s: &RuntimeString) -> RuntimeList {
@@ -38,7 +38,7 @@ impl RuntimeRegex {
 
         let mut matches = Vec::new();
 
-        for m in self.0.captures_iter(s) {
+        for m in self.0.regex.captures_iter(s) {
             let mut group_values = m
                 .iter()
                 .map(|group| {
