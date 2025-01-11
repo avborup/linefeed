@@ -3,7 +3,8 @@ use std::{ops::Deref, rc::Rc};
 use regex::Regex;
 
 use crate::vm::runtime_value::{
-    list::RuntimeList, number::RuntimeNumber, string::RuntimeString, RuntimeValue,
+    list::RuntimeList, number::RuntimeNumber, string::RuntimeString, tuple::RuntimeTuple,
+    RuntimeValue,
 };
 
 #[derive(Debug, Clone)]
@@ -53,8 +54,7 @@ impl RuntimeRegex {
                 })
                 .collect::<Vec<_>>();
 
-            // TODO: Push tuples when they're implemented
-            matches.push(RuntimeValue::List(RuntimeList::from_vec(group_values)));
+            matches.push(RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values)));
         }
 
         RuntimeList::from_vec(matches)
