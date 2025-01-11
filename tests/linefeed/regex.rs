@@ -8,11 +8,11 @@ use indoc::indoc;
 eval_and_assert!(
     regex_basic_can_be_created,
     indoc! {r#"
-        reg = /\d+/;
+        reg = /\d+/n;
         print(reg);
     "#},
     equals(indoc! {r#"
-        /\d+/
+        /\d+/n
     "#}),
     empty()
 );
@@ -31,18 +31,18 @@ eval_and_assert!(
 eval_and_assert!(
     regex_find_all_integers,
     indoc! {r#"
-        print("123 321 423 idk 312,1231.123".find_all(/\d+/));
+        print("123 321 423 idk 312,1231.123".find_all(/\d+/n));
     "#},
-    equals(r#"[[123], [321], [423], [312], [1231], [123]]"#),
+    equals(r#"[(123), (321), (423), (312), (1231), (123)]"#),
     empty()
 );
 
 eval_and_assert!(
     regex_find_all_negative_integers,
     indoc! {r#"
-        print("123 -321 423 idk -312,1231.123".find_all(/-\d+/));
+        print("123 -321 423 idk -312,1231.123".find_all(/-\d+/n));
     "#},
-    equals(r#"[[-321], [-312]]"#),
+    equals(r#"[(-321), (-312)]"#),
     empty()
 );
 
@@ -53,12 +53,12 @@ eval_and_assert!(
             + "1-3 b: cdefg\n"
             + "2-9 c: ccccccccc\n";
 
-        matches = inp.find_all(/(\d+)-(\d+) (\w): (\w+)/);
+        matches = inp.find_all(/(\d+)-(\d+) (\w): (\w+)/n);
 
         print(matches);
     "#},
     equals(
-        r#"[["1-3 a: abcde", 1, 3, "a", "abcde"], ["1-3 b: cdefg", 1, 3, "b", "cdefg"], ["2-9 c: ccccccccc", 2, 9, "c", "ccccccccc"]]"#
+        r#"[(1, 3, "a", "abcde", "1-3 a: abcde"), (1, 3, "b", "cdefg", "1-3 b: cdefg"), (2, 9, "c", "ccccccccc", "2-9 c: ccccccccc")]"#
     ),
     empty()
 );
@@ -66,13 +66,13 @@ eval_and_assert!(
 eval_and_assert!(
     regex_optional_group_is_null_when_not_present,
     indoc! {r#"
-        regex = /(\d+)(?:-(\d+))?/;
+        regex = /(\d+)(?:-(\d+))?/n;
         print("123".find_all(regex));
         print("123-321".find_all(regex));
     "#},
     equals(indoc! {r#"
-        [[123, 123, null]]
-        [["123-321", 123, 321]]
+        [(123, null, 123)]
+        [(123, 321, "123-321")]
     "#}),
     empty()
 );
