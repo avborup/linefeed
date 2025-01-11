@@ -1,4 +1,4 @@
-part1, part2 = [0, 0];
+part1, part2 = (0, 0);
 
 for line in input().find_all(/(\d+)-(\d+) (\w): (\w+)/) {
   _, min, max, char, password = line;

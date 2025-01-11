@@ -129,6 +129,7 @@ impl RuntimeValue {
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, index) {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
+            (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
