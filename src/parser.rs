@@ -3,7 +3,7 @@ use std::rc::Rc;
 use chumsky::{input::ValueInput, prelude::*};
 
 use crate::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp};
-use crate::lexer::TmpToken as Token;
+use crate::lexer::Token;
 
 pub fn expr_parser<'src, I>(
 ) -> impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>> + Clone

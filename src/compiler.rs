@@ -874,6 +874,22 @@ pub enum CompileError {
     Plain(String),
 }
 
+impl CompileError {
+    pub fn span(&self) -> Option<Span> {
+        match self {
+            CompileError::Spanned { span, .. } => Some(*span),
+            CompileError::Plain(_) => None,
+        }
+    }
+
+    pub fn msg(&self) -> &str {
+        match self {
+            CompileError::Spanned { msg, .. } => msg,
+            CompileError::Plain(msg) => msg,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub struct Label(pub usize);
 

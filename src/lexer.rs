@@ -4,7 +4,7 @@ use std::fmt;
 use crate::ast::{Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum TmpToken<'src> {
+pub enum Token<'src> {
     Null,
     Bool(bool),
     Num(f64),
@@ -29,39 +29,7 @@ pub enum TmpToken<'src> {
     Continue,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Token {
-    Null,
-    Bool(bool),
-    Num(String),
-    Str(String),
-    Regex(String),
-    Op(String),
-    Ctrl(char),
-    Ident(String),
-    If,
-    Else,
-    Or,
-    And,
-    Not,
-    Xor,
-    Fn,
-    Return,
-    Unless,
-    While,
-    For,
-    In,
-    Break,
-    Continue,
-}
-
-impl Token {
-    pub fn op(s: impl Into<String>) -> Token {
-        Token::Op(s.into())
-    }
-}
-
-impl fmt::Display for Token {
+impl<'src> fmt::Display for Token<'src> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Token::Null => write!(f, "null"),
@@ -91,14 +59,13 @@ impl fmt::Display for Token {
 }
 
 pub fn lexer<'src>(
-) -> impl Parser<'src, &'src str, Vec<Spanned<TmpToken<'src>>>, extra::Err<Rich<'src, char, Span>>>
-{
+) -> impl Parser<'src, &'src str, Vec<Spanned<Token<'src>>>, extra::Err<Rich<'src, char, Span>>> {
     let num = text::int(10)
         .then(just('.').then(text::digits(10)).or_not())
         .to_slice()
         .from_str()
         .unwrapped()
-        .map(TmpToken::Num);
+        .map(Token::Num);
 
     let comment = just("#")
         .then(any().and_is(just('\n').not()).repeated())
