@@ -107,7 +107,9 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
-            // self.dbg_print();
+            #[cfg(feature = "debug-vm")]
+            self.dbg_print();
+
             let instr = &self.program.instructions[self.pc];
             self.pc += 1;
             self.instructions_executed += 1;
