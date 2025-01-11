@@ -191,7 +191,12 @@ impl Bytecode {
                 location: label_mapper.get(func.location)?,
                 arity: func.arity,
             })),
-            IrValue::Regex(r) => RuntimeValue::Regex(RuntimeRegex::new(r)),
+            IrValue::Regex(s, modifiers) => {
+                let regex = RuntimeRegex::compile(&s, modifiers)
+                    .map_err(|e| CompileError::Plain(format!("Invalid regex: {e}")))?;
+
+                RuntimeValue::Regex(regex)
+            }
         };
 
         Ok(res)

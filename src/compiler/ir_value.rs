@@ -1,9 +1,7 @@
-use regex::RegexBuilder;
-
 use crate::{
     compiler::Label,
     grammar::ast::AstValue,
-    vm::runtime_value::{function::RuntimeFunction, number::RuntimeNumber, regex::RegexConfig},
+    vm::runtime_value::{function::RuntimeFunction, number::RuntimeNumber, regex::RegexModifiers},
 };
 
 #[derive(Debug, Clone)]
@@ -14,7 +12,7 @@ pub enum IrValue {
     Int(isize),
     Num(RuntimeNumber),
     Str(String),
-    Regex(RegexConfig),
+    Regex(String, RegexModifiers),
     List(Vec<IrValue>),
     Tuple(Vec<IrValue>),
     Set(Vec<IrValue>),
@@ -36,16 +34,7 @@ impl<'src> TryFrom<&AstValue<'src>> for IrValue {
             AstValue::Str(s) => IrValue::Str(s.to_string()),
             AstValue::List(xs) => IrValue::List(collect_try_from(xs)?),
             AstValue::Tuple(xs) => IrValue::Tuple(collect_try_from(xs)?),
-            AstValue::Regex(s, modifiers) => RegexBuilder::new(s)
-                .case_insensitive(modifiers.case_insensitive)
-                .build()
-                .map(|r| {
-                    IrValue::Regex(RegexConfig {
-                        regex: r,
-                        modifiers: modifiers.clone(),
-                    })
-                })
-                .map_err(|e| format!("Invalid regex: {e}"))?,
+            AstValue::Regex(s, modifiers) => IrValue::Regex(s.clone(), modifiers.clone()),
             AstValue::Func(_) => return Err("Functions are not simple values".to_string()),
         };
 

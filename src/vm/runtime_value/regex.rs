@@ -1,6 +1,6 @@
 use std::{ops::Deref, rc::Rc};
 
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 
 use crate::vm::runtime_value::{
     list::RuntimeList, number::RuntimeNumber, string::RuntimeString, tuple::RuntimeTuple,
@@ -29,6 +29,14 @@ pub struct RegexModifiers {
 }
 
 impl RuntimeRegex {
+    pub fn compile(s: &str, modifiers: RegexModifiers) -> Result<Self, regex::Error> {
+        let regex = RegexBuilder::new(s)
+            .case_insensitive(modifiers.case_insensitive)
+            .build()?;
+
+        Ok(Self::new(RegexConfig { regex, modifiers }))
+    }
+
     pub fn new(regex: RegexConfig) -> Self {
         Self(Rc::new(regex))
     }
@@ -55,12 +63,10 @@ impl RuntimeRegex {
                 .iter()
                 .map(|group| {
                     group.map_or(RuntimeValue::Null, |g| {
-                        if let Ok(num) = g
-                            .as_str()
-                            .parse::<isize>()
-                            .map(|n| RuntimeValue::Num(RuntimeNumber::Int(n)))
-                        {
-                            return num;
+                        if self.0.modifiers.parse_nums {
+                            if let Ok(num) = g.as_str().parse::<isize>() {
+                                return RuntimeValue::Num(RuntimeNumber::Int(num));
+                            }
                         }
 
                         RuntimeValue::Str(RuntimeString::new(g.as_str()))
@@ -84,7 +90,22 @@ impl RuntimeRegex {
 
 impl std::fmt::Display for RuntimeRegex {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "/{}/", self.as_str())
+        write!(f, "/{}/", self.as_str())?;
+
+        // Destructuring to enforce compile error if new modifiers are added.
+        let RegexModifiers {
+            case_insensitive,
+            parse_nums,
+        } = self.0.modifiers;
+
+        if case_insensitive {
+            write!(f, "i")?;
+        }
+        if parse_nums {
+            write!(f, "n")?;
+        }
+
+        Ok(())
     }
 }
 

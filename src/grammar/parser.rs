@@ -214,13 +214,17 @@ where
                 .map(Expr::Tuple)
                 .memoized();
 
-            let regex_modifiers =
-                ident
-                    .map(|ident| ident.chars().collect::<Vec<_>>())
-                    .map(|mods| RegexModifiers {
-                        case_insensitive: mods.contains(&'i'),
-                        parse_nums: mods.contains(&'n'),
-                    });
+            let regex_modifiers = ident
+                .or_not()
+                .map(|ident| {
+                    ident
+                        .map(|i| i.chars().collect::<Vec<_>>())
+                        .unwrap_or_default()
+                })
+                .map(|mods| RegexModifiers {
+                    case_insensitive: mods.contains(&'i'),
+                    parse_nums: mods.contains(&'n'),
+                });
 
             let regex = select! { Token::Regex(r) => r }
                 .then(regex_modifiers)
