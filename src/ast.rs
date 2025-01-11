@@ -40,28 +40,8 @@ pub enum AstValue<'src> {
     Str(String),
     Regex(String),
     List(Vec<Self>),
+    Tuple(Vec<Self>),
     Func(Func<'src>),
-}
-
-impl<'src> std::fmt::Display for AstValue<'src> {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            Self::Null => write!(f, "null"),
-            Self::Bool(x) => write!(f, "{}", x),
-            Self::Num(x) => write!(f, "{}", x),
-            Self::Str(x) => write!(f, "{}", x),
-            Self::Regex(x) => write!(f, "{}", x),
-            Self::List(xs) => write!(
-                f,
-                "[{}]",
-                xs.iter()
-                    .map(|x| x.to_string())
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            ),
-            Self::Func(func) => write!(f, "<function, {} args>", func.args.len()),
-        }
-    }
 }
 
 #[derive(Clone, Debug)]

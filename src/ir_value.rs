@@ -15,31 +15,31 @@ pub enum IrValue {
     Num(RuntimeNumber),
     Str(String),
     Regex(Regex),
-    List(IrList),
-    Set(IrList),
+    List(Vec<IrValue>),
+    Tuple(Vec<IrValue>),
+    Set(Vec<IrValue>),
     Function(RuntimeFunction<Label>),
 }
-
-#[derive(Debug, Clone)]
-pub struct IrList(pub Vec<IrValue>);
 
 impl<'src> TryFrom<&AstValue<'src>> for IrValue {
     type Error = String;
 
     fn try_from(val: &AstValue) -> Result<Self, Self::Error> {
+        fn collect_try_from(xs: &[AstValue]) -> Result<Vec<IrValue>, String> {
+            xs.iter().map(IrValue::try_from).collect()
+        }
+
         let res = match val {
             AstValue::Null => IrValue::Null,
             AstValue::Bool(b) => IrValue::Bool(*b),
             AstValue::Num(n) => IrValue::Num(RuntimeNumber::Float(*n)),
             AstValue::Str(s) => IrValue::Str(s.to_string()),
-            AstValue::List(xs) => {
-                let items = xs.iter().map(IrValue::try_from).collect::<Result<_, _>>()?;
-                IrValue::List(IrList(items))
-            }
-            AstValue::Func(_) => return Err("Functions are not simple values".to_string()),
+            AstValue::List(xs) => IrValue::List(collect_try_from(xs)?),
+            AstValue::Tuple(xs) => IrValue::Tuple(collect_try_from(xs)?),
             AstValue::Regex(s) => Regex::new(s)
                 .map(IrValue::Regex)
-                .map_err(|e| format!("Invalid regex: {}", e))?,
+                .map_err(|e| format!("Invalid regex: {e}"))?,
+            AstValue::Func(_) => return Err("Functions are not simple values".to_string()),
         };
 
         Ok(res)

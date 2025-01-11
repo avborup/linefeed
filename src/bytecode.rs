@@ -6,7 +6,7 @@ use crate::{
     method::Method,
     runtime_value::{
         function::RuntimeFunction, list::RuntimeList, regex::RuntimeRegex, set::RuntimeSet,
-        string::RuntimeString, RuntimeValue,
+        string::RuntimeString, tuple::RuntimeTuple, RuntimeValue,
     },
     stdlib_fn::StdlibFn,
 };
@@ -162,18 +162,26 @@ impl Bytecode {
             IrValue::Num(n) => RuntimeValue::Num(n),
             IrValue::Str(s) => RuntimeValue::Str(RuntimeString::new(s)),
             IrValue::List(xs) => {
-                let items =
-                    xs.0.into_iter()
-                        .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
-                        .collect::<Result<_, _>>()?;
+                let items = xs
+                    .into_iter()
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .collect::<Result<_, _>>()?;
 
                 RuntimeValue::List(RuntimeList::from_vec(items))
             }
+            IrValue::Tuple(xs) => {
+                let items = xs
+                    .into_iter()
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .collect::<Result<_, _>>()?;
+
+                RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+            }
             IrValue::Set(xs) => {
-                let items =
-                    xs.0.into_iter()
-                        .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
-                        .collect::<Result<_, _>>()?;
+                let items = xs
+                    .into_iter()
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .collect::<Result<_, _>>()?;
 
                 RuntimeValue::Set(RuntimeSet::from_set(items))
             }

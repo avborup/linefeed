@@ -9,7 +9,7 @@ use std::{
 use crate::{
     ast::{AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
     bytecode::Bytecode,
-    ir_value::{IrList, IrValue},
+    ir_value::IrValue,
     method::Method,
     runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
     scoped_map::{ScopedMap, VarType},
@@ -308,10 +308,7 @@ impl Compiler {
                 .collect::<Result<Vec<_>, _>>()?
                 .into_iter()
                 .fold(
-                    Program::from_instruction(
-                        Value(IrValue::List(IrList(Vec::new()))),
-                        expr.span(),
-                    ),
+                    Program::from_instruction(Value(IrValue::List(Vec::new())), expr.span()),
                     |acc, p| {
                         acc.then_program(p)
                             .then_instruction(MethodCall(Method::Append, 1), expr.span())
@@ -489,7 +486,7 @@ impl Compiler {
 
                 let program = register_loop
                     .then_program(register_iterable)
-                    .then_instruction(Value(IrValue::List(IrList(Vec::new()))), expr.span())
+                    .then_instruction(Value(IrValue::List(Vec::new())), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &iterable_name)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())

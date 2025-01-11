@@ -6,7 +6,7 @@ use crate::{
     runtime_value::{
         function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
         number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, regex::RuntimeRegex,
-        set::RuntimeSet, string::RuntimeString,
+        set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple,
     },
 };
 
@@ -19,6 +19,7 @@ pub mod range;
 pub mod regex;
 pub mod set;
 pub mod string;
+pub mod tuple;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue {
@@ -30,6 +31,7 @@ pub enum RuntimeValue {
     Str(RuntimeString),
     Regex(RuntimeRegex),
     List(RuntimeList),
+    Tuple(RuntimeTuple),
     Set(RuntimeSet),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
@@ -53,6 +55,7 @@ impl RuntimeValue {
             RuntimeValue::Str(_) => "str",
             RuntimeValue::Regex(_) => "regex",
             RuntimeValue::List(_) => "list",
+            RuntimeValue::Tuple(_) => "tuple",
             RuntimeValue::Set(_) => "set",
             RuntimeValue::Function(_) => "function",
             RuntimeValue::Range(_) => "range",
@@ -286,6 +289,7 @@ impl RuntimeValue {
             RuntimeValue::Num(n) => n.bool(),
             RuntimeValue::Str(s) => !s.is_empty(),
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
+            RuntimeValue::Tuple(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
             RuntimeValue::Function(_) => true,
             RuntimeValue::Range(_) => true,
@@ -303,6 +307,7 @@ impl RuntimeValue {
             RuntimeValue::Num(n) => RuntimeValue::Num(*n),
             RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
+            RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
@@ -340,6 +345,11 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, "[")?;
                 write_items(f, xs.as_slice().iter(), |f, x| x.repr_fmt(f))?;
                 write!(f, "]")
+            }
+            RuntimeValue::Tuple(xs) => {
+                write!(f, "(")?;
+                write_items(f, xs.as_slice().iter(), |f, x| x.repr_fmt(f))?;
+                write!(f, ")")
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;

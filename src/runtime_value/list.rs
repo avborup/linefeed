@@ -28,6 +28,10 @@ impl RuntimeList {
         self.0.borrow().len()
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.borrow().is_empty()
+    }
+
     pub fn deep_clone(&self) -> Self {
         Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
