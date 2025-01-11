@@ -33,7 +33,7 @@ impl RuntimeRegex {
         let mut matches = Vec::new();
 
         for m in self.0.captures_iter(s) {
-            let group_values = m
+            let mut group_values = m
                 .iter()
                 .map(|group| {
                     group.map_or(RuntimeValue::Null, |g| {
@@ -53,6 +53,11 @@ impl RuntimeRegex {
                     })
                 })
                 .collect::<Vec<_>>();
+
+            // The full match is almost never useful, so just put it at the end, enabling the user
+            // to just ignore it if they don't need it.
+            let full_match = group_values.remove(0);
+            group_values.push(full_match);
 
             matches.push(RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values)));
         }
