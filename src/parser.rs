@@ -194,11 +194,11 @@ where
 
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
-                .or(ident.map(Expr::Local))
                 .or(let_)
                 .or(list)
                 .or(list_comprehension)
                 .or(func)
+                .or(ident.map(Expr::Local))
                 .map_with(|expr, e| Spanned(expr, e.span()))
                 // Atoms can also just be normal expressions, but surrounded with parentheses
                 .or(expr
