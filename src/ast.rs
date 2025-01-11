@@ -1,9 +1,27 @@
 use std::rc::Rc;
 
-pub type Span = std::ops::Range<usize>;
+use chumsky::span::SimpleSpan;
+
+pub type Span = SimpleSpan;
 
 #[derive(Clone, Debug)]
 pub struct Spanned<T>(pub T, pub Span);
+
+#[derive(Clone, Debug)]
+pub enum TmpExpr<'src> {
+    ParseError,
+    Value(TmpValue<'src>),
+    Local(&'src str),
+    Let(&'src str, Box<Spanned<Self>>),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum TmpValue<'src> {
+    Null,
+    Bool(bool),
+    Num(f64),
+    Str(&'src str),
+}
 
 // An expression node in the AST. Children are spanned so we can generate useful runtime errors.
 #[derive(Debug)]
@@ -108,6 +126,14 @@ impl PartialOrd for Func {
 
 impl<T> Spanned<T> {
     pub fn span(&self) -> Span {
-        self.1.clone()
+        self.1
+    }
+}
+
+impl<T> std::ops::Deref for Spanned<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }

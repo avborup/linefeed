@@ -72,6 +72,7 @@ pub enum Instruction {
     ToIter,
 }
 
+use chumsky::span::Span as _;
 use Instruction::*;
 
 #[derive(Debug, Default)]
@@ -93,7 +94,7 @@ impl Compiler {
         let program = self
             .compile_allocation_for_all_vars_in_scope(expr)
             .then_program(self.compile_expr(expr)?)
-            .then_instruction(Stop, expr.1.end..expr.1.end);
+            .then_instruction(Stop, expr.span().to_end());
 
         assert_eq!(program.instructions.len(), program.source_map.len());
 
@@ -862,7 +863,7 @@ where
     pub fn span(&self) -> Option<Span> {
         let start = self.source_map.iter().map(|s| s.start).min()?;
         let end = self.source_map.iter().map(|s| s.end).max()?;
-        Some(Span { start, end })
+        Some(Span::new(start, end))
     }
 }
 

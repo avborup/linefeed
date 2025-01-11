@@ -92,7 +92,7 @@ where
                 .source_map
                 .get(self.pc - 1)
                 .cloned()
-                .unwrap_or_default();
+                .unwrap_or(Span::new(0, 0));
 
             (source_span, err)
         })

@@ -9,7 +9,7 @@ aoc-secret = []
 
 [dependencies]
 ariadne = "0.3.0"
-chumsky = "0.9.3"
+chumsky = { git = "https://github.com/zesterer/chumsky.git", branch = "main" }
 regex = "1.11.1"
 yansi = "1.0.1"
 
