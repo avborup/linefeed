@@ -8,8 +8,8 @@ pub enum Token<'src> {
     Null,
     Bool(bool),
     Num(f64),
-    Str(&'src str),
-    Regex(&'src str),
+    Str(String),
+    Regex(String),
     Op(&'src str),
     Ctrl(char),
     Ident(&'src str),
@@ -68,7 +68,7 @@ pub fn lexer<'src>(
         .map(Token::Num);
 
     let raw_str = just("r\"")
-        .ignore_then(none_of('"').repeated().to_slice())
+        .ignore_then(none_of('"').repeated().collect())
         .then_ignore(just('"'))
         .map(Token::Str);
 
@@ -76,13 +76,13 @@ pub fn lexer<'src>(
         .ignore_then(
             choice((just(r"\n").to('\n'), none_of('"')))
                 .repeated()
-                .to_slice(),
+                .collect(),
         )
         .then_ignore(just('"'))
         .map(Token::Str);
 
     let regex_str = just('/')
-        .ignore_then(none_of('/').repeated().to_slice())
+        .ignore_then(none_of('/').repeated().collect())
         .then_ignore(just('/'))
         .map(Token::Regex);
 

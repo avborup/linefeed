@@ -37,8 +37,8 @@ pub enum AstValue<'src> {
     Null,
     Bool(bool),
     Num(f64),
-    Str(&'src str),
-    Regex(&'src str),
+    Str(String),
+    Regex(String),
     List(Vec<Self>),
     Func(Func<'src>),
 }
