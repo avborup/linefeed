@@ -533,6 +533,21 @@ impl RuntimeValue {
         Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
     }
 
+    pub fn to_tuple(&self) -> Result<Self, RuntimeError> {
+        if let RuntimeValue::Tuple(_) = self {
+            return Ok(self.clone());
+        }
+
+        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot convert type {} to a tuple",
+                self.kind_str()
+            )));
+        };
+
+        Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
+    }
+
     pub fn iter_sum(&self) -> Result<Self, RuntimeError> {
         let Ok(Self::Iterator(iter)) = self.to_iter() else {
             return Err(RuntimeError::TypeMismatch(format!(

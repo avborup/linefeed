@@ -202,10 +202,21 @@ where
                 .memoized()
                 .boxed();
 
+            let tuple = expr
+                .clone()
+                .separated_by(just(Token::Ctrl(',')))
+                .at_least(2)
+                .allow_trailing()
+                .collect::<Vec<_>>()
+                .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
+                .map(Expr::Tuple)
+                .memoized();
+
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
                 .or(let_)
                 .or(list)
+                .or(tuple)
                 .or(list_comprehension)
                 .or(func)
                 .or(ident.map(Expr::Local))

@@ -8,11 +8,12 @@ pub type Span = SimpleSpan;
 pub struct Spanned<T>(pub T, pub Span);
 
 // An expression node in the AST. Children are spanned so we can generate useful errors.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expr<'src> {
     ParseError,
     Value(AstValue<'src>),
     List(Vec<Spanned<Self>>),
+    Tuple(Vec<Spanned<Self>>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
     Let(&'src str, Box<Spanned<Self>>),

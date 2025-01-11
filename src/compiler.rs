@@ -315,6 +315,13 @@ impl Compiler {
                     },
                 ),
 
+            Expr::Tuple(items) => {
+                let list = Spanned(Expr::List(items.clone()), expr.span());
+
+                self.compile_expr(&list)?
+                    .then_instruction(StdlibCall(StdlibFn::ToTuple, 1), expr.span())
+            }
+
             Expr::Index(value, index) => {
                 let value_program = self.compile_expr(value)?;
                 let index_program = self.compile_expr(index)?;
@@ -909,7 +916,9 @@ fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 vec![]
             }
 
-            Expr::List(items) => items.iter().flat_map(find_all_assignments_inner).collect(),
+            Expr::List(items) | Expr::Tuple(items) => {
+                items.iter().flat_map(find_all_assignments_inner).collect()
+            }
 
             Expr::Index(value, index) => {
                 let mut res = find_all_assignments_inner(value);

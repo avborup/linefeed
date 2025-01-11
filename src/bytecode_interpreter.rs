@@ -287,6 +287,7 @@ where
 
                 Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
                 Bytecode::ToList => unary_mapper_method!(self, to_list),
+                Bytecode::ToTuple => unary_mapper_method!(self, to_tuple),
                 Bytecode::Product => unary_mapper_method!(self, iter_product),
                 Bytecode::Sum => unary_mapper_method!(self, iter_sum),
 

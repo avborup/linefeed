@@ -7,6 +7,7 @@ pub enum StdlibFn {
     ParseInt,
     Repr,
     ToList,
+    ToTuple,
     Product,
     Sum,
 }
@@ -19,6 +20,7 @@ impl StdlibFn {
             Self::ParseInt => "int",
             Self::Repr => "repr",
             Self::ToList => "list",
+            Self::ToTuple => "tuple",
             Self::Product => "mul",
             Self::Sum => "sum",
         }
@@ -31,6 +33,7 @@ impl StdlibFn {
             "int" => Some(Self::ParseInt),
             "repr" => Some(Self::Repr),
             "list" => Some(Self::ToList),
+            "tuple" => Some(Self::ToTuple),
             "mul" => Some(Self::Product),
             "sum" => Some(Self::Sum),
             _ => None,
@@ -45,6 +48,7 @@ impl StdlibFn {
             Self::ParseInt => 1..=1,
             Self::Repr => 1..=1,
             Self::ToList => 1..=1,
+            Self::ToTuple => 1..=1,
             Self::Product => 1..=1,
             Self::Sum => 1..=1,
         }
