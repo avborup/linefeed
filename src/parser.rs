@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::ast::{BinaryOp, Expr, Func, Span, Spanned, UnaryOp, Value};
+use crate::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp};
 use crate::lexer::TmpToken as Token;
 
 pub fn expr_parser<'src, I>(
@@ -46,7 +46,7 @@ where
                             Box::new(match b {
                                 Some(b) => b,
                                 // If an `if` expression has no trailing `else` block, we magic up one that just produces null
-                                None => Spanned(Expr::Value(Value::Null), span.to_end()),
+                                None => Spanned(Expr::Value(AstValue::Null), span.to_end()),
                             }),
                         ),
                         e.span(),
@@ -75,11 +75,11 @@ where
 
         let raw_expr = recursive(|raw_expr| {
             let val = select! {
-                Token::Null => Expr::Value(Value::Null),
-                Token::Bool(x) => Expr::Value(Value::Bool(x)),
-                Token::Num(n) => Expr::Value(Value::Num(n)),
-                Token::Str(s) => Expr::Value(Value::Str(s)),
-                Token::Regex(r) => Expr::Value(Value::Regex(r)),
+                Token::Null => Expr::Value(AstValue::Null),
+                Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
+                Token::Num(n) => Expr::Value(AstValue::Num(n)),
+                Token::Str(s) => Expr::Value(AstValue::Str(s)),
+                Token::Regex(r) => Expr::Value(AstValue::Regex(r)),
                 // TODO: for cleanliness, this should probably not be a "value" - make a separate
                 // keyword parser?
                 Token::Break => Expr::Break,
@@ -115,7 +115,7 @@ where
                         .or(raw_expr.clone()),
                 )
                 .map_with(|((name, args), body), e| {
-                    let val = Expr::Value(Value::Func(Func {
+                    let val = Expr::Value(AstValue::Func(Func {
                         args,
                         body: Rc::new(body),
                     }));
@@ -327,7 +327,7 @@ where
                 .clone()
                 .then(range_op.then(logical.clone().or_not()))
                 .map_with(|(a, (op, b)), e| {
-                    let end = b.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
+                    let end = b.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), e.span())
                 })
                 .labelled("range")
@@ -337,7 +337,7 @@ where
                 .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
                 .map_with(|expr, e| {
                     let ret_expr =
-                        expr.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
+                        expr.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
                     Spanned(Expr::Return(Box::new(ret_expr)), e.span())
                 })
                 .labelled("return")
@@ -354,7 +354,7 @@ where
                     Expr::If(
                         Box::new(b),
                         Box::new(a),
-                        Box::new(Spanned(Expr::Value(Value::Null), e.span())),
+                        Box::new(Spanned(Expr::Value(AstValue::Null), e.span())),
                     ),
                     e.span(),
                 )
@@ -369,7 +369,7 @@ where
                     Expr::If(
                         Box::new(Spanned(Expr::Unary(UnaryOp::Not, Box::new(b)), e.span())),
                         Box::new(a),
-                        Box::new(Spanned(Expr::Value(Value::Null), e.span())),
+                        Box::new(Spanned(Expr::Value(AstValue::Null), e.span())),
                     ),
                     e.span(),
                 )

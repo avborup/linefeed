@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use crate::{
-    ast::Value as AstValue,
+    ast::AstValue,
     compiler::Label,
     runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
 };

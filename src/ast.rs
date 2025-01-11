@@ -11,7 +11,7 @@ pub struct Spanned<T>(pub T, pub Span);
 #[derive(Debug)]
 pub enum Expr<'src> {
     ParseError,
-    Value(Value<'src>),
+    Value(AstValue<'src>),
     List(Vec<Spanned<Self>>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
@@ -33,7 +33,7 @@ pub enum Expr<'src> {
 }
 
 #[derive(Clone, Debug)]
-pub enum Value<'src> {
+pub enum AstValue<'src> {
     Null,
     Bool(bool),
     Num(f64),
@@ -43,7 +43,7 @@ pub enum Value<'src> {
     Func(Func<'src>),
 }
 
-impl<'src> std::fmt::Display for Value<'src> {
+impl<'src> std::fmt::Display for AstValue<'src> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             Self::Null => write!(f, "null"),

@@ -7,7 +7,7 @@ use std::{
 };
 
 use crate::{
-    ast::{BinaryOp, Expr, Span, Spanned, UnaryOp, Value as AstValue},
+    ast::{AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
     bytecode::Bytecode,
     ir_value::{IrList, IrValue},
     method::Method,
