@@ -704,7 +704,6 @@ impl Compiler {
     }
 
     pub fn cur_loop_id(&self) -> usize {
-        dbg!(self.local_loop_vars().collect::<Vec<_>>());
         self.local_loop_vars()
             .max_by_key(|(_, offset)| **offset)
             .map(|(name, _)| {
