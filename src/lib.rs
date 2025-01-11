@@ -7,24 +7,18 @@ use chumsky::error::Rich;
 use chumsky::prelude::*;
 
 use crate::{
-    ast::{Expr, Span, Spanned},
-    bytecode_interpreter::{BytecodeInterpreter, RuntimeError},
     compiler::Compiler,
-    lexer::Token,
-    parser::expr_parser,
+    grammar::{
+        ast::{Expr, Span, Spanned},
+        lexer::{self, Token},
+        parser::expr_parser,
+    },
+    vm::{BytecodeInterpreter, RuntimeError},
 };
 
-pub mod ast;
-pub mod bytecode;
-pub mod bytecode_interpreter;
 pub mod compiler;
-pub mod ir_value;
-pub mod lexer;
-pub mod method;
-pub mod parser;
-pub mod runtime_value;
-pub mod scoped_map;
-pub mod stdlib_fn;
+pub mod grammar;
+pub mod vm;
 
 pub fn run(src: impl AsRef<str>) {
     let mut stdin = io::stdin();

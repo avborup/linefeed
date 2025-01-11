@@ -1,8 +1,8 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
-use crate::{
-    bytecode_interpreter::RuntimeError,
+use crate::vm::{
     runtime_value::{operations::LfAppend, RuntimeValue},
+    RuntimeError,
 };
 
 #[derive(Debug, Clone)]

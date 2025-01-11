@@ -3,9 +3,9 @@ use std::{
     rc::Rc,
 };
 
-use crate::{
-    bytecode_interpreter::RuntimeError,
+use crate::vm::{
     runtime_value::{number::RuntimeNumber, operations::LfAppend, RuntimeValue},
+    RuntimeError,
 };
 
 #[derive(Debug, Clone)]

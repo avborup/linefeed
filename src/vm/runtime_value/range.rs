@@ -1,4 +1,4 @@
-use crate::runtime_value::{number::RuntimeNumber, RuntimeValue};
+use crate::vm::runtime_value::{number::RuntimeNumber, RuntimeValue};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeRange {

@@ -3,12 +3,16 @@ use std::io::{Read, Write};
 use yansi::Paint;
 
 use crate::{
-    ast::Span,
-    bytecode::Bytecode,
-    compiler::Program,
-    method::Method,
-    runtime_value::{string::RuntimeString, RuntimeValue},
+    compiler::{method::Method, Program},
+    grammar::ast::Span,
+    vm::{
+        bytecode::Bytecode,
+        runtime_value::{string::RuntimeString, RuntimeValue},
+    },
 };
+
+pub mod bytecode;
+pub mod runtime_value;
 
 pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
     program: Program<Bytecode>,

@@ -1,12 +1,14 @@
 use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
 use crate::{
-    bytecode_interpreter::RuntimeError,
-    method::Method,
-    runtime_value::{
-        function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
-        number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, regex::RuntimeRegex,
-        set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple,
+    compiler::method::Method,
+    vm::{
+        runtime_value::{
+            function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
+            number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, regex::RuntimeRegex,
+            set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple,
+        },
+        RuntimeError,
     },
 };
 

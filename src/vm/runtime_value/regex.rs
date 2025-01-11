@@ -2,7 +2,7 @@ use std::{ops::Deref, rc::Rc};
 
 use regex::Regex;
 
-use crate::runtime_value::{
+use crate::vm::runtime_value::{
     list::RuntimeList, number::RuntimeNumber, string::RuntimeString, RuntimeValue,
 };
 

@@ -1,14 +1,14 @@
 use std::{collections::HashMap, rc::Rc};
 
 use crate::{
-    compiler::{CompileError, Instruction, Label, Program},
-    ir_value::IrValue,
-    method::Method,
-    runtime_value::{
+    compiler::{
+        ir_value::IrValue, method::Method, stdlib_fn::StdlibFn, CompileError, Instruction, Label,
+        Program,
+    },
+    vm::runtime_value::{
         function::RuntimeFunction, list::RuntimeList, regex::RuntimeRegex, set::RuntimeSet,
         string::RuntimeString, tuple::RuntimeTuple, RuntimeValue,
     },
-    stdlib_fn::StdlibFn,
 };
 
 #[derive(Debug, Clone)]

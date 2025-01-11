@@ -1,8 +1,8 @@
 use std::cell::Ref;
 
-use crate::{
-    bytecode_interpreter::RuntimeError,
+use crate::vm::{
     runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
+    RuntimeError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]

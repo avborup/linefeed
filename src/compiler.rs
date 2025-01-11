@@ -7,14 +7,23 @@ use std::{
 };
 
 use crate::{
-    ast::{AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
-    bytecode::Bytecode,
-    ir_value::IrValue,
-    method::Method,
-    runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
-    scoped_map::{ScopedMap, VarType},
-    stdlib_fn::StdlibFn,
+    compiler::{
+        ir_value::IrValue,
+        method::Method,
+        scoped_map::{ScopedMap, VarType},
+        stdlib_fn::StdlibFn,
+    },
+    grammar::ast::{AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
+    vm::{
+        bytecode::Bytecode,
+        runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
+    },
 };
+
+pub mod ir_value;
+pub mod method;
+pub mod scoped_map;
+pub mod stdlib_fn;
 
 #[derive(Debug, Clone)]
 pub enum Instruction {

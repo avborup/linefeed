@@ -1,7 +1,7 @@
 use chumsky::prelude::*;
 use std::fmt;
 
-use crate::ast::{Span, Spanned};
+use crate::grammar::ast::{Span, Spanned};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Token<'src> {

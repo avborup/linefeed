@@ -74,7 +74,7 @@ impl PartialEq for RuntimeNumber {
 
 use RuntimeNumber::*;
 
-use crate::bytecode_interpreter::RuntimeError;
+use crate::vm::RuntimeError;
 
 // Fuck it, we ball
 impl Eq for RuntimeNumber {}

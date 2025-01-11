@@ -1,9 +1,9 @@
 use regex::Regex;
 
 use crate::{
-    ast::AstValue,
     compiler::Label,
-    runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
+    grammar::ast::AstValue,
+    vm::runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
 };
 
 #[derive(Debug, Clone)]
