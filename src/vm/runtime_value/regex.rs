@@ -10,6 +10,12 @@ use crate::vm::runtime_value::{
 #[derive(Debug, Clone)]
 pub struct RuntimeRegex(Rc<Regex>);
 
+// TODO: use configuration; don't parse numbers unless specified
+pub struct RegexInner {
+    regex: Regex,
+    parse_nums: bool,
+}
+
 impl RuntimeRegex {
     pub fn new(regex: Regex) -> Self {
         Self(Rc::new(regex))
@@ -64,6 +70,8 @@ impl RuntimeRegex {
 
         RuntimeList::from_vec(matches)
     }
+
+    // TODO: add find (single) and matches
 }
 
 impl std::fmt::Display for RuntimeRegex {

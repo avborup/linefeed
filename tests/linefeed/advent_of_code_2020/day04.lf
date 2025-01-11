@@ -1,17 +1,52 @@
-passports = [line for line in input().split("\n\n")];
-
-
 part1, part2 = (0, 0);
 
-for passport in passports {
+fn is_valid(key, val, orig) {
+  # // TODO: Make dictionaries
+  # rules = {
+  #   "byr": fn(val) 1920 <= val and val <= 2002,
+  #   "iyr": fn(val) 2010 <= val and val <= 2020,
+  #   "eyr": fn(val) 2020 <= val and val <= 2030,
+  #   ...
+  # };
+
+  if key == "byr" {
+    1920 <= val and val <= 2002
+  } else if key == "iyr" {
+    2010 <= val and val <= 2020
+  } else if key == "eyr" {
+    2020 <= val and val <= 2030
+  } else if key == "hgt" {
+    # // TODO: make find-single
+    rhs = (orig.split(":"))[1];
+    res = rhs.find_all(/^(\d+)(cm|in)$/);
+    return false if res.len() != 1;
+    num, unit = res[0];
+    return 150 <= num and num <= 193 if unit == "cm";
+    return 59 <= num and num <= 76 if unit == "in";
+  } else if key == "hcl" {
+    rhs = (orig.split(":"))[1];
+    res = rhs.find_all(/^#[0-9a-f]{6}$/);
+    res.len() == 1
+  } else if key == "ecl" {
+    val == "amb" or val == "blu" or val == "brn" or val == "gry" or val == "grn" or val == "hzl" or val == "oth"
+  } else if key == "pid" {
+    rhs = (orig.split(":"))[1];
+    rhs.find_all(/^\d{9}$/).len() == 1
+  }
+};
+
+for passport in input().split("\n\n") {
   fields = passport.find_all(/(\w+):(\S+)/);
 
   all_fields = true;
+  all_valid = true;
   for req in ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"] {
     present = false;
+    valid = false;
     for field in fields {
-      key, val = field;
+      key, val, orig = field;
       if key == req {
+        valid = is_valid(key, val, orig);
         present = true;
         break;
       };
@@ -19,11 +54,14 @@ for passport in passports {
 
     if not present {
       all_fields = false;
-      break;
+    };
+    if not valid {
+      all_valid = false;
     };
   };
 
   part1 += 1 if all_fields;
+  part2 += 1 if all_valid;
 };
 
 print("Part 1: " + part1);
