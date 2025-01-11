@@ -67,90 +67,76 @@ pub fn lexer<'src>(
         .unwrapped()
         .map(Token::Num);
 
-    let comment = just("#")
+    let raw_str = just("r\"")
+        .ignore_then(none_of('"').repeated().to_slice())
+        .then_ignore(just('"'))
+        .map(Token::Str);
+
+    let simple_str = just('"')
+        .ignore_then(
+            choice((just(r"\n").to('\n'), none_of('"')))
+                .repeated()
+                .to_slice(),
+        )
+        .then_ignore(just('"'))
+        .map(Token::Str);
+
+    let regex_str = just('/')
+        .ignore_then(none_of('/').repeated().to_slice())
+        .then_ignore(just('/'))
+        .map(Token::Regex);
+
+    let str_ = raw_str.or(simple_str);
+
+    let range = just("..").to(Token::Op(".."));
+
+    let op = one_of("+-*/!=<>%")
+        .repeated()
+        .at_least(1)
+        .to_slice()
+        .map(Token::Op);
+
+    let ctrl = one_of("()[]{};,|.").map(Token::Ctrl);
+
+    let ident = text::ident().map(|ident: &str| match ident {
+        "if" => Token::If,
+        "else" => Token::Else,
+        "true" => Token::Bool(true),
+        "false" => Token::Bool(false),
+        "or" => Token::Or,
+        "and" => Token::And,
+        "not" => Token::Not,
+        "xor" => Token::Xor,
+        "null" => Token::Null,
+        "fn" => Token::Fn,
+        "return" => Token::Return,
+        "unless" => Token::Unless,
+        "while" => Token::While,
+        "for" => Token::For,
+        "in" => Token::In,
+        "break" => Token::Break,
+        "continue" => Token::Continue,
+        _ => Token::Ident(ident),
+    });
+
+    let token = num
+        .or(str_)
+        .or(regex_str)
+        .or(range)
+        .or(op)
+        .or(ctrl)
+        .or(ident)
+        .recover_with(skip_then_retry_until(any().ignored(), end()))
+        .boxed();
+
+    let comment = just('#')
         .then(any().and_is(just('\n').not()).repeated())
         .padded();
-
-    let token = num;
 
     token
         .map_with(|tok, e| Spanned(tok, e.span()))
         .padded_by(comment.repeated())
         .padded()
-        // If we encounter an error, skip and attempt to lex the next character as a token instead
-        .recover_with(skip_then_retry_until(any().ignored(), end()))
         .repeated()
         .collect()
-    // let num = text::int(10)
-    //     .chain::<char, _, _>(just('.').chain(text::digits(10)).or_not().flatten())
-    //     .collect::<String>()
-    //     .map(Token::Num);
-    //
-    // let raw_str = just("r\"")
-    //     .ignore_then(filter(|c| *c != '"').repeated())
-    //     .then_ignore(just('"'))
-    //     .collect::<String>()
-    //     .map(Token::Str);
-    //
-    // let simple_str = just('"')
-    //     .ignore_then(choice((just(r"\n").to('\n'), filter(|c| *c != '"'))).repeated())
-    //     .then_ignore(just('"'))
-    //     .collect::<String>()
-    //     .map(Token::Str);
-    //
-    // let regex_str = just('/')
-    //     .ignore_then(filter(|c| *c != '/').repeated())
-    //     .then_ignore(just('/'))
-    //     .collect::<String>()
-    //     .map(Token::Regex);
-    //
-    // let str_ = raw_str.or(simple_str);
-    //
-    // let range = just("..").to(Token::op(".."));
-    //
-    // let op = one_of("+-*/!=<>%")
-    //     .repeated()
-    //     .at_least(1)
-    //     .collect::<String>()
-    //     .map(Token::Op);
-    //
-    // let ctrl = one_of("()[]{};,|.").map(Token::Ctrl);
-    //
-    // let ident = text::ident().map(|ident: String| match ident.as_str() {
-    //     "if" => Token::If,
-    //     "else" => Token::Else,
-    //     "true" => Token::Bool(true),
-    //     "false" => Token::Bool(false),
-    //     "or" => Token::Or,
-    //     "and" => Token::And,
-    //     "not" => Token::Not,
-    //     "xor" => Token::Xor,
-    //     "null" => Token::Null,
-    //     "fn" => Token::Fn,
-    //     "return" => Token::Return,
-    //     "unless" => Token::Unless,
-    //     "while" => Token::While,
-    //     "for" => Token::For,
-    //     "in" => Token::In,
-    //     "break" => Token::Break,
-    //     "continue" => Token::Continue,
-    //     _ => Token::Ident(ident),
-    // });
-    //
-    // let token = num
-    //     .or(str_)
-    //     .or(regex_str)
-    //     .or(range)
-    //     .or(op)
-    //     .or(ctrl)
-    //     .or(ident)
-    //     .recover_with(skip_then_retry_until([]));
-    //
-    // let comment = just('#').then(take_until(just('\n'))).padded();
-    //
-    // token
-    //     .map_with_span(|tok, span| (tok, span))
-    //     .padded_by(comment.repeated())
-    //     .padded()
-    //     .repeated()
 }
