@@ -1,0 +1,30 @@
+passports = [line for line in input().split("\n\n")];
+
+
+part1, part2 = (0, 0);
+
+for passport in passports {
+  fields = passport.find_all(/(\w+):(\S+)/);
+
+  all_fields = true;
+  for req in ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"] {
+    present = false;
+    for field in fields {
+      key, val = field;
+      if key == req {
+        present = true;
+        break;
+      };
+    };
+
+    if not present {
+      all_fields = false;
+      break;
+    };
+  };
+
+  part1 += 1 if all_fields;
+};
+
+print("Part 1: " + part1);
+print("Part 2: " + part2);
