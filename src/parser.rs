@@ -25,7 +25,8 @@ where
             .clone()
             .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
             .map_with(|expr, e| Spanned(Expr::Block(Box::new(expr)), e.span()))
-            .recover_with(via_parser(nested_braces_delim.clone()));
+            .recover_with(via_parser(nested_braces_delim.clone()))
+            .boxed();
 
         let if_ = recursive(|if_| {
             just(Token::If)
@@ -68,7 +69,9 @@ where
                 Spanned(Expr::For(var, Box::new(iter), Box::new(body)), e.span())
             });
 
-        let block_expr = choice((block.clone(), if_, while_, for_)).labelled("block expression");
+        let block_expr = choice((block.clone(), if_, while_, for_))
+            .boxed()
+            .labelled("block expression");
 
         let raw_expr = recursive(|raw_expr| {
             let val = select! {
@@ -89,7 +92,8 @@ where
                 .clone()
                 .separated_by(just(Token::Ctrl(',')))
                 .allow_trailing()
-                .collect::<Vec<_>>();
+                .collect::<Vec<_>>()
+                .boxed();
 
             // Argument lists are just identifiers separated by commas, surrounded by parentheses
             let args = ident
@@ -97,7 +101,8 @@ where
                 .allow_trailing()
                 .collect::<Vec<_>>()
                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
-                .labelled("function args");
+                .labelled("function args")
+                .boxed();
 
             let func = just(Token::Fn)
                 .ignore_then(ident.or_not().labelled("function name"))
@@ -120,7 +125,8 @@ where
                         None => val,
                     }
                 })
-                .labelled("function");
+                .labelled("function")
+                .boxed();
 
             let destructure_assign = ident
                 .separated_by(just(Token::Ctrl(',')))
@@ -128,7 +134,8 @@ where
                 .collect::<Vec<_>>()
                 .then_ignore(just(Token::Op("=")))
                 .then(raw_expr.clone().or(block_expr.clone()))
-                .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)));
+                .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)))
+                .boxed();
 
             // TODO: This should probably be in the lexer
             // Variable assignment
@@ -165,7 +172,8 @@ where
                     };
 
                     Expr::Let(name, Box::new(new_val))
-                });
+                })
+                .boxed();
 
             let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
 
@@ -181,7 +189,8 @@ where
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
                 .map(|((body, loop_var), iter)| {
                     Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
-                });
+                })
+                .boxed();
 
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
@@ -202,7 +211,8 @@ where
             let call_with_args = items
                 .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')))
                 .map_with(|args, e| Spanned(args, e.span()))
-                .labelled("function call args");
+                .labelled("function call args")
+                .boxed();
 
             // Function calls have very high precedence so we prioritise them
             let func_call = atom
@@ -211,7 +221,8 @@ where
                     call_with_args.clone().repeated().at_least(1),
                     |f, args, e| Spanned(Expr::Call(Box::new(f), args.0), e.span()),
                 )
-                .labelled("function call");
+                .labelled("function call")
+                .boxed();
 
             let index = expr
                 .clone()
@@ -220,22 +231,26 @@ where
                 .clone()
                 .foldl_with(index.repeated().at_least(1), |val, idx, e| {
                     Spanned(Expr::Index(Box::new(val), Box::new(idx)), e.span())
-                });
+                })
+                .boxed();
 
-            let call_or_index = func_call.or(index_into).or(atom.clone());
+            let call_or_index = choice((func_call, index_into, atom.clone()));
 
-            let method_call = call_or_index.clone().foldl_with(
-                just(Token::Ctrl('.'))
-                    .ignore_then(ident)
-                    .then(call_with_args)
-                    .repeated()
-                    .at_least(1),
-                |val, (method, args), e| {
-                    Spanned(Expr::MethodCall(Box::new(val), method, args.0), e.span())
-                },
-            );
+            let method_call = call_or_index
+                .clone()
+                .foldl_with(
+                    just(Token::Ctrl('.'))
+                        .ignore_then(ident)
+                        .then(call_with_args)
+                        .repeated()
+                        .at_least(1),
+                    |val, (method, args), e| {
+                        Spanned(Expr::MethodCall(Box::new(val), method, args.0), e.span())
+                    },
+                )
+                .boxed();
 
-            let with_method_call = method_call.or(call_or_index);
+            let with_method_call = choice((method_call, call_or_index)).boxed();
 
             let neg = just(Token::Op("-"))
                 .repeated()
@@ -249,7 +264,7 @@ where
                     Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), e.span())
                 });
 
-            let unary = neg.or(not);
+            let unary = neg.or(not).boxed();
 
             let prod_op = choice((
                 just(Token::Op("*")).to(BinaryOp::Mul),
@@ -257,10 +272,14 @@ where
                 just(Token::Op("%")).to(BinaryOp::Mod),
             ));
 
-            let product = with_method_call.clone().or(unary).foldl_with(
-                prod_op.then(with_method_call).repeated(),
-                |a, (op, b), e| Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span()),
-            );
+            let product = with_method_call
+                .clone()
+                .or(unary)
+                .foldl_with(
+                    prod_op.then(with_method_call).repeated(),
+                    |a, (op, b), e| Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span()),
+                )
+                .boxed();
 
             let sum_op = choice((
                 just(Token::Op("+")).to(BinaryOp::Add),
@@ -271,7 +290,8 @@ where
                 .clone()
                 .foldl_with(sum_op.then(product).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                });
+                })
+                .boxed();
 
             let cmp_op = choice((
                 just(Token::Op("==")).to(BinaryOp::Eq),
@@ -286,7 +306,8 @@ where
                 .clone()
                 .foldl_with(cmp_op.then(sum).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                });
+                })
+                .boxed();
 
             let logical_op = choice((
                 just(Token::And).to(BinaryOp::And),
@@ -298,7 +319,8 @@ where
                 .clone()
                 .foldl_with(logical_op.then(compare).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                });
+                })
+                .boxed();
 
             let range_op = just(Token::Op("..")).to(BinaryOp::Range);
             let range = logical
@@ -308,7 +330,8 @@ where
                     let end = b.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), e.span())
                 })
-                .labelled("range");
+                .labelled("range")
+                .boxed();
 
             let return_ = just(Token::Return)
                 .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
@@ -317,9 +340,10 @@ where
                         expr.unwrap_or_else(|| Spanned(Expr::Value(Value::Null), e.span()));
                     Spanned(Expr::Return(Box::new(ret_expr)), e.span())
                 })
-                .labelled("return");
+                .labelled("return")
+                .boxed();
 
-            range.or(logical).or(return_)
+            choice((range, logical, return_))
         });
 
         let postfix_if = raw_expr
@@ -334,7 +358,8 @@ where
                     ),
                     e.span(),
                 )
-            });
+            })
+            .boxed();
 
         let postfix_unless = raw_expr
             .clone()
@@ -348,7 +373,8 @@ where
                     ),
                     e.span(),
                 )
-            });
+            })
+            .boxed();
 
         // TODO: What does this parser even do anymore? Discard it and keep only the below?
         let block_chain = block_expr
@@ -363,7 +389,8 @@ where
                     Spanned(Expr::Sequence(b), span)
                 };
                 Spanned(Expr::Block(Box::new(e)), span)
-            });
+            })
+            .boxed();
 
         block_chain
             .or(postfix_if)
@@ -385,6 +412,7 @@ where
                     Spanned(Expr::Sequence(seq), e.span())
                 }
             })
+            .boxed()
     })
     .then_ignore(end())
 }
