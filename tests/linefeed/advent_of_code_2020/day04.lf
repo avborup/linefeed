@@ -1,6 +1,4 @@
-part1, part2 = (0, 0);
-
-fn is_valid(key, val, orig) {
+fn is_valid(key, val) {
   # // TODO: Make dictionaries
   # rules = {
   #   "byr": fn(val) 1920 <= val and val <= 2002,
@@ -9,52 +7,38 @@ fn is_valid(key, val, orig) {
   #   ...
   # };
 
-  if key == "byr" {
-    1920 <= int(val) and int(val) <= 2002
-  } else if key == "iyr" {
-    2010 <= int(val) and int(val) <= 2020
-  } else if key == "eyr" {
-    2020 <= int(val) and int(val) <= 2030
-  } else if key == "hgt" {
-    rhs = (orig.split(":"))[1];
-    res = rhs.find(/^(\d+)(cm|in)$/n);
-    return false if res == null;
-    num, unit = res;
+  if key == "byr" { return 1920 <= int(val) and int(val) <= 2002 }
+  if key == "iyr" { return 2010 <= int(val) and int(val) <= 2020 }
+  if key == "eyr" { return 2020 <= int(val) and int(val) <= 2030 }
+  if key == "hgt" {
+    res = val.find(/^(\d+)(cm|in)$/n);
+    num, unit = if res != null { res } else { return false };
     return 150 <= num and num <= 193 if unit == "cm";
     return 59 <= num and num <= 76 if unit == "in";
-  } else if key == "hcl" {
-    (orig.split(":"))[1].is_match(/^#[0-9a-f]{6}$/)
-  } else if key == "ecl" {
-    val.is_match(/amb|blu|brn|gry|grn|hzl|oth/)
-  } else if key == "pid" {
-    rhs = (orig.split(":"))[1];
-    rhs.is_match(/^\d{9}$/)
   }
+  if key == "hcl" { return val.is_match(/^#[0-9a-f]{6}$/) }
+  if key == "ecl" { return val.is_match(/amb|blu|brn|gry|grn|hzl|oth/) }
+  if key == "pid" { return val.is_match(/^\d{9}$/) }
 };
 
+part1, part2 = (0, 0);
 for passport in input().split("\n\n") {
   fields = passport.find_all(/(\w+):(\S+)/);
 
-  all_fields = true;
-  all_valid = true;
+  all_fields, all_valid = (true, true);
   for req in ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"] {
-    present = false;
-    valid = false;
+    present, valid = (false, false);
     for field in fields {
-      key, val, orig = field;
+      key, val = field;
       if key == req {
-        valid = is_valid(key, val, orig);
+        valid = is_valid(key, val);
         present = true;
         break;
       };
     };
 
-    if not present {
-      all_fields = false;
-    };
-    if not valid {
-      all_valid = false;
-    };
+    all_fields = false if not present;
+    all_valid = false if not valid;
   };
 
   part1 += 1 if all_fields;
