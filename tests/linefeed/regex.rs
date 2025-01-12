@@ -47,6 +47,20 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
+    regex_optional_group_is_null_when_not_present,
+    indoc! {r#"
+        regex = /(\d+)(?:-(\d+))?/n;
+        print("123".find_all(regex));
+        print("123-321".find_all(regex));
+    "#},
+    equals(indoc! {r#"
+        [(123, null, 123)]
+        [(123, 321, "123-321")]
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
     regex_find_all_groups,
     indoc! {r#"
         inp = "1-3 a: abcde\n"
@@ -64,15 +78,34 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
-    regex_optional_group_is_null_when_not_present,
+    regex_find_first_match,
     indoc! {r#"
-        regex = /(\d+)(?:-(\d+))?/n;
-        print("123".find_all(regex));
-        print("123-321".find_all(regex));
+        inp = "1-3 a: abcde\n"
+            + "1-3 b: cdefg\n"
+            + "2-9 c: ccccccccc\n";
+
+        regex = /(\d+)-(\d+) (\w): (\w+)/n;
+        print(inp.find(regex));
+        print("1-3 a:".find(regex));
     "#},
     equals(indoc! {r#"
-        [(123, null, 123)]
-        [(123, 321, "123-321")]
+        (1, 3, "a", "abcde", "1-3 a: abcde")
+        null
     "#}),
+    empty()
+);
+
+eval_and_assert!(
+    regex_is_match,
+    indoc! {r#"
+        inp = "1-3 a: abcde\n"
+            + "1-3 b: cdefg\n"
+            + "2-9 c: ccccccccc\n";
+
+        regex = /(\d+)-(\d+) (\w): (\w+)/n;
+        print(inp.is_match(regex));
+        print("1-3 a".is_match(regex));
+    "#},
+    equals("true \n false"),
     empty()
 );

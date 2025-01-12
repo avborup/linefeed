@@ -521,6 +521,22 @@ impl RuntimeValue {
         }
     }
 
+    pub fn find(&self, search: &Self) -> Result<Self, RuntimeError> {
+        match (self, search) {
+            (RuntimeValue::Str(input), RuntimeValue::Regex(regex)) => Ok(regex.find_match(input)),
+            _ => Err(RuntimeError::invalid_method_for_type(Method::Find, self)),
+        }
+    }
+
+    pub fn is_match(&self, search: &Self) -> Result<Self, RuntimeError> {
+        match (self, search) {
+            (RuntimeValue::Str(input), RuntimeValue::Regex(regex)) => {
+                Ok(RuntimeValue::Bool(regex.is_match(input)))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(Method::IsMatch, self)),
+        }
+    }
+
     pub fn to_list(&self) -> Result<Self, RuntimeError> {
         if let RuntimeValue::List(_) = self {
             return Ok(self.clone());

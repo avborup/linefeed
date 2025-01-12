@@ -293,6 +293,8 @@ where
                 Bytecode::Length => unary_mapper_method!(self, length),
                 Bytecode::Count => binary_op!(self, count),
                 Bytecode::FindAll => binary_op!(self, find_all),
+                Bytecode::Find => binary_op!(self, find),
+                Bytecode::IsMatch => binary_op!(self, is_match),
 
                 Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
                 Bytecode::ToList => unary_mapper_method!(self, to_list),

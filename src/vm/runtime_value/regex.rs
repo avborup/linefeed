@@ -54,38 +54,51 @@ impl RuntimeRegex {
     }
 
     pub fn find_matches(&self, s: &RuntimeString) -> RuntimeList {
-        let s = s.as_str();
-
-        let mut matches = Vec::new();
-
-        for m in self.0.regex.captures_iter(s) {
-            let mut group_values = m
-                .iter()
-                .map(|group| {
-                    group.map_or(RuntimeValue::Null, |g| {
-                        if self.0.modifiers.parse_nums {
-                            if let Ok(num) = g.as_str().parse::<isize>() {
-                                return RuntimeValue::Num(RuntimeNumber::Int(num));
-                            }
-                        }
-
-                        RuntimeValue::Str(RuntimeString::new(g.as_str()))
-                    })
-                })
-                .collect::<Vec<_>>();
-
-            // The full match is almost never useful, so just put it at the end, enabling the user
-            // to just ignore it if they don't need it.
-            let full_match = group_values.remove(0);
-            group_values.push(full_match);
-
-            matches.push(RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values)));
-        }
+        let matches = self
+            .0
+            .regex
+            .captures_iter(s.as_str())
+            .map(|m| self.process_capture(m))
+            .collect::<Vec<_>>();
 
         RuntimeList::from_vec(matches)
     }
 
-    // TODO: add find (single) and matches
+    pub fn find_match(&self, s: &RuntimeString) -> RuntimeValue {
+        self.0
+            .regex
+            .captures(s.as_str())
+            .map(|m| self.process_capture(m))
+            .unwrap_or(RuntimeValue::Null)
+    }
+
+    pub fn is_match(&self, s: &RuntimeString) -> bool {
+        self.0.regex.is_match(s.as_str())
+    }
+
+    fn process_capture(&self, captures: regex::Captures) -> RuntimeValue {
+        let mut group_values = captures
+            .iter()
+            .map(|group| {
+                group.map_or(RuntimeValue::Null, |g| {
+                    if self.0.modifiers.parse_nums {
+                        if let Ok(num) = g.as_str().parse::<isize>() {
+                            return RuntimeValue::Num(RuntimeNumber::Int(num));
+                        }
+                    }
+
+                    RuntimeValue::Str(RuntimeString::new(g.as_str()))
+                })
+            })
+            .collect::<Vec<_>>();
+
+        // The full match is almost never useful, so just put it at the end, enabling the user
+        // to just ignore it if they don't need it.
+        let full_match = group_values.remove(0);
+        group_values.push(full_match);
+
+        RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values))
+    }
 }
 
 impl std::fmt::Display for RuntimeRegex {

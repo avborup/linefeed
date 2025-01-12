@@ -81,6 +81,8 @@ pub enum Bytecode {
     Length,
     Count,
     FindAll,
+    Find,
+    IsMatch,
 }
 
 impl Bytecode {
@@ -146,6 +148,8 @@ impl Bytecode {
                 Method::Length => Bytecode::Length,
                 Method::Count => Bytecode::Count,
                 Method::FindAll => Bytecode::FindAll,
+                Method::Find => Bytecode::Find,
+                Method::IsMatch => Bytecode::IsMatch,
             },
         };
 

@@ -11,6 +11,8 @@ pub enum Method {
     Length,
     Count,
     FindAll,
+    Find,
+    IsMatch,
 }
 
 impl Method {
@@ -24,6 +26,8 @@ impl Method {
             Method::Length => "len",
             Method::Count => "count",
             Method::FindAll => "find_all",
+            Method::Find => "find",
+            Method::IsMatch => "is_match",
             Method::Join => "join",
         }
     }
@@ -38,6 +42,8 @@ impl Method {
             "len" => Some(Method::Length),
             "count" => Some(Method::Count),
             "find_all" => Some(Method::FindAll),
+            "find" => Some(Method::Find),
+            "is_match" => Some(Method::IsMatch),
             "join" => Some(Method::Join),
             _ => None,
         }
@@ -54,6 +60,8 @@ impl Method {
             Self::Length => 0..=0,
             Self::Count => 1..=1,
             Self::FindAll => 1..=1,
+            Self::Find => 1..=1,
+            Self::IsMatch => 1..=1,
             Self::Join => 0..=1,
         }
     }
