@@ -263,21 +263,13 @@ impl Compiler {
 
             Expr::Binary(lhs, BinaryOp::Or, rhs) => {
                 let label_end = self.new_label();
-                let label_true = self.new_label();
 
                 Program::new()
                     .then_program(self.compile_expr(lhs)?)
-                    .then_instruction(IfTrue(label_true), expr.span())
+                    .then_instruction(Dup, expr.span())
+                    .then_instruction(IfTrue(label_end), expr.span())
                     .then_program(self.compile_expr(rhs)?)
-                    .then_instructions(
-                        vec![
-                            Goto(label_end),
-                            Instruction::Label(label_true),
-                            Value(IrValue::Bool(true)),
-                            Instruction::Label(label_end),
-                        ],
-                        expr.span(),
-                    )
+                    .then_instruction(Instruction::Label(label_end), expr.span())
             }
 
             Expr::Binary(lhs, op, rhs) => {

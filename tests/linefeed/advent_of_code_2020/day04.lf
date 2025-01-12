@@ -11,10 +11,9 @@ fn is_valid(key, val) {
   if key == "iyr" { return 2010 <= int(val) and int(val) <= 2020 }
   if key == "eyr" { return 2020 <= int(val) and int(val) <= 2030 }
   if key == "hgt" {
-    res = val.find(/^(\d+)(cm|in)$/n);
-    num, unit = if res != null { res } else { return false };
-    return 150 <= num and num <= 193 if unit == "cm";
-    return 59 <= num and num <= 76 if unit == "in";
+    num, unit = val.find(/^(\d+)(cm|in)$/n) or (return false);
+    return (unit == "cm" and 150 <= num and num <= 193)
+        or (unit == "in" and 59 <= num and num <= 76);
   }
   if key == "hcl" { return val.is_match(/^#[0-9a-f]{6}$/) }
   if key == "ecl" { return val.is_match(/amb|blu|brn|gry|grn|hzl|oth/) }

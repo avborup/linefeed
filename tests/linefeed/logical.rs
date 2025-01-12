@@ -119,3 +119,18 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    or_yields_value_instead_of_bool,
+    indoc::indoc! {r#"
+        print(1 or 2);
+        print(0 or 2);
+        print(null or "val");
+    "#},
+    equals(indoc! {r#"
+        1
+        2
+        val
+    "#}),
+    empty()
+);
