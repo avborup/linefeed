@@ -16,22 +16,19 @@ fn is_valid(key, val, orig) {
   } else if key == "eyr" {
     2020 <= int(val) and int(val) <= 2030
   } else if key == "hgt" {
-    # // TODO: make find-single
     rhs = (orig.split(":"))[1];
-    res = rhs.find_all(/^(\d+)(cm|in)$/n);
-    return false if res.len() != 1;
-    num, unit = res[0];
+    res = rhs.find(/^(\d+)(cm|in)$/n);
+    return false if res == null;
+    num, unit = res;
     return 150 <= num and num <= 193 if unit == "cm";
     return 59 <= num and num <= 76 if unit == "in";
   } else if key == "hcl" {
-    rhs = (orig.split(":"))[1];
-    res = rhs.find_all(/^#[0-9a-f]{6}$/);
-    res.len() == 1
+    (orig.split(":"))[1].is_match(/^#[0-9a-f]{6}$/)
   } else if key == "ecl" {
-    val == "amb" or val == "blu" or val == "brn" or val == "gry" or val == "grn" or val == "hzl" or val == "oth"
+    val.is_match(/amb|blu|brn|gry|grn|hzl|oth/)
   } else if key == "pid" {
     rhs = (orig.split(":"))[1];
-    rhs.find_all(/^\d{9}$/).len() == 1
+    rhs.is_match(/^\d{9}$/)
   }
 };
 
