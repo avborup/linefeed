@@ -712,12 +712,12 @@ impl Compiler {
         analysis::find_all_assignments(expr).into_iter().fold(
             Program::new(),
             |program, assignment| {
-                if self.vars.get(&assignment.0).is_some() {
+                if self.vars.get(&assignment).is_some() {
                     return program;
                 }
 
                 self.vars
-                    .set_local(assignment.0.to_string(), self.vars.cur_scope_len());
+                    .set_local(assignment.to_string(), self.vars.cur_scope_len());
                 program.then_instruction(Value(IrValue::Uninit), assignment.span())
             },
         )
