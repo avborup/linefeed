@@ -611,7 +611,7 @@ impl Compiler {
                 program.add_instructions(
                     vec![
                         Instruction::Label(label_last),
-                        RuntimeError("No match".to_string()),
+                        RuntimeError("No arm matched the value".to_string()),
                         Instruction::Label(label_end),
                     ],
                     expr.span(),
