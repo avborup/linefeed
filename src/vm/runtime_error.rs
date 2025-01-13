@@ -5,6 +5,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
+    Plain(String),
     StackUnderflow,
     NotImplemented(Bytecode),
     InvalidAddress(RuntimeValue),
@@ -39,6 +40,7 @@ impl RuntimeError {
 impl std::fmt::Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
+            RuntimeError::Plain(msg) => write!(f, "{msg}"),
             RuntimeError::StackUnderflow => write!(f, "Stack underflow"),
             RuntimeError::NotImplemented(instr) => {
                 write!(f, "Instruction not implemented: {instr:?}")

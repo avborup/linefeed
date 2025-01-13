@@ -334,6 +334,8 @@ where
                     self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
 
+                Bytecode::RuntimeError(err) => break Err(RuntimeError::Plain(err.clone())),
+
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }

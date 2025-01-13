@@ -64,6 +64,7 @@ pub enum Instruction {
     Label(Label),
     IfTrue(Label),
     IfFalse(Label),
+    RuntimeError(String),
 
     // Functions
     GetBasePtr,
@@ -564,6 +565,61 @@ impl Compiler {
                     })
             }
 
+            Expr::Match(val, arms) => {
+                let mut program = self.compile_expr(val)?;
+
+                let labels = arms.iter().map(|_| self.new_label()).collect::<Vec<_>>();
+                let (label_last, label_end) = (self.new_label(), self.new_label());
+
+                for (i, (pattern, body)) in arms.iter().enumerate() {
+                    let constant_opt = analysis::eval_simple_constant(pattern).map_err(|msg| {
+                        CompileError::Spanned {
+                            span: expr.span(),
+                            msg,
+                        }
+                    })?;
+
+                    let cur_label = labels[i];
+                    let next_label = labels.get(i + 1).copied().unwrap_or(label_last);
+
+                    // TODO: Implement more advanced constant types (e.g. lists, tuples, sets)
+                    // TODO: Implement catch-all (ident => body)
+                    // TODO: Implement pattern matching (incl. binding values like (x, y) => x + y)
+                    if let Some(constant) = constant_opt {
+                        let arm_program = Program::from_instructions(
+                            vec![
+                                Instruction::Label(cur_label),
+                                Dup,
+                                Value(constant),
+                                Eq,
+                                IfFalse(next_label),
+                            ],
+                            pattern.span(),
+                        )
+                        .then_program(self.compile_expr(body)?)
+                        .then_instruction(Goto(label_end), expr.span());
+
+                        program.extend(arm_program);
+                    } else {
+                        return Err(CompileError::Spanned {
+                            span: expr.span(),
+                            msg: "Pattern matching not implemented yet".to_string(),
+                        });
+                    }
+                }
+
+                program.add_instructions(
+                    vec![
+                        Instruction::Label(label_last),
+                        RuntimeError("No match".to_string()),
+                        Instruction::Label(label_end),
+                    ],
+                    expr.span(),
+                );
+
+                program
+            }
+
             Expr::ParseError => {
                 return Err(CompileError::Spanned {
                     msg: "Parse error".to_string(),
@@ -871,6 +927,7 @@ where
     }
 }
 
+#[derive(Debug)]
 pub enum CompileError {
     Spanned { span: Span, msg: String },
     Plain(String),

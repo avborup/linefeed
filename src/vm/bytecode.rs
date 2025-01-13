@@ -52,6 +52,7 @@ pub enum Bytecode {
     Goto(usize),
     IfTrue(usize),
     IfFalse(usize),
+    RuntimeError(String),
 
     // Functions
     GetBasePtr,
@@ -117,6 +118,7 @@ impl Bytecode {
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
+            Instruction::RuntimeError(msg) => Bytecode::RuntimeError(msg),
             Instruction::Pop => Bytecode::Pop,
             Instruction::RemoveIndex => Bytecode::RemoveIndex,
             Instruction::Swap => Bytecode::Swap,

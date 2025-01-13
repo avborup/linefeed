@@ -1,23 +1,17 @@
 fn is_valid(key, val) {
-  # // TODO: Make dictionaries
-  # rules = {
-  #   "byr": fn(val) 1920 <= val and val <= 2002,
-  #   "iyr": fn(val) 2010 <= val and val <= 2020,
-  #   "eyr": fn(val) 2020 <= val and val <= 2030,
-  #   ...
-  # };
-
-  if key == "byr" { return 1920 <= int(val) and int(val) <= 2002 }
-  if key == "iyr" { return 2010 <= int(val) and int(val) <= 2020 }
-  if key == "eyr" { return 2020 <= int(val) and int(val) <= 2030 }
-  if key == "hgt" {
-    num, unit = val.find(/^(\d+)(cm|in)$/n) or (return false);
-    return (unit == "cm" and 150 <= num and num <= 193)
-        or (unit == "in" and 59 <= num and num <= 76);
+  match key {
+    "byr" => 1920 <= int(val) and int(val) <= 2002,
+    "iyr" => 2010 <= int(val) and int(val) <= 2020,
+    "eyr" => 2020 <= int(val) and int(val) <= 2030,
+    "hgt" => {
+      num, unit = val.find(/^(\d+)(cm|in)$/n) or (return false);
+      (unit == "cm" and 150 <= num and num <= 193)
+        or (unit == "in" and 59 <= num and num <= 76)
+    },
+    "hcl" => val.is_match(/^#[0-9a-f]{6}$/),
+    "ecl" => val.is_match(/amb|blu|brn|gry|grn|hzl|oth/),
+    "pid" => val.is_match(/^\d{9}$/),
   }
-  if key == "hcl" { return val.is_match(/^#[0-9a-f]{6}$/) }
-  if key == "ecl" { return val.is_match(/amb|blu|brn|gry|grn|hzl|oth/) }
-  if key == "pid" { return val.is_match(/^\d{9}$/) }
 };
 
 part1, part2 = (0, 0);

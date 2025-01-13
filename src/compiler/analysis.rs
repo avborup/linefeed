@@ -1,6 +1,9 @@
 use std::collections::HashSet;
 
-use crate::grammar::ast::{Expr, Spanned};
+use crate::{
+    compiler::ir_value::IrValue,
+    grammar::ast::{Expr, Spanned},
+};
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
     fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
@@ -78,6 +81,16 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 res
             }
 
+            Expr::Match(expr, arms) => {
+                let mut res = find_all_assignments_inner(expr);
+                for (cond, body) in arms {
+                    // TODO: assign arm variable here
+                    res.extend(find_all_assignments_inner(cond));
+                    res.extend(find_all_assignments_inner(body));
+                }
+                res
+            }
+
             Expr::Sequence(exprs) => exprs.iter().flat_map(find_all_assignments_inner).collect(),
 
             Expr::Block(sub_expr) => find_all_assignments_inner(sub_expr),
@@ -92,4 +105,40 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
         .filter(|Spanned(name, _)| seen.insert(*name))
         .map(|Spanned(name, span)| Spanned(name.to_string(), span))
         .collect()
+}
+
+pub fn eval_simple_constant(expr: &Spanned<Expr>) -> Result<Option<IrValue>, String> {
+    let res = match &expr.0 {
+        Expr::Value(ast_val) => Some(IrValue::try_from(ast_val)?),
+
+        Expr::List(items) | Expr::Tuple(items) => {
+            let mut values = Vec::new();
+            for item in items {
+                match eval_simple_constant(item)? {
+                    Some(val) => values.push(val),
+                    _ => return Ok(None),
+                }
+            }
+
+            Some(match &expr.0 {
+                Expr::List(_) => IrValue::List(values),
+                Expr::Tuple(_) => IrValue::Tuple(values),
+                _ => unreachable!(),
+            })
+        }
+
+        Expr::Block(sub_expr) => eval_simple_constant(sub_expr)?,
+
+        Expr::Sequence(exprs) => {
+            if exprs.len() == 1 {
+                eval_simple_constant(&exprs[0])?
+            } else {
+                None
+            }
+        }
+
+        _ => None,
+    };
+
+    Ok(res)
 }

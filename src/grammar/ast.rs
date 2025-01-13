@@ -33,6 +33,7 @@ pub enum Expr<'src> {
     Break,
     Continue,
     ListComprehension(Box<Spanned<Self>>, &'src str, Box<Spanned<Self>>),
+    Match(Box<Spanned<Self>>, Vec<(Spanned<Self>, Spanned<Self>)>),
 }
 
 #[derive(Clone, Debug)]

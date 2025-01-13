@@ -125,6 +125,18 @@ where
                 .memoized()
                 .boxed();
 
+            let match_arms = raw_expr
+                .clone()
+                .then_ignore(just(Token::Op("=>")))
+                .then(expr.clone())
+                .separated_by(just(Token::Ctrl(',')))
+                .allow_trailing()
+                .collect::<Vec<_>>();
+            let match_expr = just(Token::Match)
+                .ignore_then(raw_expr.clone())
+                .then(match_arms.delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}'))))
+                .map(|(expr, arms)| Expr::Match(Box::new(expr), arms));
+
             let destructure_assign = ident
                 .separated_by(just(Token::Ctrl(',')))
                 .at_least(2)
@@ -232,6 +244,7 @@ where
                 .or(tuple)
                 .or(list_comprehension)
                 .or(func)
+                .or(match_expr)
                 .or(ident.map(Expr::Local))
                 .map_with(|expr, e| Spanned(expr, e.span()))
                 // Atoms can also just be normal expressions, but surrounded with parentheses

@@ -27,6 +27,7 @@ pub enum Token<'src> {
     In,
     Break,
     Continue,
+    Match,
 }
 
 impl<'src> fmt::Display for Token<'src> {
@@ -54,6 +55,7 @@ impl<'src> fmt::Display for Token<'src> {
             Token::In => write!(f, "in"),
             Token::Break => write!(f, "break"),
             Token::Continue => write!(f, "continue"),
+            Token::Match => write!(f, "match"),
         }
     }
 }
@@ -116,6 +118,7 @@ pub fn lexer<'src>(
         "in" => Token::In,
         "break" => Token::Break,
         "continue" => Token::Continue,
+        "match" => Token::Match,
         _ => Token::Ident(ident),
     });
 
