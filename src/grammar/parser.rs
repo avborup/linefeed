@@ -65,7 +65,7 @@ where
             .map_with(|(cond, a), e| Spanned(Expr::While(Box::new(cond), Box::new(a)), e.span()))
             .memoized();
 
-        let ident = select! { Token::Ident(ident) => ident }.labelled("identifier");
+        let ident = ident_parser();
 
         let for_ = just(Token::For)
             .ignore_then(ident)
@@ -82,18 +82,6 @@ where
             .labelled("block expression");
 
         let raw_expr = recursive(|raw_expr| {
-            let val = select! {
-                Token::Null => Expr::Value(AstValue::Null),
-                Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
-                Token::Num(n) => Expr::Value(AstValue::Num(n)),
-                Token::Str(s) => Expr::Value(AstValue::Str(s)),
-                // TODO: for cleanliness, this should probably not be a "value" - make a separate
-                // keyword parser?
-                Token::Break => Expr::Break,
-                Token::Continue => Expr::Continue,
-            }
-            .labelled("value");
-
             // A comma-separated list of expressions
             let items = expr
                 .clone()
@@ -232,8 +220,12 @@ where
                 .memoized()
                 .labelled("regex");
 
+            let val = value_parser();
+            let standalone_keyword = standalone_keyword_parser();
+
             // 'Atoms' are expressions that contain no ambiguity
             let atom = val
+                .or(standalone_keyword)
                 .or(regex)
                 .or(let_)
                 .or(list)
@@ -473,4 +465,38 @@ where
             .boxed()
     })
     .then_ignore(end())
+}
+
+fn value_parser<'src, I>(
+) -> impl Parser<'src, I, Expr<'src>, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    select! {
+        Token::Null => Expr::Value(AstValue::Null),
+        Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
+        Token::Num(n) => Expr::Value(AstValue::Num(n)),
+        Token::Str(s) => Expr::Value(AstValue::Str(s)),
+    }
+    .labelled("value")
+}
+
+fn standalone_keyword_parser<'src, I>(
+) -> impl Parser<'src, I, Expr<'src>, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    select! {
+        Token::Break => Expr::Break,
+        Token::Continue => Expr::Continue,
+    }
+    .labelled("standalone keyword")
+}
+
+fn ident_parser<'src, I>(
+) -> impl Parser<'src, I, &'src str, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    select! { Token::Ident(ident) => ident }.labelled("identifier")
 }
