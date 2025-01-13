@@ -32,4 +32,8 @@ impl RuntimeTuple {
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
         self.0.index(index)
     }
+
+    pub fn contains(&self, value: &RuntimeValue) -> bool {
+        self.0.contains(value)
+    }
 }

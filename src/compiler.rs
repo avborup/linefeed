@@ -74,6 +74,7 @@ pub enum Instruction {
     // Standard library functions and built-ins
     StdlibCall(StdlibFn, usize),
     MethodCall(Method, usize),
+    IsIn,
     Index,
     NextIter,
     ToIter,
@@ -288,6 +289,7 @@ impl Compiler {
                     BinaryOp::GreaterEq => GreaterEq,
                     BinaryOp::Range => Range,
                     BinaryOp::Xor => Xor,
+                    BinaryOp::In => IsIn,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.span(),

@@ -13,6 +13,7 @@ pub enum Method {
     FindAll,
     Find,
     IsMatch,
+    Contains,
 }
 
 impl Method {
@@ -29,6 +30,7 @@ impl Method {
             Method::Find => "find",
             Method::IsMatch => "is_match",
             Method::Join => "join",
+            Method::Contains => "contains",
         }
     }
 
@@ -45,6 +47,7 @@ impl Method {
             "find" => Some(Method::Find),
             "is_match" => Some(Method::IsMatch),
             "join" => Some(Method::Join),
+            "contains" => Some(Method::Contains),
             _ => None,
         }
     }
@@ -63,6 +66,7 @@ impl Method {
             Self::Find => 1..=1,
             Self::IsMatch => 1..=1,
             Self::Join => 0..=1,
+            Self::Contains => 1..=1,
         }
     }
 }

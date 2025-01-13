@@ -63,6 +63,10 @@ impl RuntimeList {
 
         Ok(value)
     }
+
+    pub fn contains(&self, value: &RuntimeValue) -> bool {
+        self.0.borrow().contains(value)
+    }
 }
 
 impl Default for RuntimeList {

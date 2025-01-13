@@ -598,4 +598,22 @@ impl RuntimeValue {
 
         Ok(prod)
     }
+
+    pub fn contains(&self, item: &Self) -> Result<Self, RuntimeError> {
+        let contains = match (self, item) {
+            (RuntimeValue::List(l), v) => l.contains(v),
+            (RuntimeValue::Tuple(t), v) => t.contains(v),
+            (RuntimeValue::Range(r), RuntimeValue::Num(n)) => r.contains(n),
+            (RuntimeValue::Str(s1), RuntimeValue::Str(s2)) => s1.contains(s2),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot check if '{}' contains '{}'",
+                    self.kind_str(),
+                    item.kind_str(),
+                )))
+            }
+        };
+
+        Ok(RuntimeValue::Bool(contains))
+    }
 }

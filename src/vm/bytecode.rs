@@ -71,6 +71,7 @@ pub enum Bytecode {
     Product,
     Sum,
     ReprString,
+    IsIn,
 
     // Methods
     Append,
@@ -84,6 +85,7 @@ pub enum Bytecode {
     FindAll,
     Find,
     IsMatch,
+    Contains,
 }
 
 impl Bytecode {
@@ -130,6 +132,7 @@ impl Bytecode {
             Instruction::Index => Bytecode::Index,
             Instruction::NextIter => Bytecode::NextIter,
             Instruction::ToIter => Bytecode::ToIter,
+            Instruction::IsIn => Bytecode::IsIn,
             Instruction::StdlibCall(func, num_args) => match func {
                 StdlibFn::Print => Bytecode::PrintValue(num_args),
                 StdlibFn::Input => Bytecode::ReadInput,
@@ -152,6 +155,7 @@ impl Bytecode {
                 Method::FindAll => Bytecode::FindAll,
                 Method::Find => Bytecode::Find,
                 Method::IsMatch => Bytecode::IsMatch,
+                Method::Contains => Bytecode::Contains,
             },
         };
 

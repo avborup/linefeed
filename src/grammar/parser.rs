@@ -347,6 +347,17 @@ where
                 .memoized()
                 .boxed();
 
+            let contains = sum
+                .clone()
+                .foldl_with(just(Token::In).ignore_then(sum).repeated(), |a, b, e| {
+                    Spanned(
+                        Expr::Binary(Box::new(a), BinaryOp::In, Box::new(b)),
+                        e.span(),
+                    )
+                })
+                .memoized()
+                .boxed();
+
             let cmp_op = choice((
                 just(Token::Op("==")).to(BinaryOp::Eq),
                 just(Token::Op("!=")).to(BinaryOp::NotEq),
@@ -356,9 +367,9 @@ where
                 just(Token::Op(">=")).to(BinaryOp::GreaterEq),
             ));
 
-            let compare = sum
+            let compare = contains
                 .clone()
-                .foldl_with(cmp_op.then(sum).repeated(), |a, (op, b), e| {
+                .foldl_with(cmp_op.then(contains).repeated(), |a, (op, b), e| {
                     Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
                 })
                 .memoized()

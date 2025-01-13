@@ -52,6 +52,14 @@ macro_rules! binary_op {
     }};
 }
 
+macro_rules! binary_op_swapped {
+    ($vm:expr, $op:ident) => {{
+        let rhs = $vm.pop_stack()?;
+        let lhs = $vm.pop_stack()?;
+        $vm.push_stack(rhs.$op(&lhs)?);
+    }};
+}
+
 macro_rules! unary_mapper_method {
     ($vm:expr, $method:ident) => {{
         let val = $vm.pop_stack()?;
@@ -295,6 +303,8 @@ where
                 Bytecode::FindAll => binary_op!(self, find_all),
                 Bytecode::Find => binary_op!(self, find),
                 Bytecode::IsMatch => binary_op!(self, is_match),
+                Bytecode::Contains => binary_op!(self, contains),
+                Bytecode::IsIn => binary_op_swapped!(self, contains),
 
                 Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
                 Bytecode::ToList => unary_mapper_method!(self, to_list),

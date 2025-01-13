@@ -17,6 +17,19 @@ impl RuntimeRange {
             step: if is_reverse { -1 } else { 1 },
         }
     }
+
+    pub fn contains(&self, value: &RuntimeNumber) -> bool {
+        let (lower, upper) = if self.step.is_positive() {
+            (Some(self.start), self.end)
+        } else {
+            (self.end, Some(self.start))
+        };
+
+        let lower = lower.map_or(true, |lower| value >= &RuntimeNumber::Int(lower));
+        let upper = upper.map_or(true, |upper| value < &RuntimeNumber::Int(upper));
+
+        lower && upper
+    }
 }
 
 impl std::fmt::Display for RuntimeRange {

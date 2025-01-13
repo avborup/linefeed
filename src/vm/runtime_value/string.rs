@@ -98,6 +98,10 @@ impl RuntimeString {
 
         Ok(Self::new(char::from(*byte)))
     }
+
+    pub fn contains(&self, substr: &RuntimeString) -> bool {
+        self.as_str().contains(substr.as_str())
+    }
 }
 
 impl std::fmt::Display for RuntimeString {
