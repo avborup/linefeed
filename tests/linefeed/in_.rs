@@ -91,4 +91,21 @@ eval_and_assert!(
     empty()
 );
 
+eval_and_assert!(
+    not_in_works,
+    indoc! {r#"
+        print(1 not in [1, 2, 3]);
+        print(0 not in [1, 2, 3]);
+        print(3 not in [0, 2, 3]);
+        print(1 not in []);
+    "#},
+    equals(indoc! {r#"
+        false
+        true
+        false
+        true
+    "#}),
+    empty()
+);
+
 // TODO:Dictionaries, sets

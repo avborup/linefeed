@@ -349,12 +349,24 @@ where
 
             let contains = sum
                 .clone()
-                .foldl_with(just(Token::In).ignore_then(sum).repeated(), |a, b, e| {
-                    Spanned(
-                        Expr::Binary(Box::new(a), BinaryOp::In, Box::new(b)),
-                        e.span(),
-                    )
-                })
+                .foldl_with(
+                    just(Token::Not)
+                        .or_not()
+                        .then_ignore(just(Token::In))
+                        .then(sum)
+                        .repeated(),
+                    |a, (not, b), e| {
+                        let is_in = Expr::Binary(Box::new(a), BinaryOp::In, Box::new(b));
+
+                        let check = if not.is_some() {
+                            Expr::Unary(UnaryOp::Not, Box::new(Spanned(is_in, e.span())))
+                        } else {
+                            is_in
+                        };
+
+                        Spanned(check, e.span())
+                    },
+                )
                 .memoized()
                 .boxed();
 
