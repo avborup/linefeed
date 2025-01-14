@@ -14,6 +14,9 @@ pub trait Parser<'src, I, T> =
 
 pub trait ParserInput<'src> = ValueInput<'src, Token = Token<'src>, Span = Span>;
 
+type BoxedParser<'src, 'b, I> =
+    Boxed<'src, 'b, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>;
+
 pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned<Expr<'src>>> {
     recursive(|expr| {
         let nested_braces_delim = nested_delimiters(
@@ -457,9 +460,6 @@ fn standalone_keyword_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, 
 fn ident_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, &'src str> + Copy {
     select! { Token::Ident(ident) => ident }.labelled("identifier")
 }
-
-type BoxedParser<'src, 'b, I> =
-    Boxed<'src, 'b, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>;
 
 fn product_parser<'src, I: ParserInput<'src>>(
     prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
