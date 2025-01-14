@@ -17,39 +17,19 @@ pub enum Method {
 }
 
 impl Method {
-    pub fn name(&self) -> &'static str {
-        match self {
-            Method::Append => "append",
-            Method::ToUpperCase => "upper",
-            Method::ToLowerCase => "lower",
-            Method::Split => "split",
-            Method::SplitLines => "lines",
-            Method::Length => "len",
-            Method::Count => "count",
-            Method::FindAll => "find_all",
-            Method::Find => "find",
-            Method::IsMatch => "is_match",
-            Method::Join => "join",
-            Method::Contains => "contains",
-        }
-    }
-
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "append" => Some(Method::Append),
-            "upper" => Some(Method::ToUpperCase),
-            "lower" => Some(Method::ToLowerCase),
-            "split" => Some(Method::Split),
-            "lines" => Some(Method::SplitLines),
-            "len" => Some(Method::Length),
-            "count" => Some(Method::Count),
-            "find_all" => Some(Method::FindAll),
-            "find" => Some(Method::Find),
-            "is_match" => Some(Method::IsMatch),
-            "join" => Some(Method::Join),
-            "contains" => Some(Method::Contains),
-            _ => None,
-        }
+    define_names! {
+        Append => "append",
+        ToUpperCase => "upper",
+        ToLowerCase => "lower",
+        Split => "split",
+        SplitLines => "lines",
+        Length => "len",
+        Count => "count",
+        FindAll => "find_all",
+        Find => "find",
+        IsMatch => "is_match",
+        Join => "join",
+        Contains => "contains",
     }
 
     /// Returns the number of arguments this method expects.
@@ -70,3 +50,22 @@ impl Method {
         }
     }
 }
+
+macro_rules! define_names {
+    ($($variant:ident => $name:expr),* $(,)?) => {
+        pub fn name(&self) -> &'static str {
+            match self {
+                $(Self::$variant => $name),*
+            }
+        }
+
+        pub fn from_name(name: &str) -> Option<Self> {
+            match name {
+                $($name => Some(Self::$variant)),*,
+                _ => None,
+            }
+        }
+    };
+}
+
+pub(crate) use define_names;

@@ -1,5 +1,7 @@
 use std::ops::RangeInclusive;
 
+use crate::compiler::method::define_names;
+
 #[derive(Debug, Clone)]
 pub enum StdlibFn {
     Print,
@@ -13,31 +15,15 @@ pub enum StdlibFn {
 }
 
 impl StdlibFn {
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::Print => "print",
-            Self::Input => "input",
-            Self::ParseInt => "int",
-            Self::Repr => "repr",
-            Self::ToList => "list",
-            Self::ToTuple => "tuple",
-            Self::Product => "mul",
-            Self::Sum => "sum",
-        }
-    }
-
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "print" => Some(Self::Print),
-            "input" => Some(Self::Input),
-            "int" => Some(Self::ParseInt),
-            "repr" => Some(Self::Repr),
-            "list" => Some(Self::ToList),
-            "tuple" => Some(Self::ToTuple),
-            "mul" => Some(Self::Product),
-            "sum" => Some(Self::Sum),
-            _ => None,
-        }
+    define_names! {
+        Print => "print",
+        Input => "input",
+        ParseInt => "int",
+        Repr => "repr",
+        ToList => "list",
+        ToTuple => "tuple",
+        Product => "mul",
+        Sum => "sum",
     }
 
     /// Returns the number of arguments this function expects.
