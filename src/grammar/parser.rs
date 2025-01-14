@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use chumsky::{input::ValueInput, prelude::*};
+use chumsky::{extra::Full, input::ValueInput, prelude::*};
 
 use crate::lexer::Token;
 use crate::{
@@ -318,88 +318,18 @@ where
 
             let unary = neg.or(not).memoized().boxed();
 
-            let prod_op = choice((
-                just(Token::Op("*")).to(BinaryOp::Mul),
-                just(Token::Op("/")).to(BinaryOp::Div),
-                just(Token::Op("%")).to(BinaryOp::Mod),
-            ));
-
-            let product = with_method_call
-                .clone()
-                .or(unary)
-                .foldl_with(
-                    prod_op.then(with_method_call).repeated(),
-                    |a, (op, b), e| Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span()),
-                )
-                .memoized()
-                .boxed();
-
-            let sum_op = choice((
-                just(Token::Op("+")).to(BinaryOp::Add),
-                just(Token::Op("-")).to(BinaryOp::Sub),
-            ));
-
-            let sum = product
-                .clone()
-                .foldl_with(sum_op.then(product).repeated(), |a, (op, b), e| {
-                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                })
-                .memoized()
-                .boxed();
-
-            let contains = sum
-                .clone()
-                .foldl_with(
-                    just(Token::Not)
-                        .or_not()
-                        .then_ignore(just(Token::In))
-                        .then(sum)
-                        .repeated(),
-                    |a, (not, b), e| {
-                        let is_in = Expr::Binary(Box::new(a), BinaryOp::In, Box::new(b));
-
-                        let check = if not.is_some() {
-                            Expr::Unary(UnaryOp::Not, Box::new(Spanned(is_in, e.span())))
-                        } else {
-                            is_in
-                        };
-
-                        Spanned(check, e.span())
-                    },
-                )
-                .memoized()
-                .boxed();
-
-            let cmp_op = choice((
-                just(Token::Op("==")).to(BinaryOp::Eq),
-                just(Token::Op("!=")).to(BinaryOp::NotEq),
-                just(Token::Op("<")).to(BinaryOp::Less),
-                just(Token::Op("<=")).to(BinaryOp::LessEq),
-                just(Token::Op(">")).to(BinaryOp::Greater),
-                just(Token::Op(">=")).to(BinaryOp::GreaterEq),
-            ));
-
-            let compare = contains
-                .clone()
-                .foldl_with(cmp_op.then(contains).repeated(), |a, (op, b), e| {
-                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                })
-                .memoized()
-                .boxed();
-
-            let logical_op = choice((
-                just(Token::And).to(BinaryOp::And),
-                just(Token::Or).to(BinaryOp::Or),
-                just(Token::Xor).to(BinaryOp::Xor),
-            ));
-
-            let logical = compare
-                .clone()
-                .foldl_with(logical_op.then(compare).repeated(), |a, (op, b), e| {
-                    Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
-                })
-                .memoized()
-                .boxed();
+            // The order in the chain corresponds to operator precedence: earlier in the chain,
+            // higher precedence
+            let logical = chain_parsers(
+                with_method_call.or(unary).boxed(),
+                vec![
+                    product_parser,
+                    sum_parser,
+                    compare_parser,
+                    contains_parser,
+                    logical_parser,
+                ],
+            );
 
             let range_op = just(Token::Op("..")).to(BinaryOp::Range);
             let range = logical
@@ -535,4 +465,143 @@ where
     I: ValueInput<'src, Token = Token<'src>, Span = Span>,
 {
     select! { Token::Ident(ident) => ident }.labelled("identifier")
+}
+
+type BoxedParser<'src, 'b, I> =
+    Boxed<'src, 'b, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>;
+
+fn product_parser<'src, I>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
+        + Clone
+        + 'src,
+) -> BoxedParser<'src, 'src, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    let prod_op = choice((
+        just(Token::Op("*")).to(BinaryOp::Mul),
+        just(Token::Op("/")).to(BinaryOp::Div),
+        just(Token::Op("%")).to(BinaryOp::Mod),
+    ));
+
+    prev.clone()
+        .foldl_with(prod_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
+fn sum_parser<'src, I>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
+        + Clone
+        + 'src,
+) -> BoxedParser<'src, 'src, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    let sum_op = choice((
+        just(Token::Op("+")).to(BinaryOp::Add),
+        just(Token::Op("-")).to(BinaryOp::Sub),
+    ));
+
+    prev.clone()
+        .foldl_with(sum_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
+fn compare_parser<'src, I>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
+        + Clone
+        + 'src,
+) -> BoxedParser<'src, 'src, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    let cmp_op = choice((
+        just(Token::Op("==")).to(BinaryOp::Eq),
+        just(Token::Op("!=")).to(BinaryOp::NotEq),
+        just(Token::Op("<")).to(BinaryOp::Less),
+        just(Token::Op("<=")).to(BinaryOp::LessEq),
+        just(Token::Op(">")).to(BinaryOp::Greater),
+        just(Token::Op(">=")).to(BinaryOp::GreaterEq),
+    ));
+
+    prev.clone()
+        .foldl_with(cmp_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
+fn contains_parser<'src, I>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
+        + Clone
+        + 'src,
+) -> BoxedParser<'src, 'src, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    prev.clone()
+        .foldl_with(
+            just(Token::Not)
+                .or_not()
+                .then_ignore(just(Token::In))
+                .then(prev)
+                .repeated(),
+            |a, (not, b), e| {
+                let is_in = Expr::Binary(Box::new(a), BinaryOp::In, Box::new(b));
+
+                let check = if not.is_some() {
+                    Expr::Unary(UnaryOp::Not, Box::new(Spanned(is_in, e.span())))
+                } else {
+                    is_in
+                };
+
+                Spanned(check, e.span())
+            },
+        )
+        .memoized()
+        .boxed()
+}
+
+fn logical_parser<'src, I>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
+        + Clone
+        + 'src,
+) -> BoxedParser<'src, 'src, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+{
+    let logical_op = choice((
+        just(Token::And).to(BinaryOp::And),
+        just(Token::Or).to(BinaryOp::Or),
+        just(Token::Xor).to(BinaryOp::Xor),
+    ));
+
+    prev.clone()
+        .foldl_with(logical_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
+fn chain_parsers<'src, 'b, I, F>(
+    prev: BoxedParser<'src, 'b, I>,
+    parsers: Vec<F>,
+) -> BoxedParser<'src, 'b, I>
+where
+    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+    F: FnOnce(BoxedParser<'src, 'b, I>) -> BoxedParser<'src, 'b, I>,
+    'src: 'b,
+    'b: 'src,
+{
+    parsers
+        .into_iter()
+        .fold(prev, move |prev, parser| parser(prev))
 }
