@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 use std::io::{self, Read, Write};
 
 use std::time::Instant;

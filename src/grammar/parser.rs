@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use chumsky::{extra::Full, input::ValueInput, prelude::*};
+use chumsky::{input::ValueInput, prelude::*};
 
 use crate::lexer::Token;
 use crate::{
@@ -8,11 +8,13 @@ use crate::{
     vm::runtime_value::regex::RegexModifiers,
 };
 
-pub fn expr_parser<'src, I>(
-) -> impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>> + Clone
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+pub trait Parser<'src, I, T> =
+    chumsky::Parser<'src, I, T, extra::Err<Rich<'src, Token<'src>, Span>>> + Clone + 'src
+    where I: ValueInput<'src, Token = Token<'src>, Span = Span>;
+
+pub trait ParserInput<'src> = ValueInput<'src, Token = Token<'src>, Span = Span>;
+
+pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned<Expr<'src>>> {
     recursive(|expr| {
         let nested_braces_delim = nested_delimiters(
             Token::Ctrl('{'),
@@ -433,11 +435,7 @@ where
     .then_ignore(end())
 }
 
-fn value_parser<'src, I>(
-) -> impl Parser<'src, I, Expr<'src>, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn value_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Expr<'src>> + Copy {
     select! {
         Token::Null => Expr::Value(AstValue::Null),
         Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
@@ -447,10 +445,7 @@ where
     .labelled("value")
 }
 
-fn standalone_keyword_parser<'src, I>(
-) -> impl Parser<'src, I, Expr<'src>, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
+fn standalone_keyword_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Expr<'src>> + Copy
 {
     select! {
         Token::Break => Expr::Break,
@@ -459,25 +454,16 @@ where
     .labelled("standalone keyword")
 }
 
-fn ident_parser<'src, I>(
-) -> impl Parser<'src, I, &'src str, extra::Err<Rich<'src, Token<'src>, Span>>> + Copy
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn ident_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, &'src str> + Copy {
     select! { Token::Ident(ident) => ident }.labelled("identifier")
 }
 
 type BoxedParser<'src, 'b, I> =
     Boxed<'src, 'b, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>;
 
-fn product_parser<'src, I>(
-    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
-        + Clone
-        + 'src,
-) -> BoxedParser<'src, 'src, I>
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn product_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
     let prod_op = choice((
         just(Token::Op("*")).to(BinaryOp::Mul),
         just(Token::Op("/")).to(BinaryOp::Div),
@@ -492,14 +478,9 @@ where
         .boxed()
 }
 
-fn sum_parser<'src, I>(
-    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
-        + Clone
-        + 'src,
-) -> BoxedParser<'src, 'src, I>
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn sum_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
     let sum_op = choice((
         just(Token::Op("+")).to(BinaryOp::Add),
         just(Token::Op("-")).to(BinaryOp::Sub),
@@ -513,14 +494,9 @@ where
         .boxed()
 }
 
-fn compare_parser<'src, I>(
-    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
-        + Clone
-        + 'src,
-) -> BoxedParser<'src, 'src, I>
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn compare_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
     let cmp_op = choice((
         just(Token::Op("==")).to(BinaryOp::Eq),
         just(Token::Op("!=")).to(BinaryOp::NotEq),
@@ -539,13 +515,8 @@ where
 }
 
 fn contains_parser<'src, I>(
-    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
-        + Clone
-        + 'src,
-) -> BoxedParser<'src, 'src, I>
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
     prev.clone()
         .foldl_with(
             just(Token::Not)
@@ -569,14 +540,9 @@ where
         .boxed()
 }
 
-fn logical_parser<'src, I>(
-    prev: impl Parser<'src, I, Spanned<Expr<'src>>, extra::Err<Rich<'src, Token<'src>, Span>>>
-        + Clone
-        + 'src,
-) -> BoxedParser<'src, 'src, I>
-where
-    I: ValueInput<'src, Token = Token<'src>, Span = Span>,
-{
+fn logical_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
     let logical_op = choice((
         just(Token::And).to(BinaryOp::And),
         just(Token::Or).to(BinaryOp::Or),
