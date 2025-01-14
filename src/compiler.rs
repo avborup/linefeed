@@ -629,6 +629,7 @@ impl Compiler {
                 })
             }
 
+            #[allow(unreachable_patterns)]
             _ => {
                 return Err(CompileError::Spanned {
                     span: expr.span(),

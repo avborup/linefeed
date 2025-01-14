@@ -346,6 +346,7 @@ where
 
                 Bytecode::RuntimeError(err) => break Err(RuntimeError::Plain(err.clone())),
 
+                #[allow(unreachable_patterns)]
                 to_implement => {
                     break Err(RuntimeError::NotImplemented(to_implement.clone()));
                 }
