@@ -18,23 +18,25 @@ part1, part2 = (0, 0);
 for passport in input().split("\n\n") {
   fields = passport.find_all(/(\w+):(\S+)/);
 
-  all_fields, all_valid = (true, true);
-  for req in ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"] {
-    present, valid = (false, false);
+  keys = [f[0] for f in fields];
+  required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
+
+  part1 += 1 if all([req in keys for req in required_fields]);
+
+  all_valid = true;
+  for req in required_fields {
+    valid = false;
     for field in fields {
       key, val = field;
       if key == req {
         valid = is_valid(key, val);
-        present = true;
         break;
       };
     };
-
-    all_fields = false if not present;
     all_valid = false if not valid;
   };
 
-  part1 += 1 if all_fields;
+  # // TODO: Fix bug with calling `any` here
   part2 += 1 if all_valid;
 };
 
