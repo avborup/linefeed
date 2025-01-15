@@ -36,7 +36,7 @@ impl RuntimeList {
         Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
 
-    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
+    fn resolve_index(&self, index: &RuntimeNumber) -> Result<usize, RuntimeError> {
         let n = index.floor_int();
 
         let i = if n.is_negative() {
@@ -49,10 +49,16 @@ impl RuntimeList {
             return Err(RuntimeError::IndexOutOfBounds(n, self.len()));
         }
 
+        Ok(i as usize)
+    }
+
+    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
+        let i = self.resolve_index(index)?;
+
         let value = self
             .0
             .borrow()
-            .get(i as usize)
+            .get(i)
             .ok_or_else(|| {
                 RuntimeError::InternalBug(format!(
                     "Index {i} is out of bounds for list of length {}",
@@ -62,6 +68,16 @@ impl RuntimeList {
             .clone();
 
         Ok(value)
+    }
+
+    pub fn set_index(
+        &self,
+        index: &RuntimeNumber,
+        value: RuntimeValue,
+    ) -> Result<(), RuntimeError> {
+        let i = self.resolve_index(index)?;
+        self.0.borrow_mut()[i] = value;
+        Ok(())
     }
 
     pub fn contains(&self, value: &RuntimeValue) -> bool {

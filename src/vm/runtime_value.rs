@@ -158,6 +158,7 @@ impl RuntimeValue {
 
     pub fn set_index(&self, index: &Self, value: Self) -> Result<(), RuntimeError> {
         match (self, index) {
+            (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.set_index(i, value)?,
             (RuntimeValue::Map(map), index) => map.insert(index.clone(), value),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
