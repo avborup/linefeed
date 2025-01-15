@@ -10,6 +10,7 @@ mod functions;
 mod in_;
 mod list;
 mod logical;
+mod map;
 mod match_;
 mod math;
 mod method;
