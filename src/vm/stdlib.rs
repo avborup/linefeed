@@ -5,15 +5,19 @@ use crate::vm::{
 
 pub type RuntimeResult = Result<RuntimeValue, RuntimeError>;
 
-pub fn all(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = if let [arg] = args.as_slice() {
+fn iterator_from_variadic_args(args: Vec<RuntimeValue>) -> RuntimeIterator {
+    if let [arg] = args.as_slice() {
         match arg.to_iter_inner() {
             Ok(iter) => iter,
-            Err(_) => return Ok(RuntimeValue::Bool(arg.bool())),
+            Err(_) => RuntimeIterator::from(RuntimeList::from_vec(args)),
         }
     } else {
         RuntimeIterator::from(RuntimeList::from_vec(args))
-    };
+    }
+}
+
+pub fn all(args: Vec<RuntimeValue>) -> RuntimeResult {
+    let iter = iterator_from_variadic_args(args);
 
     while let Some(value) = iter.next() {
         if !value.bool() {
@@ -25,14 +29,7 @@ pub fn all(args: Vec<RuntimeValue>) -> RuntimeResult {
 }
 
 pub fn any(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = if let [arg] = args.as_slice() {
-        match arg.to_iter_inner() {
-            Ok(iter) => iter,
-            Err(_) => return Ok(RuntimeValue::Bool(arg.bool())),
-        }
-    } else {
-        RuntimeIterator::from(RuntimeList::from_vec(args))
-    };
+    let iter = iterator_from_variadic_args(args);
 
     while let Some(value) = iter.next() {
         if value.bool() {
