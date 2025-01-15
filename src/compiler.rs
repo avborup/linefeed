@@ -76,6 +76,7 @@ pub enum Instruction {
     MethodCall(Method, usize),
     IsIn,
     Index,
+    SetIndex,
     NextIter,
     ToIter,
 }
@@ -303,18 +304,14 @@ impl Compiler {
                     .then_instruction(op_instr, expr.span())
             }
 
-            Expr::List(items) => items
-                .iter()
-                .map(|item| self.compile_expr(item))
-                .collect::<Result<Vec<_>, _>>()?
-                .into_iter()
-                .fold(
-                    Program::from_instruction(Value(IrValue::List(Vec::new())), expr.span()),
-                    |acc, p| {
-                        acc.then_program(p)
-                            .then_instruction(MethodCall(Method::Append, 1), expr.span())
-                    },
-                ),
+            Expr::List(items) => items.iter().try_fold(
+                Program::from_instruction(Value(IrValue::new_list()), expr.span()),
+                |acc, item| {
+                    Ok(acc
+                        .then_program(self.compile_expr(item)?)
+                        .then_instruction(MethodCall(Method::Append, 1), expr.span()))
+                },
+            )?,
 
             Expr::Tuple(items) => {
                 let list = Spanned(Expr::List(items.clone()), expr.span());
@@ -322,6 +319,16 @@ impl Compiler {
                 self.compile_expr(&list)?
                     .then_instruction(StdlibCall(StdlibFn::ToTuple, 1), expr.span())
             }
+
+            Expr::Map(items) => items.iter().try_fold(
+                Program::from_instruction(Value(IrValue::new_map()), expr.span()),
+                |acc, (key, value)| {
+                    Ok(acc
+                        .then_program(self.compile_expr(key)?)
+                        .then_program(self.compile_expr(value)?)
+                        .then_instruction(SetIndex, expr.span()))
+                },
+            )?,
 
             Expr::Index(value, index) => {
                 let value_program = self.compile_expr(value)?;

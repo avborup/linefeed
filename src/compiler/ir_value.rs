@@ -16,7 +16,18 @@ pub enum IrValue {
     List(Vec<IrValue>),
     Tuple(Vec<IrValue>),
     Set(Vec<IrValue>),
+    Map(Vec<(IrValue, IrValue)>),
     Function(RuntimeFunction<Label>),
+}
+
+impl IrValue {
+    pub fn new_list() -> Self {
+        IrValue::List(Vec::new())
+    }
+
+    pub fn new_map() -> Self {
+        IrValue::Map(Vec::new())
+    }
 }
 
 impl<'src> TryFrom<&AstValue<'src>> for IrValue {

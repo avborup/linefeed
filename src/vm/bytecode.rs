@@ -6,8 +6,8 @@ use crate::{
         Program,
     },
     vm::runtime_value::{
-        function::RuntimeFunction, list::RuntimeList, regex::RuntimeRegex, set::RuntimeSet,
-        string::RuntimeString, tuple::RuntimeTuple, RuntimeValue,
+        function::RuntimeFunction, list::RuntimeList, map::RuntimeMap, regex::RuntimeRegex,
+        set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple, RuntimeValue,
     },
 };
 
@@ -63,6 +63,7 @@ pub enum Bytecode {
     PrintValue(usize),
     ReadInput,
     Index,
+    SetIndex,
     NextIter,
     ToIter,
     ParseInt,
@@ -132,6 +133,7 @@ impl Bytecode {
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
             Instruction::Index => Bytecode::Index,
+            Instruction::SetIndex => Bytecode::SetIndex,
             Instruction::NextIter => Bytecode::NextIter,
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::IsIn => Bytecode::IsIn,
@@ -200,6 +202,19 @@ impl Bytecode {
                     .collect::<Result<_, _>>()?;
 
                 RuntimeValue::Set(RuntimeSet::from_set(items))
+            }
+            IrValue::Map(m) => {
+                let map = m
+                    .into_iter()
+                    .map(|(key, value)| {
+                        Ok((
+                            Self::into_runtime_value_with_mapper(key, label_mapper)?,
+                            Self::into_runtime_value_with_mapper(value, label_mapper)?,
+                        ))
+                    })
+                    .collect::<Result<_, _>>()?;
+
+                RuntimeValue::Map(RuntimeMap::from_map(map))
             }
             IrValue::Function(func) => RuntimeValue::Function(Rc::new(RuntimeFunction {
                 location: label_mapper.get(func.location)?,
