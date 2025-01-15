@@ -36,6 +36,14 @@ impl RuntimeMap {
         )
     }
 
+    pub fn get(&self, key: &RuntimeValue) -> RuntimeValue {
+        self.0
+            .borrow()
+            .get(key)
+            .cloned()
+            .unwrap_or(RuntimeValue::Null)
+    }
+
     pub fn insert(&self, key: RuntimeValue, value: RuntimeValue) {
         self.0.borrow_mut().insert(key, value);
     }

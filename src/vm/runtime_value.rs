@@ -144,6 +144,7 @@ impl RuntimeValue {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
+            (RuntimeValue::Map(map), index) => map.get(index),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot index into '{}' with type '{}'",
