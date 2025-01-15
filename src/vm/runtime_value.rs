@@ -145,8 +145,8 @@ impl RuntimeValue {
         Ok(res)
     }
 
-    pub fn to_iter(&self) -> Result<Self, RuntimeError> {
-        let res = match self {
+    pub fn to_iter_inner(&self) -> Result<RuntimeIterator, RuntimeError> {
+        let iter = match self {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
             RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
             RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
@@ -159,7 +159,11 @@ impl RuntimeValue {
             }
         };
 
-        Ok(RuntimeValue::Iterator(Box::new(res)))
+        Ok(iter)
+    }
+
+    pub fn to_iter(&self) -> Result<Self, RuntimeError> {
+        Ok(RuntimeValue::Iterator(Box::new(self.to_iter_inner()?)))
     }
 
     pub fn next(&self) -> Result<Option<Self>, RuntimeError> {

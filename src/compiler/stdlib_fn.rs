@@ -12,6 +12,8 @@ pub enum StdlibFn {
     ToTuple,
     Product,
     Sum,
+    All,
+    Any,
 }
 
 impl StdlibFn {
@@ -24,6 +26,8 @@ impl StdlibFn {
         ToTuple => "tuple",
         Product => "mul",
         Sum => "sum",
+        All => "all",
+        Any => "any",
     }
 
     /// Returns the number of arguments this function expects.
@@ -37,6 +41,8 @@ impl StdlibFn {
             Self::ToTuple => 1..=1,
             Self::Product => 1..=1,
             Self::Sum => 1..=1,
+            Self::All => 1..=usize::MAX,
+            Self::Any => 1..=usize::MAX,
         }
     }
 }

@@ -16,6 +16,7 @@ pub use runtime_error::RuntimeError;
 pub mod bytecode;
 pub mod runtime_error;
 pub mod runtime_value;
+pub mod stdlib;
 
 pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
     program: Program<Bytecode>,
@@ -73,6 +74,13 @@ macro_rules! method_with_optional_arg {
         let arg = args.pop();
         let target = $vm.pop_stack()?;
         $vm.push_stack(target.$method(arg)?);
+    }};
+}
+
+macro_rules! variadic_stdlib_fn {
+    ($vm:expr, $fn:ident, $num_args:expr) => {{
+        let args = $vm.pop_args($num_args)?;
+        $vm.push_stack(stdlib::$fn(args)?);
     }};
 }
 
@@ -343,6 +351,9 @@ where
 
                     self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
+
+                Bytecode::AllTrue(num_args) => variadic_stdlib_fn!(self, all, *num_args),
+                Bytecode::AnyTrue(num_args) => variadic_stdlib_fn!(self, any, *num_args),
 
                 Bytecode::RuntimeError(err) => break Err(RuntimeError::Plain(err.clone())),
 

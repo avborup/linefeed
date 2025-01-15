@@ -72,6 +72,8 @@ pub enum Bytecode {
     Sum,
     ReprString,
     IsIn,
+    AllTrue(usize),
+    AnyTrue(usize),
 
     // Methods
     Append,
@@ -142,6 +144,8 @@ impl Bytecode {
                 StdlibFn::Repr => Bytecode::ReprString,
                 StdlibFn::Product => Bytecode::Product,
                 StdlibFn::Sum => Bytecode::Sum,
+                StdlibFn::All => Bytecode::AllTrue(num_args),
+                StdlibFn::Any => Bytecode::AnyTrue(num_args),
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append => Bytecode::Append,
