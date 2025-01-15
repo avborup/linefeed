@@ -2,6 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use crate::vm::runtime_value::{
     list::RuntimeList,
+    map::{MapIterator, RuntimeMap},
     range::{RangeIterator, RuntimeRange},
     string::RuntimeString,
     RuntimeValue,
@@ -59,6 +60,12 @@ impl From<RuntimeString> for RuntimeIterator {
                 .map(|c| RuntimeValue::Str(RuntimeString::new(c)))
                 .collect(),
         ))
+    }
+}
+
+impl From<RuntimeMap> for RuntimeIterator {
+    fn from(map: RuntimeMap) -> Self {
+        Self(Rc::new(RefCell::new(MapIterator::from(map))))
     }
 }
 

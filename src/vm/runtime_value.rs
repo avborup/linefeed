@@ -4,9 +4,17 @@ use crate::{
     compiler::method::Method,
     vm::{
         runtime_value::{
-            function::RuntimeFunction, iterator::RuntimeIterator, list::RuntimeList,
-            number::RuntimeNumber, operations::LfAppend, range::RuntimeRange, regex::RuntimeRegex,
-            set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple,
+            function::RuntimeFunction,
+            iterator::RuntimeIterator,
+            list::RuntimeList,
+            map::{MapIterator, RuntimeMap},
+            number::RuntimeNumber,
+            operations::LfAppend,
+            range::RuntimeRange,
+            regex::RuntimeRegex,
+            set::RuntimeSet,
+            string::RuntimeString,
+            tuple::RuntimeTuple,
         },
         RuntimeError,
     },
@@ -15,6 +23,7 @@ use crate::{
 pub mod function;
 pub mod iterator;
 pub mod list;
+pub mod map;
 pub mod number;
 pub mod operations;
 pub mod range;
@@ -35,6 +44,7 @@ pub enum RuntimeValue {
     List(RuntimeList),
     Tuple(RuntimeTuple),
     Set(RuntimeSet),
+    Map(RuntimeMap),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
     Iterator(Box<RuntimeIterator>),
@@ -62,6 +72,7 @@ impl RuntimeValue {
             RuntimeValue::Function(_) => "function",
             RuntimeValue::Range(_) => "range",
             RuntimeValue::Iterator(_) => "iterator",
+            RuntimeValue::Map(_) => "map",
         }
     }
 
@@ -283,6 +294,7 @@ impl RuntimeValue {
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Tuple(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
+            RuntimeValue::Map(m) => !m.is_empty(),
             RuntimeValue::Function(_) => true,
             RuntimeValue::Range(_) => true,
             RuntimeValue::Iterator(_) => true,
@@ -346,6 +358,21 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
                 write_items(f, xs.borrow().iter(), |f, x| x.repr_fmt(f))?;
+                write!(f, "}}")
+            }
+            RuntimeValue::Map(m) => {
+                write!(f, "{{")?;
+                write_items(f, MapIterator::from(m.clone()), |f, kv| {
+                    let write_item = |f: &mut std::fmt::Formatter, idx: isize| {
+                        kv.index(&RuntimeValue::Num(RuntimeNumber::Int(idx)))
+                            .unwrap()
+                            .repr_fmt(f)
+                    };
+
+                    write_item(f, 0)?;
+                    write!(f, ": ")?;
+                    write_item(f, 1)
+                })?;
                 write!(f, "}}")
             }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
