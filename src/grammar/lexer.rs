@@ -98,7 +98,7 @@ pub fn lexer<'src>(
         .to_slice()
         .map(Token::Op);
 
-    let ctrl = one_of("()[]{};,|.").map(Token::Ctrl);
+    let ctrl = one_of("()[]{};,|.:").map(Token::Ctrl);
 
     let ident = text::ident().map(|ident: &str| match ident {
         "if" => Token::If,

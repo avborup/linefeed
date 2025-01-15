@@ -219,6 +219,8 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .map(Expr::Tuple)
                 .memoized();
 
+            let map = map_parser(raw_expr.clone(), expr.clone());
+
             let regex_modifiers = ident
                 .or_not()
                 .map(|ident| {
@@ -247,6 +249,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .or(let_)
                 .or(list)
                 .or(tuple)
+                .or(map)
                 .or(list_comprehension)
                 .or(func)
                 .or(match_expr)
@@ -459,6 +462,26 @@ fn standalone_keyword_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, 
 
 fn ident_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, &'src str> + Copy {
     select! { Token::Ident(ident) => ident }.labelled("identifier")
+}
+
+fn map_parser<'src, I: ParserInput<'src>>(
+    raw_expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
+    expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> impl Parser<'src, I, Expr<'src>> {
+    let key_val = raw_expr
+        .clone()
+        .then_ignore(just(Token::Ctrl(':')))
+        .then(expr);
+
+    let map = key_val
+        .separated_by(just(Token::Ctrl(',')))
+        .allow_trailing()
+        .collect::<Vec<_>>()
+        .delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}')))
+        .map(Expr::Map)
+        .memoized();
+
+    map.labelled("map")
 }
 
 fn product_parser<'src, I: ParserInput<'src>>(

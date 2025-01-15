@@ -91,6 +91,15 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 res
             }
 
+            Expr::Map(items) => {
+                let mut res = Vec::new();
+                for (key, value) in items {
+                    res.extend(find_all_assignments_inner(key));
+                    res.extend(find_all_assignments_inner(value));
+                }
+                res
+            }
+
             Expr::Sequence(exprs) => exprs.iter().flat_map(find_all_assignments_inner).collect(),
 
             Expr::Block(sub_expr) => find_all_assignments_inner(sub_expr),

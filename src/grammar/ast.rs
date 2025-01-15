@@ -16,6 +16,7 @@ pub enum Expr<'src> {
     Value(AstValue<'src>),
     List(Vec<Spanned<Self>>),
     Tuple(Vec<Spanned<Self>>),
+    Map(Vec<(Spanned<Self>, Spanned<Self>)>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
     Let(&'src str, Box<Spanned<Self>>),
