@@ -156,6 +156,21 @@ impl RuntimeValue {
         Ok(res)
     }
 
+    pub fn set_index(&self, index: &Self, value: Self) -> Result<(), RuntimeError> {
+        match (self, index) {
+            (RuntimeValue::Map(map), index) => map.insert(index.clone(), value),
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "Cannot index into '{}' with type '{}'",
+                    self.kind_str(),
+                    index.kind_str()
+                )))
+            }
+        };
+
+        Ok(())
+    }
+
     pub fn to_iter_inner(&self) -> Result<RuntimeIterator, RuntimeError> {
         let iter = match self {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
@@ -312,6 +327,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.deep_clone()),
+            RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
             _ => unimplemented!("deep_clone for {:?}", self),

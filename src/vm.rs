@@ -294,6 +294,13 @@ where
                     *into = value;
                 }
 
+                Bytecode::SetIndex => {
+                    let value = self.pop_stack()?;
+                    let index = self.pop_stack()?;
+                    let into = self.peek_stack_mut()?;
+                    into.set_index(&index, value)?;
+                }
+
                 Bytecode::NextIter => {
                     let iter = self.pop_stack()?;
                     let value = iter.next()?;

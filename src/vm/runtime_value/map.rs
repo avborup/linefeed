@@ -25,6 +25,26 @@ impl RuntimeMap {
     pub fn borrow(&self) -> std::cell::Ref<'_, HashMap<RuntimeValue, RuntimeValue>> {
         self.0.borrow()
     }
+
+    pub fn deep_clone(&self) -> Self {
+        Self::from_map(
+            self.0
+                .borrow()
+                .iter()
+                .map(|(k, v)| (k.deep_clone(), v.deep_clone()))
+                .collect(),
+        )
+    }
+
+    pub fn insert(&self, key: RuntimeValue, value: RuntimeValue) {
+        self.0.borrow_mut().insert(key, value);
+    }
+}
+
+impl Default for RuntimeMap {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PartialEq for RuntimeMap {
