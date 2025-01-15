@@ -272,21 +272,6 @@ impl RuntimeValue {
         }
     }
 
-    pub fn parse_int(&self) -> Result<RuntimeValue, RuntimeError> {
-        let res = match self {
-            RuntimeValue::Num(n) => RuntimeValue::Num(n.floor()),
-            RuntimeValue::Str(s) => RuntimeValue::Num(s.parse_int()?),
-            _ => {
-                return Err(RuntimeError::TypeMismatch(format!(
-                    "Cannot parse '{}' as integer",
-                    self.kind_str()
-                )))
-            }
-        };
-
-        Ok(res)
-    }
-
     pub fn bool(&self) -> bool {
         match self {
             RuntimeValue::Bool(b) => *b,
@@ -539,36 +524,6 @@ impl RuntimeValue {
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::IsMatch, self)),
         }
-    }
-
-    pub fn to_list(&self) -> Result<Self, RuntimeError> {
-        if let RuntimeValue::List(_) = self {
-            return Ok(self.clone());
-        }
-
-        let Ok(Self::Iterator(iter)) = self.to_iter() else {
-            return Err(RuntimeError::TypeMismatch(format!(
-                "Cannot convert type {} to a list",
-                self.kind_str()
-            )));
-        };
-
-        Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
-    }
-
-    pub fn to_tuple(&self) -> Result<Self, RuntimeError> {
-        if let RuntimeValue::Tuple(_) = self {
-            return Ok(self.clone());
-        }
-
-        let Ok(Self::Iterator(iter)) = self.to_iter() else {
-            return Err(RuntimeError::TypeMismatch(format!(
-                "Cannot convert type {} to a tuple",
-                self.kind_str()
-            )));
-        };
-
-        Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
     }
 
     pub fn contains(&self, item: &Self) -> Result<Self, RuntimeError> {

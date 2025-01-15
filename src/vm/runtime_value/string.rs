@@ -65,10 +65,6 @@ impl RuntimeString {
         Self::new(format!("{}{}", self.as_str(), other.as_str()))
     }
 
-    pub fn parse_int(&self) -> Result<RuntimeNumber, RuntimeError> {
-        RuntimeNumber::parse_int(self.as_str())
-    }
-
     pub fn count(&self, substr: &RuntimeString) -> RuntimeNumber {
         let n = self.as_str().matches(substr.as_str()).count();
         RuntimeNumber::Float(n as f64)

@@ -1,11 +1,57 @@
 use crate::vm::{
     runtime_value::{
-        iterator::RuntimeIterator, list::RuntimeList, number::RuntimeNumber, RuntimeValue,
+        iterator::RuntimeIterator, list::RuntimeList, number::RuntimeNumber, tuple::RuntimeTuple,
+        RuntimeValue,
     },
     RuntimeError,
 };
 
 pub type RuntimeResult = Result<RuntimeValue, RuntimeError>;
+
+pub fn parse_int(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+    let res = match val {
+        RuntimeValue::Num(n) => RuntimeValue::Num(n.floor()),
+        RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::parse_int(s.as_str())?),
+        _ => {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot parse '{}' as integer",
+                val.kind_str()
+            )))
+        }
+    };
+
+    Ok(res)
+}
+
+pub fn to_list(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+    if let RuntimeValue::List(_) = val {
+        return Ok(val.clone());
+    }
+
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+        return Err(RuntimeError::TypeMismatch(format!(
+            "Cannot convert type {} to a list",
+            val.kind_str()
+        )));
+    };
+
+    Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
+}
+
+pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+    if let RuntimeValue::Tuple(_) = val {
+        return Ok(val.clone());
+    }
+
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+        return Err(RuntimeError::TypeMismatch(format!(
+            "Cannot convert type {} to a tuple",
+            val.kind_str()
+        )));
+    };
+
+    Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
+}
 
 pub fn sum(val: RuntimeValue) -> RuntimeResult {
     let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {

@@ -319,9 +319,9 @@ where
                 Bytecode::Contains => binary_op!(self, contains),
                 Bytecode::IsIn => binary_op_swapped!(self, contains),
 
-                Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
-                Bytecode::ToList => unary_mapper_method!(self, to_list),
-                Bytecode::ToTuple => unary_mapper_method!(self, to_tuple),
+                Bytecode::ParseInt => stdlib_fn!(self, parse_int),
+                Bytecode::ToList => stdlib_fn!(self, to_list),
+                Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
                 Bytecode::Product => stdlib_fn!(self, mul),
                 Bytecode::Sum => stdlib_fn!(self, sum),
                 Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
