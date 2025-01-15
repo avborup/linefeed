@@ -77,7 +77,12 @@ macro_rules! method_with_optional_arg {
     }};
 }
 
-macro_rules! variadic_stdlib_fn {
+macro_rules! stdlib_fn {
+    ($vm:expr, $fn:ident) => {{
+        let val = $vm.pop_stack()?;
+        $vm.push_stack(stdlib::$fn(val)?);
+    }};
+
     ($vm:expr, $fn:ident, $num_args:expr) => {{
         let args = $vm.pop_args($num_args)?;
         $vm.push_stack(stdlib::$fn(args)?);
@@ -317,8 +322,10 @@ where
                 Bytecode::ParseInt => unary_mapper_method!(self, parse_int),
                 Bytecode::ToList => unary_mapper_method!(self, to_list),
                 Bytecode::ToTuple => unary_mapper_method!(self, to_tuple),
-                Bytecode::Product => unary_mapper_method!(self, iter_product),
-                Bytecode::Sum => unary_mapper_method!(self, iter_sum),
+                Bytecode::Product => stdlib_fn!(self, mul),
+                Bytecode::Sum => stdlib_fn!(self, sum),
+                Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
+                Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
 
                 Bytecode::PrintValue(num_args) => {
                     let vals = self.pop_args(*num_args)?;
@@ -351,9 +358,6 @@ where
 
                     self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
                 }
-
-                Bytecode::AllTrue(num_args) => variadic_stdlib_fn!(self, all, *num_args),
-                Bytecode::AnyTrue(num_args) => variadic_stdlib_fn!(self, any, *num_args),
 
                 Bytecode::RuntimeError(err) => break Err(RuntimeError::Plain(err.clone())),
 
