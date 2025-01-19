@@ -147,7 +147,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .at_least(2)
                 .collect::<Vec<_>>()
                 .then_ignore(just(Token::Op("=")))
-                .then(inline_expr.clone().or(block_expr.clone()))
+                .then(inline_expr.clone())
                 .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)))
                 .memoized()
                 .boxed();
@@ -165,7 +165,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
             let single_assign = ident
                 .then(assign_op)
-                .then(inline_expr.clone().or(block_expr.clone()))
+                .then(inline_expr.clone())
                 .map_with(|((name, op), val), e| {
                     let new_val = match op {
                         "=" => val,
@@ -346,7 +346,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .boxed();
 
             let return_ = just(Token::Return)
-                .ignore_then(inline_expr.clone().or(block_expr.clone()).or_not())
+                .ignore_then(inline_expr.clone().or_not())
                 .map_with(|expr, e| {
                     let ret_expr =
                         expr.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
@@ -356,7 +356,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            range.or(logical).or(return_)
+            range.or(logical).or(block_expr.clone()).or(return_)
         });
 
         let postfix_if = inline_expr
