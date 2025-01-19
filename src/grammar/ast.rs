@@ -36,7 +36,11 @@ pub enum Expr<'src> {
     ),
     Break,
     Continue,
-    ListComprehension(Box<Spanned<Self>>, &'src str, Box<Spanned<Self>>),
+    ListComprehension(
+        Box<Spanned<Self>>,
+        AssignmentTarget<'src>,
+        Box<Spanned<Self>>,
+    ),
     Match(Box<Spanned<Self>>, Vec<(Spanned<Self>, Spanned<Self>)>),
 }
 

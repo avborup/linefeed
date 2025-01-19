@@ -212,7 +212,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
             let list_comprehension = inline_expr
                 .clone()
-                .then(just(Token::For).ignore_then(ident))
+                .then(just(Token::For).ignore_then(loop_var))
                 .then(just(Token::In).ignore_then(inline_expr.clone()))
                 .then(just(Token::If).ignore_then(inline_expr.clone()).or_not())
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))

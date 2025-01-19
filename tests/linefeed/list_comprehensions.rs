@@ -22,3 +22,13 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    list_comprehension_destructured_works,
+    indoc::indoc! {r#"
+        list = [(1, 2), (3, 4), (5, 6)];
+        print([x + y for x, y in list]);
+    "#},
+    equals("[3, 7, 11]"),
+    empty()
+);

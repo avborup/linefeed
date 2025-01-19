@@ -459,27 +459,13 @@ impl Compiler {
                     .compile_var_assign(expr, &iterable_name, iterator)?
                     .then_instruction(Pop, iterable.span());
 
-                let compile_loop_var_assign =
-                    |c: &mut Self, target: &AssignmentTarget<'_>| match target {
-                        AssignmentTarget::Local(name) => Ok(c
-                            .compile_var_address(name, expr)?
-                            .then_instructions(vec![Store, Pop], expr.span())),
-                        AssignmentTarget::Destructure(targets) => {
-                            c.compile_destructure_of_val(targets, expr)
-                        }
-                        AssignmentTarget::Index(_, _) => Err(CompileError::Spanned {
-                            span: expr.span(),
-                            msg: "Cannot destructure into index yet (future feature)".to_string(),
-                        }),
-                    };
-
                 let program = register_loop
                     .then_program(register_iterable)
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &iterable_name)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
-                    .then_program(compile_loop_var_assign(self, loop_var)?)
+                    .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span())
@@ -534,8 +520,7 @@ impl Compiler {
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &iterable_name)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
-                    .then_program(self.compile_var_address(loop_var, expr)?)
-                    .then_instructions(vec![Store, Pop], expr.span())
+                    .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(
                         vec![MethodCall(Method::Append, 1), Goto(iter_label)],
@@ -780,6 +765,30 @@ impl Compiler {
             });
 
         Ok(prog)
+    }
+
+    // Assumes that the value is currently on top of the stack.
+    fn compile_loop_var_assign(
+        &mut self,
+        target: &AssignmentTarget,
+        expr: &Spanned<Expr>,
+    ) -> Result<Program<Instruction>, CompileError> {
+        let program = match target {
+            AssignmentTarget::Local(name) => self
+                .compile_var_address(name, expr)?
+                .then_instructions(vec![Store, Pop], expr.span()),
+            AssignmentTarget::Destructure(targets) => self
+                .compile_destructure_of_val(targets, expr)?
+                .then_instruction(Pop, expr.span()),
+            AssignmentTarget::Index(_, _) => {
+                return Err(CompileError::Spanned {
+                    span: expr.span(),
+                    msg: "Cannot destructure into index yet (future feature)".to_string(),
+                })
+            }
+        };
+
+        Ok(program)
     }
 
     pub fn new_label(&mut self) -> Label {

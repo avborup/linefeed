@@ -67,7 +67,7 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::ListComprehension(body, loop_var, iterable) => {
-                let mut res = vec![Spanned(*loop_var, expr.span())];
+                let mut res = resolve_assignment_target(loop_var, expr.span());
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res
