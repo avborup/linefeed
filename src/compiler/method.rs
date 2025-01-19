@@ -14,6 +14,7 @@ pub enum Method {
     Find,
     IsMatch,
     Contains,
+    Sort,
 }
 
 impl Method {
@@ -30,6 +31,7 @@ impl Method {
         IsMatch => "is_match",
         Join => "join",
         Contains => "contains",
+        Sort => "sort",
     }
 
     /// Returns the number of arguments this method expects.
@@ -47,6 +49,7 @@ impl Method {
             Self::IsMatch => 1..=1,
             Self::Join => 0..=1,
             Self::Contains => 1..=1,
+            Self::Sort => 0..=0,
         }
     }
 }

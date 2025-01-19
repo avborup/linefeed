@@ -295,6 +295,16 @@ impl RuntimeValue {
         })
     }
 
+    pub fn sort(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => {
+                list.sort();
+                Ok(RuntimeValue::List(list.clone()))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(Method::Sort, self)),
+        }
+    }
+
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {

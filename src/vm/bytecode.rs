@@ -94,6 +94,7 @@ pub enum Bytecode {
     Find,
     IsMatch,
     Contains,
+    Sort,
 }
 
 impl Bytecode {
@@ -172,6 +173,7 @@ impl Bytecode {
                 Method::Find => Bytecode::Find,
                 Method::IsMatch => Bytecode::IsMatch,
                 Method::Contains => Bytecode::Contains,
+                Method::Sort => Bytecode::Sort,
             },
         };
 

@@ -83,6 +83,12 @@ impl RuntimeList {
     pub fn contains(&self, value: &RuntimeValue) -> bool {
         self.0.borrow().contains(value)
     }
+
+    pub fn sort(&self) {
+        self.0
+            .borrow_mut()
+            .sort_by(|a, b| a.partial_cmp(b).expect("unhandled uncomparable value"));
+    }
 }
 
 impl Default for RuntimeList {
