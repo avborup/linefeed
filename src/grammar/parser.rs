@@ -86,7 +86,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             .boxed()
             .labelled("block expression");
 
-        let raw_expr = recursive(|raw_expr| {
+        let inline_expr = recursive(|inline_expr| {
             // A comma-separated list of expressions
             let items = expr
                 .clone()
@@ -113,7 +113,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                         .clone()
                         // Attempt to recover anything that looks like a function body but contains errors
                         .recover_with(via_parser(nested_braces_delim.clone()))
-                        .or(raw_expr.clone()),
+                        .or(inline_expr.clone()),
                 )
                 .map_with(|((name, args), body), e| {
                     let val = Expr::Value(AstValue::Func(Func {
@@ -130,7 +130,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            let match_arms = raw_expr
+            let match_arms = inline_expr
                 .clone()
                 .then_ignore(just(Token::Op("=>")))
                 .then(expr.clone())
@@ -138,7 +138,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .allow_trailing()
                 .collect::<Vec<_>>();
             let match_expr = just(Token::Match)
-                .ignore_then(raw_expr.clone())
+                .ignore_then(inline_expr.clone())
                 .then(match_arms.delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}'))))
                 .map(|(expr, arms)| Expr::Match(Box::new(expr), arms));
 
@@ -147,7 +147,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .at_least(2)
                 .collect::<Vec<_>>()
                 .then_ignore(just(Token::Op("=")))
-                .then(raw_expr.clone().or(block_expr.clone()))
+                .then(inline_expr.clone().or(block_expr.clone()))
                 .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)))
                 .memoized()
                 .boxed();
@@ -165,7 +165,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
             let single_assign = ident
                 .then(assign_op)
-                .then(raw_expr.clone().or(block_expr.clone()))
+                .then(inline_expr.clone().or(block_expr.clone()))
                 .map_with(|((name, op), val), e| {
                     let new_val = match op {
                         "=" => val,
@@ -219,7 +219,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .map(Expr::Tuple)
                 .memoized();
 
-            let map = map_parser(raw_expr.clone());
+            let map = map_parser(inline_expr.clone());
 
             let regex_modifiers = ident
                 .or_not()
@@ -282,9 +282,9 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            let index_into = index_into_parser(atom.clone(), raw_expr.clone());
+            let index_into = index_into_parser(atom.clone(), inline_expr.clone());
 
-            let index_assign = index_assign_parser(index_into.clone(), raw_expr.clone())
+            let index_assign = index_assign_parser(index_into.clone(), inline_expr.clone())
                 .labelled("index assignment");
 
             let call_or_index = func_call.or(index_assign).or(index_into).or(atom.clone());
@@ -346,7 +346,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .boxed();
 
             let return_ = just(Token::Return)
-                .ignore_then(raw_expr.clone().or(block_expr.clone()).or_not())
+                .ignore_then(inline_expr.clone().or(block_expr.clone()).or_not())
                 .map_with(|expr, e| {
                     let ret_expr =
                         expr.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
@@ -359,9 +359,9 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             range.or(logical).or(return_)
         });
 
-        let postfix_if = raw_expr
+        let postfix_if = inline_expr
             .clone()
-            .then(just(Token::If).ignore_then(raw_expr.clone()))
+            .then(just(Token::If).ignore_then(inline_expr.clone()))
             .map_with(|(a, b), e| {
                 Spanned(
                     Expr::If(
@@ -375,9 +375,9 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             .memoized()
             .boxed();
 
-        let postfix_unless = raw_expr
+        let postfix_unless = inline_expr
             .clone()
-            .then(just(Token::Unless).ignore_then(raw_expr.clone()))
+            .then(just(Token::Unless).ignore_then(inline_expr.clone()))
             .map_with(|(a, b), e| {
                 Spanned(
                     Expr::If(
@@ -412,7 +412,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             .or(postfix_if)
             .or(postfix_unless)
             // Expressions, chained by semicolons, are statements
-            .or(raw_expr.clone())
+            .or(inline_expr.clone())
             .then(
                 just(Token::Ctrl(';'))
                     .ignore_then(expr.or_not())
@@ -459,12 +459,12 @@ fn ident_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, &'src str>
 }
 
 fn map_parser<'src, I: ParserInput<'src>>(
-    raw_expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
+    inline_expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
 ) -> impl Parser<'src, I, Expr<'src>> {
-    let key_val = raw_expr
+    let key_val = inline_expr
         .clone()
         .then_ignore(just(Token::Ctrl(':')))
-        .then(raw_expr);
+        .then(inline_expr);
 
     let map = key_val
         .separated_by(just(Token::Ctrl(',')))
