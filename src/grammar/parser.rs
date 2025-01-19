@@ -651,8 +651,11 @@ fn range_parser<'src, I: ParserInput<'src>>(
 
     val_parser
         .clone()
+        .or_not()
         .then(range_op.then(val_parser.or_not()))
         .map_with(|(a, (op, b)), e| {
+            let start = a.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
+
             let end = b
                 .map(|b| match op {
                     Token::RangeExclusive => b,
@@ -669,7 +672,7 @@ fn range_parser<'src, I: ParserInput<'src>>(
                 .unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
 
             Spanned(
-                Expr::Binary(Box::new(a), BinaryOp::Range, Box::new(end)),
+                Expr::Binary(Box::new(start), BinaryOp::Range, Box::new(end)),
                 e.span(),
             )
         })

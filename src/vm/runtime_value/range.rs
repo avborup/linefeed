@@ -2,27 +2,30 @@ use crate::vm::runtime_value::{number::RuntimeNumber, RuntimeValue};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct RuntimeRange {
-    pub start: isize,
+    pub start: Option<isize>,
     pub end: Option<isize>,
-    pub step: isize,
 }
 
 impl RuntimeRange {
-    pub fn new(start: RuntimeNumber, end: Option<RuntimeNumber>) -> Self {
-        let is_reverse = end.as_ref().map_or(false, |end| start > *end);
-
+    pub fn new(start: Option<RuntimeNumber>, end: Option<RuntimeNumber>) -> Self {
         Self {
-            start: start.floor_int(),
+            start: start.map(|n| n.floor_int()),
             end: end.map(|n| n.floor_int()),
-            step: if is_reverse { -1 } else { 1 },
+        }
+    }
+
+    pub fn is_reverse(&self) -> bool {
+        match (self.start, self.end) {
+            (Some(start), Some(end)) => start > end,
+            _ => false,
         }
     }
 
     pub fn contains(&self, value: &RuntimeNumber) -> bool {
-        let (lower, upper) = if self.step.is_positive() {
-            (Some(self.start), self.end)
+        let (lower, upper) = if !self.is_reverse() {
+            (self.start, self.end)
         } else {
-            (self.end, Some(self.start))
+            (self.end, self.start)
         };
 
         let lower = lower.map_or(true, |lower| value >= &RuntimeNumber::Int(lower));
@@ -44,12 +47,14 @@ impl std::fmt::Display for RuntimeRange {
 pub struct RangeIterator {
     range: RuntimeRange,
     value: isize,
+    step: isize,
 }
 
 impl RangeIterator {
     pub fn new(range: RuntimeRange) -> Self {
         Self {
-            value: range.start,
+            value: range.start.unwrap_or(0),
+            step: if range.is_reverse() { -1 } else { 1 },
             range,
         }
     }
@@ -59,9 +64,9 @@ impl Iterator for RangeIterator {
     type Item = RuntimeValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        debug_assert!(self.range.step.abs() == 1);
+        debug_assert!(self.step.abs() == 1);
 
-        let (value, step, end) = (self.value, self.range.step, self.range.end);
+        let (value, step, end) = (self.value, self.step, self.range.end);
 
         if step.is_positive() && end.map_or(false, |end| value >= end)
             || step.is_negative() && end.map_or(false, |end| value <= end)

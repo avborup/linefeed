@@ -308,9 +308,11 @@ impl RuntimeValue {
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {
-                RuntimeRange::new(*start, Some(*end))
+                RuntimeRange::new(Some(*start), Some(*end))
             }
-            (RuntimeValue::Num(start), RuntimeValue::Null) => RuntimeRange::new(*start, None),
+            (RuntimeValue::Num(start), RuntimeValue::Null) => RuntimeRange::new(Some(*start), None),
+            (RuntimeValue::Null, RuntimeValue::Num(end)) => RuntimeRange::new(None, Some(*end)),
+            (RuntimeValue::Null, RuntimeValue::Null) => RuntimeRange::new(None, None),
             _ => {
                 return Err(RuntimeError::invalid_binary_op_for_types(
                     "make range from",
