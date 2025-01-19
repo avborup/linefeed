@@ -2,33 +2,22 @@ fn binary_search(pass) {
   lo, hi = (0, 2 ** pass.len() - 1);
   for c in pass {
       mid = (lo + hi) // 2;
-
-      # TODO implement "or" ("F" | "L" => ...)
-      match c {
-        "F" => hi = mid,
-        "B" => lo = mid + 1,
-        "L" => hi = mid,
-        "R" => lo = mid + 1,
-      };
+      if c in "FL" { hi = mid } else
+      if c in "BR" { lo = mid + 1 };
   };
 };
 
-part1, part2 = (0, "?");
-seats = [];
-
+part1, seats = (0, []);
 for pass in input().lines() {
   # TODO: implement slicing (index by range?)
   row_pass, col_pass = pass.find(r/(.{7})(.{3})/);
   row, col = (binary_search(row_pass), binary_search(col_pass));
-
-  id = row * 8 + col;
-  seats.append(id);
-  part1 = max(part1, id);
+  seats.append(row * 8 + col);
 };
 
 for i in 1..seats.sort().len() {
   part2 = seats[i] - 1 if seats[i-1] != seats[i] - 1;
 };
 
-print("Part 1: " + part1);
-print("Part 2: " + part2);
+print("Part 1: " + max(seats));
+print("Part 2: " + (part2 or "?"));
