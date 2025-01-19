@@ -34,6 +34,13 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 res
             }
 
+            Expr::IndexAssign(target, index, value) => {
+                let mut res = find_all_assignments_inner(target);
+                res.extend(find_all_assignments_inner(index));
+                res.extend(find_all_assignments_inner(value));
+                res
+            }
+
             Expr::If(cond, a, b) => {
                 let mut res = find_all_assignments_inner(cond);
                 res.extend(find_all_assignments_inner(a));

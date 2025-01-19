@@ -20,6 +20,7 @@ pub enum Expr<'src> {
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
     Let(&'src str, Box<Spanned<Self>>),
+    IndexAssign(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
     Destructure(Vec<&'src str>, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),

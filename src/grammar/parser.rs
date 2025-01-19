@@ -282,18 +282,12 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            let index = expr
-                .clone()
-                .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
-            let index_into = atom
-                .clone()
-                .foldl_with(index.repeated().at_least(1), |val, idx, e| {
-                    Spanned(Expr::Index(Box::new(val), Box::new(idx)), e.span())
-                })
-                .memoized()
-                .boxed();
+            let index_into = index_into_parser(atom.clone(), raw_expr.clone());
 
-            let call_or_index = choice((func_call, index_into, atom.clone()));
+            let index_assign = index_assign_parser(index_into.clone(), raw_expr.clone())
+                .labelled("index assignment");
+
+            let call_or_index = func_call.or(index_assign).or(index_into).or(atom.clone());
 
             let method_call = call_or_index
                 .clone()
@@ -362,7 +356,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            choice((range, logical, return_))
+            range.or(logical).or(return_)
         });
 
         let postfix_if = raw_expr
@@ -593,4 +587,32 @@ where
     parsers
         .into_iter()
         .fold(prev, move |prev, parser| parser(prev))
+}
+
+fn index_into_parser<'src, I: ParserInput<'src>>(
+    atom: impl Parser<'src, I, Spanned<Expr<'src>>>,
+    expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> impl Parser<'src, I, Spanned<Expr<'src>>> {
+    let index = expr.delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')));
+
+    let index_into = atom.foldl_with(index.repeated().at_least(1), |val, idx, e| {
+        Spanned(Expr::Index(Box::new(val), Box::new(idx)), e.span())
+    });
+
+    index_into.labelled("index").memoized()
+}
+
+fn index_assign_parser<'src, I: ParserInput<'src>>(
+    index_parser: impl Parser<'src, I, Spanned<Expr<'src>>>,
+    val_parser: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> impl Parser<'src, I, Spanned<Expr<'src>>> {
+    index_parser
+        .then_ignore(just(Token::Op("=")))
+        .then(val_parser)
+        .map_with(|(indexed, value), e| match indexed.0 {
+            Expr::Index(indexee, idx) => {
+                Spanned(Expr::IndexAssign(indexee, idx, Box::new(value)), e.span())
+            }
+            _ => unreachable!(),
+        })
 }
