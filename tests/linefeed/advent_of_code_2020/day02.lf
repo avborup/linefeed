@@ -1,6 +1,6 @@
 part1, part2 = (0, 0);
 
-for line in input().find_all(/(\d+)-(\d+) (\w): (\w+)/n) {
+for line in input().find_all(r/(\d+)-(\d+) (\w): (\w+)/n) {
   min, max, char, password = line;
 
   count = password.count(char);

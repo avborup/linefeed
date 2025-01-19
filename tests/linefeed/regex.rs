@@ -8,7 +8,7 @@ use indoc::indoc;
 eval_and_assert!(
     regex_basic_can_be_created,
     indoc! {r#"
-        reg = /\d+/n;
+        reg = r/\d+/n;
         print(reg);
     "#},
     equals(indoc! {r#"
@@ -20,7 +20,7 @@ eval_and_assert!(
 eval_and_assert!(
     regex_long_can_be_created,
     indoc! {r#"
-        print(/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/);
+        print(r/(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/);
     "#},
     equals(indoc! {r#"
         /(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d\.\d+([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))|(\d{4}-[01]\d-[0-3]\dT[0-2]\d:[0-5]\d([+-][0-2]\d:[0-5]\d|Z))/
@@ -31,7 +31,7 @@ eval_and_assert!(
 eval_and_assert!(
     regex_find_all_integers,
     indoc! {r#"
-        print("123 321 423 idk 312,1231.123".find_all(/\d+/n));
+        print("123 321 423 idk 312,1231.123".find_all(r/\d+/n));
     "#},
     equals(r#"[(123), (321), (423), (312), (1231), (123)]"#),
     empty()
@@ -40,7 +40,7 @@ eval_and_assert!(
 eval_and_assert!(
     regex_find_all_negative_integers,
     indoc! {r#"
-        print("123 -321 423 idk -312,1231.123".find_all(/-\d+/n));
+        print("123 -321 423 idk -312,1231.123".find_all(r/-\d+/n));
     "#},
     equals(r#"[(-321), (-312)]"#),
     empty()
@@ -49,7 +49,7 @@ eval_and_assert!(
 eval_and_assert!(
     regex_optional_group_is_null_when_not_present,
     indoc! {r#"
-        regex = /(\d+)(?:-(\d+))?/n;
+        regex = r/(\d+)(?:-(\d+))?/n;
         print("123".find_all(regex));
         print("123-321".find_all(regex));
     "#},
@@ -67,7 +67,7 @@ eval_and_assert!(
             + "1-3 b: cdefg\n"
             + "2-9 c: ccccccccc\n";
 
-        matches = inp.find_all(/(\d+)-(\d+) (\w): (\w+)/n);
+        matches = inp.find_all(r/(\d+)-(\d+) (\w): (\w+)/n);
 
         print(matches);
     "#},
@@ -84,7 +84,7 @@ eval_and_assert!(
             + "1-3 b: cdefg\n"
             + "2-9 c: ccccccccc\n";
 
-        regex = /(\d+)-(\d+) (\w): (\w+)/n;
+        regex = r/(\d+)-(\d+) (\w): (\w+)/n;
         print(inp.find(regex));
         print("1-3 a:".find(regex));
     "#},
@@ -102,7 +102,7 @@ eval_and_assert!(
             + "1-3 b: cdefg\n"
             + "2-9 c: ccccccccc\n";
 
-        regex = /(\d+)-(\d+) (\w): (\w+)/n;
+        regex = r/(\d+)-(\d+) (\w): (\w+)/n;
         print(inp.is_match(regex));
         print("1-3 a".is_match(regex));
     "#},

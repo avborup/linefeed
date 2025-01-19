@@ -4,12 +4,12 @@ fn is_valid(key, val) {
     "iyr" => int(val) in (2010..=2020),
     "eyr" => int(val) in (2020..=2030),
     "hgt" => {
-      num, unit = val.find(/^(\d+)(cm|in)$/n) or (return false);
+      num, unit = val.find(r/^(\d+)(cm|in)$/n) or (return false);
       (unit == "cm" and num in (150..=193)) or (unit == "in" and num in (59..=76))
     },
-    "hcl" => val.is_match(/^#[0-9a-f]{6}$/),
-    "ecl" => val.is_match(/amb|blu|brn|gry|grn|hzl|oth/),
-    "pid" => val.is_match(/^\d{9}$/),
+    "hcl" => val.is_match(r/^#[0-9a-f]{6}$/),
+    "ecl" => val.is_match(r/amb|blu|brn|gry|grn|hzl|oth/),
+    "pid" => val.is_match(r/^\d{9}$/),
   }
 };
 
@@ -17,7 +17,7 @@ part1, part2 = (0, 0);
 required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
 
 for passport in input().split("\n\n") {
-  fields = map(passport.find_all(/(\w+):(\S+)/));
+  fields = map(passport.find_all(r/(\w+):(\S+)/));
 
   part1 += 1 if all([req in fields for req in required_fields]);
   part2 += 1 if all([req in fields and is_valid(req, fields[req]) for req in required_fields]);

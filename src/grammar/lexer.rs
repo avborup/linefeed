@@ -87,7 +87,7 @@ pub fn lexer<'src>(
         .then_ignore(just('"'))
         .map(Token::Str);
 
-    let regex_str = just('/')
+    let regex_str = just("r/")
         .ignore_then(none_of('/').repeated().collect())
         .then_ignore(just('/'))
         .map(Token::Regex);
