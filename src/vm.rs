@@ -89,6 +89,14 @@ macro_rules! stdlib_fn {
     }};
 }
 
+macro_rules! stdlib_fn_with_optional_arg {
+    ($vm:expr, $fn:ident, $num_args:expr) => {{
+        let mut args = $vm.pop_args($num_args)?;
+        let arg = args.pop();
+        $vm.push_stack(stdlib::$fn(arg)?);
+    }};
+}
+
 impl<I, O, E> BytecodeInterpreter<I, O, E>
 where
     I: Read,
@@ -333,6 +341,7 @@ where
                 Bytecode::ToList => stdlib_fn!(self, to_list),
                 Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
                 Bytecode::ToMap => stdlib_fn!(self, to_map),
+                Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
                 Bytecode::Product => stdlib_fn!(self, mul),
                 Bytecode::Sum => stdlib_fn!(self, sum),
                 Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),

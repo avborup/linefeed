@@ -1,7 +1,7 @@
 use crate::vm::{
     runtime_value::{
         iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap, number::RuntimeNumber,
-        tuple::RuntimeTuple, RuntimeValue,
+        set::RuntimeSet, tuple::RuntimeTuple, RuntimeValue,
     },
     RuntimeError,
 };
@@ -66,6 +66,21 @@ pub fn to_map(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
     };
 
     Ok(RuntimeValue::Map(RuntimeMap::try_from(*iter)?))
+}
+
+pub fn to_set(val: Option<RuntimeValue>) -> Result<RuntimeValue, RuntimeError> {
+    let iter = match val.as_ref().map(|v| v.to_iter_inner()) {
+        None => RuntimeIterator::from(()),
+        Some(Ok(iter)) => iter,
+        Some(Err(_)) => {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot convert type {} to a set",
+                val.unwrap().kind_str()
+            )))
+        }
+    };
+
+    Ok(RuntimeValue::Set(RuntimeSet::try_from(iter)?))
 }
 
 pub fn sum(val: RuntimeValue) -> RuntimeResult {

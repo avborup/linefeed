@@ -63,6 +63,22 @@ impl From<RuntimeString> for RuntimeIterator {
     }
 }
 
+pub struct EmptyIterator;
+
+impl Iterator for EmptyIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        None
+    }
+}
+
+impl From<()> for RuntimeIterator {
+    fn from(_: ()) -> Self {
+        Self(Rc::new(RefCell::new(EmptyIterator)))
+    }
+}
+
 impl From<RuntimeMap> for RuntimeIterator {
     fn from(map: RuntimeMap) -> Self {
         Self(Rc::new(RefCell::new(MapIterator::from(map))))

@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashSet, rc::Rc};
 
 use crate::vm::{
-    runtime_value::{operations::LfAppend, RuntimeValue},
+    runtime_value::{iterator::RuntimeIterator, operations::LfAppend, RuntimeValue},
     RuntimeError,
 };
 
@@ -34,6 +34,18 @@ impl PartialEq for RuntimeSet {
         let b = other.0.borrow();
 
         a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
+    }
+}
+
+impl TryFrom<RuntimeIterator> for RuntimeSet {
+    type Error = RuntimeError;
+
+    fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
+        let mut map = HashSet::new();
+        while let Some(val) = iter.next() {
+            map.insert(val);
+        }
+        Ok(Self::from_set(map))
     }
 }
 
