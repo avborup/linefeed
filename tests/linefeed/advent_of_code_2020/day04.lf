@@ -16,12 +16,14 @@ fn is_valid(key, val) {
 
 part1, part2 = (0, 0);
 for passport in input().split("\n\n") {
-  fields = passport.find_all(/(\w+):(\S+)/);
+  fields = {};
+  for f in passport.find_all(/(\w+):(\S+)/) {
+    fields[f[0]] = f[1];
+  };
 
-  keys = [f[0] for f in fields];
   required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
 
-  part1 += 1 if all([req in keys for req in required_fields]);
+  part1 += 1 if all([req in fields for req in required_fields]);
 
   all_valid = true;
   for req in required_fields {

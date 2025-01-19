@@ -574,6 +574,7 @@ impl RuntimeValue {
 
     pub fn contains(&self, item: &Self) -> Result<Self, RuntimeError> {
         let contains = match (self, item) {
+            (RuntimeValue::Map(m), k) => m.contains_key(k),
             (RuntimeValue::List(l), v) => l.contains(v),
             (RuntimeValue::Tuple(t), v) => t.contains(v),
             (RuntimeValue::Range(r), RuntimeValue::Num(n)) => r.contains(n),

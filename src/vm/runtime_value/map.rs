@@ -47,6 +47,10 @@ impl RuntimeMap {
     pub fn insert(&self, key: RuntimeValue, value: RuntimeValue) {
         self.0.borrow_mut().insert(key, value);
     }
+
+    pub fn contains_key(&self, key: &RuntimeValue) -> bool {
+        self.0.borrow().contains_key(key)
+    }
 }
 
 impl Default for RuntimeMap {
