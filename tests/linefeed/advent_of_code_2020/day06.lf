@@ -1,14 +1,14 @@
 part1, part2 = (0, 0);
+for group in [b.lines() for b in input().split("\n\n")] {
+  union, intersection = (set(), set(group[0]));
 
-groups = [b.lines() for b in input().split("\n\n")];
-
-for group in groups {
-  unique = set();
-  for a in group {
-    unique += set(a)
+  for line in group {
+    union += set(line);
+    intersection &= set(line);
   };
 
-  part1 += unique.len();
+  part1 += union.len();
+  part2 += intersection.len();
 };
 
 print("Part 1: " + part1);
