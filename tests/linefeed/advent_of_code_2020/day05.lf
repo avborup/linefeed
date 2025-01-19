@@ -13,13 +13,22 @@ fn binary_search(pass) {
   };
 };
 
-part1, part2 = (0, 0);
+part1, part2 = (0, "?");
+seats = [];
+
 for pass in input().lines() {
   # TODO: implement slicing (index by range?)
   row_pass, col_pass = pass.find(r/(.{7})(.{3})/);
   row, col = (binary_search(row_pass), binary_search(col_pass));
 
-  part1 = max(part1, row * 8 + col);
+  id = row * 8 + col;
+  seats.append(id);
+  part1 = max(part1, id);
+};
+
+for i in 1..seats.sort().len() {
+  part2 = seats[i] - 1 if seats[i-1] != seats[i] - 1;
 };
 
 print("Part 1: " + part1);
+print("Part 2: " + part2);
