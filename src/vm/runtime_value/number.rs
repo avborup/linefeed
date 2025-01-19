@@ -42,6 +42,24 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn pow(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Int(a), Int(b)) => Int(a.pow(*b as u32)),
+            (Int(a), Float(b)) => Float((*a as f64).powf(*b)),
+            (Float(a), Int(b)) => Float(a.powi(*b as i32)),
+            (Float(a), Float(b)) => Float(a.powf(*b)),
+        }
+    }
+
+    pub fn div_floor(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Int(a), Int(b)) => Int(a / b),
+            (Int(a), Float(b)) => Float((*a as f64) / b.floor()),
+            (Float(a), Int(b)) => Float(a / (*b as f64).floor()),
+            (Float(a), Float(b)) => Float((a / b).floor()),
+        }
+    }
+
     pub fn parse_int(s: &str) -> Result<Self, RuntimeError> {
         match s.parse::<isize>() {
             Ok(i) => Ok(Int(i)),

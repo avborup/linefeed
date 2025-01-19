@@ -120,12 +120,31 @@ impl RuntimeValue {
         }
     }
 
+    pub fn div_floor(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.div_floor(b))),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "divide", self, other,
+            )),
+        }
+    }
+
     pub fn modulo(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a % b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.modulo(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "modulo", self, other,
+            )),
+        }
+    }
+
+    pub fn pow(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.pow(b))),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "power", self, other,
             )),
         }
     }

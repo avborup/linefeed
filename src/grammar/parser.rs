@@ -347,6 +347,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             let logical = chain_parsers(
                 with_method_call.or(unary).boxed(),
                 [
+                    pow_parser,
                     product_parser,
                     sum_parser,
                     compare_parser,
@@ -489,12 +490,26 @@ fn map_parser<'src, I: ParserInput<'src>>(
     map.labelled("map")
 }
 
+fn pow_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
+    let pow_op = just(Token::Op("**")).to(BinaryOp::Pow);
+
+    prev.clone()
+        .foldl_with(pow_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
 fn product_parser<'src, I: ParserInput<'src>>(
     prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
 ) -> BoxedParser<'src, 'src, I> {
     let prod_op = choice((
         just(Token::Op("*")).to(BinaryOp::Mul),
         just(Token::Op("/")).to(BinaryOp::Div),
+        just(Token::Op("//")).to(BinaryOp::DivFloor),
         just(Token::Op("%")).to(BinaryOp::Mod),
     ));
 
