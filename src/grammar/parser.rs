@@ -324,7 +324,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
             // higher precedence
             let logical = chain_parsers(
                 with_method_call.or(unary).boxed(),
-                vec![
+                [
                     product_parser,
                     sum_parser,
                     compare_parser,
@@ -575,7 +575,7 @@ fn logical_parser<'src, I: ParserInput<'src>>(
 
 fn chain_parsers<'src, 'b, I, F>(
     prev: BoxedParser<'src, 'b, I>,
-    parsers: Vec<F>,
+    parsers: impl IntoIterator<Item = F>,
 ) -> BoxedParser<'src, 'b, I>
 where
     I: ValueInput<'src, Token = Token<'src>, Span = Span>,
