@@ -20,6 +20,20 @@ impl RuntimeSet {
     pub fn borrow(&self) -> std::cell::Ref<'_, HashSet<RuntimeValue>> {
         self.0.borrow()
     }
+
+    pub fn len(&self) -> usize {
+        self.0.borrow().len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.borrow().is_empty()
+    }
+
+    pub fn union(&self, other: &Self) -> Self {
+        let mut set = self.0.borrow().clone();
+        set.extend(other.0.borrow().iter().cloned());
+        Self::from_set(set)
+    }
 }
 
 impl Default for RuntimeSet {

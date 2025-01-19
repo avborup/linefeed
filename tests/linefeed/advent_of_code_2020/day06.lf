@@ -1,0 +1,15 @@
+part1, part2 = (0, 0);
+
+groups = [b.lines() for b in input().split("\n\n")];
+
+for group in groups {
+  unique = set();
+  for a in group {
+    unique += set(a)
+  };
+
+  part1 += unique.len();
+};
+
+print("Part 1: " + part1);
+print("Part 2: " + part2);

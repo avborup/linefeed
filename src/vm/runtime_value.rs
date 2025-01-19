@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
+use std::{borrow::Borrow, cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
 use crate::{
     compiler::method::Method,
@@ -85,6 +85,7 @@ impl RuntimeValue {
             (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
                 a.concat(&RuntimeString::new(b.to_string())),
             )),
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
@@ -233,6 +234,7 @@ impl RuntimeValue {
         let res = match self {
             RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::Int(list.len() as isize)),
             RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::Int(s.len() as isize)),
+            RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::Int(s.len() as isize)),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",
