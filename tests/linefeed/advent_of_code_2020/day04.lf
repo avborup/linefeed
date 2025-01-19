@@ -15,31 +15,16 @@ fn is_valid(key, val) {
 };
 
 part1, part2 = (0, 0);
+required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
+
 for passport in input().split("\n\n") {
   fields = {};
   for f in passport.find_all(/(\w+):(\S+)/) {
     fields[f[0]] = f[1];
   };
 
-  required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
-
   part1 += 1 if all([req in fields for req in required_fields]);
-
-  all_valid = true;
-  for req in required_fields {
-    valid = false;
-    for field in fields {
-      key, val = field;
-      if key == req {
-        valid = is_valid(key, val);
-        break;
-      };
-    };
-    all_valid = false if not valid;
-  };
-
-  # // TODO: Fix bug with calling `any` here
-  part2 += 1 if all_valid;
+  part2 += 1 if all([req in fields and is_valid(req, fields[req]) for req in required_fields]);
 };
 
 print("Part 1: " + part1);
