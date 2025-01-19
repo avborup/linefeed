@@ -270,6 +270,7 @@ impl Compiler {
                     .then_program(self.compile_expr(lhs)?)
                     .then_instruction(Dup, expr.span())
                     .then_instruction(IfTrue(label_end), expr.span())
+                    .then_instruction(Pop, expr.span())
                     .then_program(self.compile_expr(rhs)?)
                     .then_instruction(Instruction::Label(label_end), expr.span())
             }
