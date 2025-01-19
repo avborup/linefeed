@@ -219,7 +219,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .map(Expr::Tuple)
                 .memoized();
 
-            let map = map_parser(raw_expr.clone(), expr.clone());
+            let map = map_parser(raw_expr.clone());
 
             let regex_modifiers = ident
                 .or_not()
@@ -460,12 +460,11 @@ fn ident_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, &'src str>
 
 fn map_parser<'src, I: ParserInput<'src>>(
     raw_expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
-    expr: impl Parser<'src, I, Spanned<Expr<'src>>>,
 ) -> impl Parser<'src, I, Expr<'src>> {
     let key_val = raw_expr
         .clone()
         .then_ignore(just(Token::Ctrl(':')))
-        .then(expr);
+        .then(raw_expr);
 
     let map = key_val
         .separated_by(just(Token::Ctrl(',')))

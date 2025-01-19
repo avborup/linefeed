@@ -71,6 +71,37 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
+    nested_map_can_be_updated,
+    indoc! {r#"
+        map = {
+            "foo": {
+                1: 5,
+                2: 6,
+            },
+            "bar": {
+                3: 7,
+                4: 8,
+            },
+        };
+
+        map["foo"][1] = 10;
+        map["bar"][3] = 11;
+
+        print(map["foo"][1]);
+        print(map["foo"][2]);
+        print(map["bar"][3]);
+        print(map["bar"][4]);
+    "#},
+    equals(indoc! {r#"
+        10
+        6
+        11
+        8
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
     map_can_be_iterated,
     indoc! {r#"
         map = { 1: 2 };
