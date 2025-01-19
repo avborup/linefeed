@@ -4,7 +4,13 @@ use std::{
 };
 
 use crate::vm::{
-    runtime_value::{number::RuntimeNumber, operations::LfAppend, RuntimeValue},
+    runtime_value::{
+        number::RuntimeNumber,
+        operations::LfAppend,
+        range::RuntimeRange,
+        utils::{resolve_index, resolve_slice_indices},
+        RuntimeValue,
+    },
     RuntimeError,
 };
 
@@ -36,24 +42,8 @@ impl RuntimeList {
         Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
 
-    fn resolve_index(&self, index: &RuntimeNumber) -> Result<usize, RuntimeError> {
-        let n = index.floor_int();
-
-        let i = if n.is_negative() {
-            self.len() as isize - n.abs()
-        } else {
-            n
-        };
-
-        if i < 0 || i as usize >= self.len() {
-            return Err(RuntimeError::IndexOutOfBounds(n, self.len()));
-        }
-
-        Ok(i as usize)
-    }
-
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
-        let i = self.resolve_index(index)?;
+        let i = resolve_index(self.len(), index)?;
 
         let value = self
             .0
@@ -75,13 +65,18 @@ impl RuntimeList {
         index: &RuntimeNumber,
         value: RuntimeValue,
     ) -> Result<(), RuntimeError> {
-        let i = self.resolve_index(index)?;
+        let i = resolve_index(self.len(), index)?;
         self.0.borrow_mut()[i] = value;
         Ok(())
     }
 
     pub fn contains(&self, value: &RuntimeValue) -> bool {
         self.0.borrow().contains(value)
+    }
+
+    pub fn slice(&self, range: &RuntimeRange) -> Result<Self, RuntimeError> {
+        let (start, end) = resolve_slice_indices(self.len(), range)?;
+        Ok(Self::from_vec(self.0.borrow()[start..end + 1].to_vec()))
     }
 
     pub fn sort(&self) {

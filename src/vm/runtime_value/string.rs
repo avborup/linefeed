@@ -1,7 +1,13 @@
 use std::{ops::Deref, rc::Rc};
 
 use crate::vm::{
-    runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
+    runtime_value::{
+        list::RuntimeList,
+        number::RuntimeNumber,
+        range::RuntimeRange,
+        utils::{resolve_index, resolve_slice_indices},
+        RuntimeValue,
+    },
     RuntimeError,
 };
 
@@ -71,17 +77,7 @@ impl RuntimeString {
     }
 
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeString, RuntimeError> {
-        let n = index.floor_int();
-
-        let i = if n.is_negative() {
-            self.len() as isize - n.abs()
-        } else {
-            n
-        };
-
-        if i < 0 || i as usize >= self.len() {
-            return Err(RuntimeError::IndexOutOfBounds(n, self.len()));
-        }
+        let i = resolve_index(self.len(), index)?;
 
         // Not quite the best for Rust's UTF-8 strings, but all inputs for Linefeed's use-cases
         // will be valid ASCII, so indexing into the bytes directly should be fine for now.
@@ -97,6 +93,11 @@ impl RuntimeString {
 
     pub fn contains(&self, substr: &RuntimeString) -> bool {
         self.as_str().contains(substr.as_str())
+    }
+
+    pub fn substr(&self, range: &RuntimeRange) -> Result<Self, RuntimeError> {
+        let (start, end) = resolve_slice_indices(self.len(), range)?;
+        Ok(Self::new(&self.as_str()[start..end + 1]))
     }
 }
 

@@ -7,11 +7,9 @@ fn binary_search(pass) {
   };
 };
 
-part1, seats = (0, []);
+seats = []
 for pass in input().lines() {
-  # TODO: implement slicing (index by range?)
-  row_pass, col_pass = pass.find(r/(.{7})(.{3})/);
-  row, col = (binary_search(row_pass), binary_search(col_pass));
+  row, col = (binary_search(pass[..7]), binary_search(pass[7..]));
   seats.append(row * 8 + col);
 };
 

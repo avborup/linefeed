@@ -31,6 +31,7 @@ pub mod regex;
 pub mod set;
 pub mod string;
 pub mod tuple;
+mod utils;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue {
@@ -161,8 +162,12 @@ impl RuntimeValue {
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, index) {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
+            (RuntimeValue::List(list), RuntimeValue::Range(r)) => {
+                RuntimeValue::List(list.slice(r)?)
+            }
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
+            (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
             (RuntimeValue::Map(map), index) => map.get(index),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(

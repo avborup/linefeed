@@ -127,3 +127,32 @@ eval_and_assert!(
     empty(),
     contains("Method join expects 0-1 arguments, but got 2")
 );
+
+eval_and_assert!(
+    string_index_with_range_works,
+    indoc! {r#"
+        foo = "hello world";
+        n = foo.len();
+        print(foo[0..5]);
+        print(foo[0..n]);
+        print(foo[..n]);
+        print(foo[0..]);
+        print(foo[..]);
+        print(foo[0..-1]);
+        print(foo[0..-5]);
+        print(foo[-5..-1]);
+        print(foo[-5..]);
+    "#},
+    equals(indoc! {r#"
+        hello
+        hello world
+        hello world
+        hello world
+        hello world
+        hello worl
+        hello
+        worl
+        world
+    "#}),
+    empty()
+);

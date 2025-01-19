@@ -70,6 +70,12 @@ impl RuntimeNumber {
     }
 }
 
+impl From<isize> for RuntimeNumber {
+    fn from(i: isize) -> Self {
+        Int(i)
+    }
+}
+
 impl std::fmt::Display for RuntimeNumber {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
