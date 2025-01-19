@@ -1,6 +1,11 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use crate::vm::runtime_value::{tuple::RuntimeTuple, RuntimeValue};
+use crate::vm::{
+    runtime_value::{
+        iterator::RuntimeIterator, number::RuntimeNumber, tuple::RuntimeTuple, RuntimeValue,
+    },
+    RuntimeError,
+};
 
 #[derive(Debug, Clone)]
 pub struct RuntimeMap(Rc<RefCell<HashMap<RuntimeValue, RuntimeValue>>>);
@@ -84,6 +89,20 @@ impl std::cmp::PartialOrd for RuntimeMap {
         let a = self.0.borrow();
         let b = other.0.borrow();
         a.len().partial_cmp(&b.len())
+    }
+}
+
+impl TryFrom<RuntimeIterator> for RuntimeMap {
+    type Error = RuntimeError;
+
+    fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
+        let mut map = HashMap::new();
+        while let Some(item) = iter.next() {
+            let key = item.index(&RuntimeValue::Num(RuntimeNumber::Int(0)))?;
+            let val = item.index(&RuntimeValue::Num(RuntimeNumber::Int(1)))?;
+            map.insert(key, val);
+        }
+        Ok(Self::from_map(map))
     }
 }
 

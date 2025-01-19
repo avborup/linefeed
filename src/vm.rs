@@ -329,6 +329,7 @@ where
                 Bytecode::ParseInt => stdlib_fn!(self, parse_int),
                 Bytecode::ToList => stdlib_fn!(self, to_list),
                 Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
+                Bytecode::ToMap => stdlib_fn!(self, to_map),
                 Bytecode::Product => stdlib_fn!(self, mul),
                 Bytecode::Sum => stdlib_fn!(self, sum),
                 Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),

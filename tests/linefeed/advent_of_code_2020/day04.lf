@@ -18,10 +18,7 @@ part1, part2 = (0, 0);
 required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
 
 for passport in input().split("\n\n") {
-  fields = {};
-  for f in passport.find_all(/(\w+):(\S+)/) {
-    fields[f[0]] = f[1];
-  };
+  fields = map(passport.find_all(/(\w+):(\S+)/));
 
   part1 += 1 if all([req in fields for req in required_fields]);
   part2 += 1 if all([req in fields and is_valid(req, fields[req]) for req in required_fields]);

@@ -1,7 +1,7 @@
 use crate::vm::{
     runtime_value::{
-        iterator::RuntimeIterator, list::RuntimeList, number::RuntimeNumber, tuple::RuntimeTuple,
-        RuntimeValue,
+        iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap, number::RuntimeNumber,
+        tuple::RuntimeTuple, RuntimeValue,
     },
     RuntimeError,
 };
@@ -51,6 +51,21 @@ pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
     };
 
     Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
+}
+
+pub fn to_map(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+    if let RuntimeValue::Map(_) = val {
+        return Ok(val.clone());
+    }
+
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+        return Err(RuntimeError::TypeMismatch(format!(
+            "Cannot convert type {} to a map",
+            val.kind_str()
+        )));
+    };
+
+    Ok(RuntimeValue::Map(RuntimeMap::try_from(*iter)?))
 }
 
 pub fn sum(val: RuntimeValue) -> RuntimeResult {
