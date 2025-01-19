@@ -9,6 +9,7 @@ mod for_loops;
 mod functions;
 mod in_;
 mod list;
+mod list_comprehensions;
 mod logical;
 mod map;
 mod match_;
