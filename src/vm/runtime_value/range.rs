@@ -37,10 +37,14 @@ impl RuntimeRange {
 
 impl std::fmt::Display for RuntimeRange {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self.end {
-            Some(end) => write!(f, "{:?}..{:?}", self.start, end),
-            None => write!(f, "{:?}..", self.start),
+        if let Some(start) = self.start {
+            write!(f, "{}", start)?;
         }
+        write!(f, "..")?;
+        if let Some(end) = self.end {
+            write!(f, "{}", end)?;
+        }
+        Ok(())
     }
 }
 
