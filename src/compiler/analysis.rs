@@ -7,28 +7,27 @@ use crate::{
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
     fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
+        fn resolve_assignment_target<'src>(
+            target: &AssignmentTarget<'src>,
+            span: Span,
+        ) -> Vec<Spanned<&'src str>> {
+            match target {
+                AssignmentTarget::Local(local) => vec![Spanned(local, span)],
+                AssignmentTarget::Destructure(locals) => locals
+                    .iter()
+                    .flat_map(|local| resolve_assignment_target(local, span))
+                    .collect(),
+                AssignmentTarget::Index(target, index) => {
+                    let mut res = find_all_assignments_inner(target);
+                    res.extend(find_all_assignments_inner(index));
+                    res
+                }
+            }
+        }
+
         match &expr.0 {
             Expr::Assign(target, val) => {
                 let mut res = find_all_assignments_inner(val);
-
-                fn resolve_assignment_target<'src>(
-                    target: &AssignmentTarget<'src>,
-                    span: Span,
-                ) -> Vec<Spanned<&'src str>> {
-                    match target {
-                        AssignmentTarget::Local(local) => vec![Spanned(local, span)],
-                        AssignmentTarget::Destructure(locals) => locals
-                            .iter()
-                            .flat_map(|local| resolve_assignment_target(local, span))
-                            .collect(),
-                        AssignmentTarget::Index(target, index) => {
-                            let mut res = find_all_assignments_inner(target);
-                            res.extend(find_all_assignments_inner(index));
-                            res
-                        }
-                    }
-                }
-
                 res.extend(resolve_assignment_target(target, expr.span()));
                 res
             }
@@ -61,7 +60,7 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::For(loop_var, iterable, body) => {
-                let mut res = vec![Spanned(*loop_var, expr.span())];
+                let mut res = resolve_assignment_target(loop_var, expr.span());
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res

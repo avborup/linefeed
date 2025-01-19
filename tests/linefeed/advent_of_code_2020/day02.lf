@@ -1,8 +1,6 @@
 part1, part2 = (0, 0);
 
-for line in input().find_all(r/(\d+)-(\d+) (\w): (\w+)/n) {
-  min, max, char, password = line;
-
+for min, max, char, password in input().find_all(r/(\d+)-(\d+) (\w): (\w+)/n) {
   part1 += 1 if password.count(char) in (min..=max);
 
   fn check(i) i <= password.len() and password[i-1] == char;

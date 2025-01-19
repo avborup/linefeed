@@ -29,7 +29,11 @@ pub enum Expr<'src> {
     Sequence(Vec<Spanned<Self>>),
     Return(Box<Spanned<Self>>),
     While(Box<Spanned<Self>>, Box<Spanned<Self>>),
-    For(&'src str, Box<Spanned<Self>>, Box<Spanned<Self>>),
+    For(
+        AssignmentTarget<'src>,
+        Box<Spanned<Self>>,
+        Box<Spanned<Self>>,
+    ),
     Break,
     Continue,
     ListComprehension(Box<Spanned<Self>>, &'src str, Box<Spanned<Self>>),

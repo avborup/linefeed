@@ -72,8 +72,19 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
         let ident = ident_parser();
 
+        let single_var = ident.map(AssignmentTarget::Local);
+        let destructured_vars = ident
+            .separated_by(just(Token::Ctrl(',')))
+            .at_least(2)
+            .collect::<Vec<_>>()
+            .map(|vars| {
+                let vars = vars.into_iter().map(AssignmentTarget::Local).collect();
+                AssignmentTarget::Destructure(vars)
+            });
+        let loop_var = destructured_vars.clone().or(single_var);
+
         let for_ = just(Token::For)
-            .ignore_then(ident)
+            .ignore_then(loop_var.clone())
             .then(just(Token::In).ignore_then(expr.clone()))
             .then(block.clone())
             .map_with(|((var, iter), body), e| {
@@ -146,16 +157,10 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .map(|(expr, arms)| Expr::Match(Box::new(expr), arms));
 
             // TODO: allow index assignment in destructuring
-            let destructure_assign = ident
-                .separated_by(just(Token::Ctrl(',')))
-                .at_least(2)
-                .collect::<Vec<_>>()
+            let destructure_assign = destructured_vars
                 .then_ignore(just(Token::Op("=")))
                 .then(inline_expr.clone())
-                .map(|(vars, val)| {
-                    let vars = vars.into_iter().map(AssignmentTarget::Local).collect();
-                    Expr::Assign(AssignmentTarget::Destructure(vars), Box::new(val))
-                })
+                .map(|(vars, val)| Expr::Assign(vars, Box::new(val)))
                 .memoized()
                 .boxed();
 

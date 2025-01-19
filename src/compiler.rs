@@ -459,14 +459,27 @@ impl Compiler {
                     .compile_var_assign(expr, &iterable_name, iterator)?
                     .then_instruction(Pop, iterable.span());
 
+                let compile_loop_var_assign =
+                    |c: &mut Self, target: &AssignmentTarget<'_>| match target {
+                        AssignmentTarget::Local(name) => Ok(c
+                            .compile_var_address(name, expr)?
+                            .then_instructions(vec![Store, Pop], expr.span())),
+                        AssignmentTarget::Destructure(targets) => {
+                            c.compile_destructure_of_val(targets, expr)
+                        }
+                        AssignmentTarget::Index(_, _) => Err(CompileError::Spanned {
+                            span: expr.span(),
+                            msg: "Cannot destructure into index yet (future feature)".to_string(),
+                        }),
+                    };
+
                 let program = register_loop
                     .then_program(register_iterable)
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &iterable_name)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
-                    .then_program(self.compile_var_address(loop_var, expr)?)
-                    .then_instructions(vec![Store, Pop], expr.span())
+                    .then_program(compile_loop_var_assign(self, loop_var)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span())
@@ -568,39 +581,9 @@ impl Compiler {
                 program.then_instruction(MethodCall(method, args.len()), expr.span())
             }
 
-            // Destructuring works on anything that can be indexed by numbers, assigning each
-            // variable to its corresponding index in the iterable, with index-out-of-bounds errors
-            // on runtime, of course. This also means that "too many elements" is not a concern,
-            // and extra elements are just ignored.
-            Expr::Assign(AssignmentTarget::Destructure(targets), val) => {
-                let val_program = self.compile_expr(val)?;
-
-                let names = targets
-                    .iter()
-                    .map(|target| match target {
-                        AssignmentTarget::Local(name) => Ok(name),
-                        _ => Err(CompileError::Spanned {
-                            span: expr.span(),
-                            msg: "Destructuring only works on simple variable names (for now)"
-                                .to_string(),
-                        }),
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                names
-                    .iter()
-                    .map(|name| self.compile_var_address(name, expr))
-                    .collect::<Result<Vec<_>, _>>()?
-                    .into_iter()
-                    .enumerate()
-                    .fold(val_program, |program, (i, address)| {
-                        let index = Value(IrValue::Num(RuntimeNumber::Float(i as f64)));
-                        program
-                            .then_instructions(vec![Dup, index, Index], expr.span())
-                            .then_program(address)
-                            .then_instructions(vec![Store, Pop], expr.span())
-                    })
-            }
+            Expr::Assign(AssignmentTarget::Destructure(targets), val) => self
+                .compile_expr(val)?
+                .then_program(self.compile_destructure_of_val(targets, expr)?),
 
             Expr::Match(val, arms) => {
                 let mut program = self.compile_expr(val)?;
@@ -759,6 +742,44 @@ impl Compiler {
                 program.then_instruction(Value(IrValue::Uninit), assignment.span())
             },
         )
+    }
+    // Destructuring works on anything that can be indexed by numbers, assigning each
+    // variable to its corresponding index in the iterable, with index-out-of-bounds errors
+    // on runtime, of course. This also means that "too many elements" is not a concern,
+    // and extra elements are just ignored.
+    //
+    // Assumes that the destructured value is currently on top of the stack.
+    pub fn compile_destructure_of_val(
+        &mut self,
+        targets: &[AssignmentTarget],
+        expr: &Spanned<Expr>,
+    ) -> Result<Program<Instruction>, CompileError> {
+        let names = targets
+            .iter()
+            .map(|target| match target {
+                AssignmentTarget::Local(name) => Ok(name),
+                _ => Err(CompileError::Spanned {
+                    span: expr.span(),
+                    msg: "Destructuring only works on simple variable names (for now)".to_string(),
+                }),
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+
+        let prog = names
+            .iter()
+            .map(|name| self.compile_var_address(name, expr))
+            .collect::<Result<Vec<_>, _>>()?
+            .into_iter()
+            .enumerate()
+            .fold(Program::new(), |program, (i, address)| {
+                let index = Value(IrValue::Num(RuntimeNumber::Float(i as f64)));
+                program
+                    .then_instructions(vec![Dup, index, Index], expr.span())
+                    .then_program(address)
+                    .then_instructions(vec![Store, Pop], expr.span())
+            });
+
+        Ok(prog)
     }
 
     pub fn new_label(&mut self) -> Label {
