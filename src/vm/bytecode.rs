@@ -78,6 +78,8 @@ pub enum Bytecode {
     IsIn,
     AllTrue(usize),
     AnyTrue(usize),
+    Max(usize),
+    Min(usize),
 
     // Methods
     Append,
@@ -154,6 +156,8 @@ impl Bytecode {
                 StdlibFn::Sum => Bytecode::Sum,
                 StdlibFn::All => Bytecode::AllTrue(num_args),
                 StdlibFn::Any => Bytecode::AnyTrue(num_args),
+                StdlibFn::Max => Bytecode::Max(num_args),
+                StdlibFn::Min => Bytecode::Min(num_args),
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append => Bytecode::Append,

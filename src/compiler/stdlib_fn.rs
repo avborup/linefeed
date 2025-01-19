@@ -15,6 +15,8 @@ pub enum StdlibFn {
     Sum,
     All,
     Any,
+    Max,
+    Min,
 }
 
 impl StdlibFn {
@@ -30,6 +32,8 @@ impl StdlibFn {
         Sum => "sum",
         All => "all",
         Any => "any",
+        Max => "max",
+        Min => "min",
     }
 
     /// Returns the number of arguments this function expects.
@@ -46,6 +50,8 @@ impl StdlibFn {
             Self::Sum => 1..=1,
             Self::All => 1..=usize::MAX,
             Self::Any => 1..=usize::MAX,
+            Self::Max => 1..=usize::MAX,
+            Self::Min => 1..=usize::MAX,
         }
     }
 }

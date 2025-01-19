@@ -134,3 +134,35 @@ pub fn any(args: Vec<RuntimeValue>) -> RuntimeResult {
 
     Ok(RuntimeValue::Bool(false))
 }
+
+pub fn max(args: Vec<RuntimeValue>) -> RuntimeResult {
+    let iter = iterator_from_variadic_args(args);
+
+    let mut max = None;
+    while let Some(value) = iter.next() {
+        max = match max {
+            Some(max) => Some(if value > max { value } else { max }),
+            None => Some(value),
+        };
+    }
+
+    max.ok_or_else(|| {
+        RuntimeError::Plain("Received empty iterator, cannot find maximum".to_string())
+    })
+}
+
+pub fn min(args: Vec<RuntimeValue>) -> RuntimeResult {
+    let iter = iterator_from_variadic_args(args);
+
+    let mut min = None;
+    while let Some(value) = iter.next() {
+        min = match min {
+            Some(min) => Some(if value < min { value } else { min }),
+            None => Some(value),
+        };
+    }
+
+    min.ok_or_else(|| {
+        RuntimeError::Plain("Received empty iterator, cannot find minimum".to_string())
+    })
+}

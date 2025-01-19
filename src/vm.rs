@@ -336,6 +336,8 @@ where
                 Bytecode::Sum => stdlib_fn!(self, sum),
                 Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
                 Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
+                Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
+                Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
 
                 Bytecode::PrintValue(num_args) => {
                     let vals = self.pop_args(*num_args)?;
