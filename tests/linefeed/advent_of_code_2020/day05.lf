@@ -1,17 +1,16 @@
-fn binary_search(pass) {
-  lo, hi = (0, 2 ** pass.len() - 1);
-  for c in pass {
+fn binary_search(part) {
+  lo, hi = (0, 2 ** part.len() - 1);
+  for c in part {
       mid = (lo + hi) // 2;
       if c in "FL" { hi = mid } else
       if c in "BR" { lo = mid + 1 };
   };
 };
 
-seats = []
-for pass in input().lines() {
-  row, col = (binary_search(pass[..7]), binary_search(pass[7..]));
-  seats.append(row * 8 + col);
-};
+seats = [
+  binary_search(pass[..7]) * 8 + binary_search(pass[7..])
+  for pass in input().lines()
+];
 
 for i in 1..seats.sort().len() {
   part2 = seats[i] - 1 if seats[i-1] != seats[i] - 1;
