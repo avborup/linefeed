@@ -9,7 +9,7 @@ use crate::{
         scoped_map::{ScopedMap, VarType},
         stdlib_fn::StdlibFn,
     },
-    grammar::ast::{AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
+    grammar::ast::{AssignmentTarget, AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
     vm::{
         bytecode::Bytecode,
         runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
@@ -120,7 +120,7 @@ impl Compiler {
         let instructions = match &expr.0 {
             Expr::Local(name) => self.compile_var_load(expr, name)?,
 
-            Expr::Let(name, val) => {
+            Expr::Assign(AssignmentTarget::Local(name), val) => {
                 let val_program = self.compile_expr(val)?;
                 self.compile_var_assign(expr, name, val_program)?
             }
@@ -339,7 +339,7 @@ impl Compiler {
                     .then_instruction(Index, index.span())
             }
 
-            Expr::IndexAssign(target, index, value) => {
+            Expr::Assign(AssignmentTarget::Index(target, index), value) => {
                 let target_program = self.compile_expr(target)?;
                 let index_program = self.compile_expr(index)?;
                 let value_program = self.compile_expr(value)?;
@@ -567,8 +567,20 @@ impl Compiler {
             // variable to its corresponding index in the iterable, with index-out-of-bounds errors
             // on runtime, of course. This also means that "too many elements" is not a concern,
             // and extra elements are just ignored.
-            Expr::Destructure(names, val) => {
+            Expr::Assign(AssignmentTarget::Destructure(targets), val) => {
                 let val_program = self.compile_expr(val)?;
+
+                let names = targets
+                    .iter()
+                    .map(|target| match target {
+                        AssignmentTarget::Local(name) => Ok(name),
+                        _ => Err(CompileError::Spanned {
+                            span: expr.span(),
+                            msg: "Destructuring only works on simple variable names (for now)"
+                                .to_string(),
+                        }),
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
 
                 names
                     .iter()

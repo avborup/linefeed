@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::lexer::Token;
+use crate::{grammar::ast::AssignmentTarget, lexer::Token};
 use crate::{
     grammar::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp},
     vm::runtime_value::regex::RegexModifiers,
@@ -122,7 +122,10 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                     }));
 
                     match name {
-                        Some(name) => Expr::Let(name, Box::new(Spanned(val, e.span()))),
+                        Some(name) => Expr::Assign(
+                            AssignmentTarget::Local(name),
+                            Box::new(Spanned(val, e.span())),
+                        ),
                         None => val,
                     }
                 })
@@ -142,13 +145,17 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .then(match_arms.delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}'))))
                 .map(|(expr, arms)| Expr::Match(Box::new(expr), arms));
 
+            // TODO: allow index assignment in destructuring
             let destructure_assign = ident
                 .separated_by(just(Token::Ctrl(',')))
                 .at_least(2)
                 .collect::<Vec<_>>()
                 .then_ignore(just(Token::Op("=")))
                 .then(inline_expr.clone())
-                .map(|(vars, val)| Expr::Destructure(vars, Box::new(val)))
+                .map(|(vars, val)| {
+                    let vars = vars.into_iter().map(AssignmentTarget::Local).collect();
+                    Expr::Assign(AssignmentTarget::Destructure(vars), Box::new(val))
+                })
                 .memoized()
                 .boxed();
 
@@ -186,7 +193,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                         ),
                     };
 
-                    Expr::Let(name, Box::new(new_val))
+                    Expr::Assign(AssignmentTarget::Local(name), Box::new(new_val))
                 })
                 .memoized()
                 .boxed();
@@ -609,9 +616,10 @@ fn index_assign_parser<'src, I: ParserInput<'src>>(
         .then_ignore(just(Token::Op("=")))
         .then(val_parser)
         .map_with(|(indexed, value), e| match indexed.0 {
-            Expr::Index(indexee, idx) => {
-                Spanned(Expr::IndexAssign(indexee, idx, Box::new(value)), e.span())
-            }
+            Expr::Index(target, idx) => Spanned(
+                Expr::Assign(AssignmentTarget::Index(target, idx), Box::new(value)),
+                e.span(),
+            ),
             _ => unreachable!(),
         })
 }

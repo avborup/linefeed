@@ -2,21 +2,34 @@ use std::collections::HashSet;
 
 use crate::{
     compiler::ir_value::IrValue,
-    grammar::ast::{Expr, Spanned},
+    grammar::ast::{AssignmentTarget, Expr, Span, Spanned},
 };
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
     fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
         match &expr.0 {
-            Expr::Let(local, val) => {
+            Expr::Assign(target, val) => {
                 let mut res = find_all_assignments_inner(val);
-                res.push(Spanned(local, expr.span()));
-                res
-            }
 
-            Expr::Destructure(locals, val) => {
-                let mut res = find_all_assignments_inner(val);
-                res.extend(locals.iter().map(|local| Spanned(*local, expr.span())));
+                fn resolve_assignment_target<'src>(
+                    target: &AssignmentTarget<'src>,
+                    span: Span,
+                ) -> Vec<Spanned<&'src str>> {
+                    match target {
+                        AssignmentTarget::Local(local) => vec![Spanned(local, span)],
+                        AssignmentTarget::Destructure(locals) => locals
+                            .iter()
+                            .flat_map(|local| resolve_assignment_target(local, span))
+                            .collect(),
+                        AssignmentTarget::Index(target, index) => {
+                            let mut res = find_all_assignments_inner(target);
+                            res.extend(find_all_assignments_inner(index));
+                            res
+                        }
+                    }
+                }
+
+                res.extend(resolve_assignment_target(target, expr.span()));
                 res
             }
 
@@ -31,13 +44,6 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             Expr::Index(value, index) => {
                 let mut res = find_all_assignments_inner(value);
                 res.extend(find_all_assignments_inner(index));
-                res
-            }
-
-            Expr::IndexAssign(target, index, value) => {
-                let mut res = find_all_assignments_inner(target);
-                res.extend(find_all_assignments_inner(index));
-                res.extend(find_all_assignments_inner(value));
                 res
             }
 

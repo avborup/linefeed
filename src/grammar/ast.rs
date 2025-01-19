@@ -19,9 +19,7 @@ pub enum Expr<'src> {
     Map(Vec<(Spanned<Self>, Spanned<Self>)>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
-    Let(&'src str, Box<Spanned<Self>>),
-    IndexAssign(Box<Spanned<Self>>, Box<Spanned<Self>>, Box<Spanned<Self>>),
-    Destructure(Vec<&'src str>, Box<Spanned<Self>>),
+    Assign(AssignmentTarget<'src>, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
@@ -48,6 +46,13 @@ pub enum AstValue<'src> {
     List(Vec<Self>),
     Tuple(Vec<Self>),
     Func(Func<'src>),
+}
+
+#[derive(Clone, Debug)]
+pub enum AssignmentTarget<'src> {
+    Local(&'src str),
+    Destructure(Vec<AssignmentTarget<'src>>),
+    Index(Box<Spanned<Expr<'src>>>, Box<Spanned<Expr<'src>>>),
 }
 
 #[derive(Clone, Debug)]
