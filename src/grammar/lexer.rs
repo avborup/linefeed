@@ -28,6 +28,8 @@ pub enum Token<'src> {
     Break,
     Continue,
     Match,
+    RangeExclusive,
+    RangeInclusive,
 }
 
 impl<'src> fmt::Display for Token<'src> {
@@ -56,6 +58,8 @@ impl<'src> fmt::Display for Token<'src> {
             Token::Break => write!(f, "break"),
             Token::Continue => write!(f, "continue"),
             Token::Match => write!(f, "match"),
+            Token::RangeExclusive => write!(f, ".."),
+            Token::RangeInclusive => write!(f, "..="),
         }
     }
 }
@@ -90,7 +94,10 @@ pub fn lexer<'src>(
 
     let str_ = raw_str.or(simple_str);
 
-    let range = just("..").to(Token::Op(".."));
+    let range = choice((
+        just("..=").to(Token::RangeInclusive),
+        just("..").to(Token::RangeExclusive),
+    ));
 
     let op = one_of("+-*/!=<>%")
         .repeated()

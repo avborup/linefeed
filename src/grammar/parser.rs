@@ -355,17 +355,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 ],
             );
 
-            let range_op = just(Token::Op("..")).to(BinaryOp::Range);
-            let range = logical
-                .clone()
-                .then(range_op.then(logical.clone().or_not()))
-                .map_with(|(a, (op, b)), e| {
-                    let end = b.unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
-                    Spanned(Expr::Binary(Box::new(a), op, Box::new(end)), e.span())
-                })
-                .labelled("range")
-                .memoized()
-                .boxed();
+            let range = range_parser(logical.clone());
 
             let return_ = just(Token::Return)
                 .ignore_then(inline_expr.clone().or_not())
@@ -637,4 +627,37 @@ fn index_assign_parser<'src, I: ParserInput<'src>>(
             ),
             _ => unreachable!(),
         })
+}
+
+fn range_parser<'src, I: ParserInput<'src>>(
+    val_parser: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> impl Parser<'src, I, Spanned<Expr<'src>>> {
+    let range_op = choice((just(Token::RangeInclusive), just(Token::RangeExclusive)));
+
+    val_parser
+        .clone()
+        .then(range_op.then(val_parser.or_not()))
+        .map_with(|(a, (op, b)), e| {
+            let end = b
+                .map(|b| match op {
+                    Token::RangeExclusive => b,
+                    Token::RangeInclusive => Spanned(
+                        Expr::Binary(
+                            Box::new(b),
+                            BinaryOp::Add,
+                            Box::new(Spanned(Expr::Value(AstValue::Num(1.0)), e.span())),
+                        ),
+                        e.span(),
+                    ),
+                    _ => unreachable!(),
+                })
+                .unwrap_or_else(|| Spanned(Expr::Value(AstValue::Null), e.span()));
+
+            Spanned(
+                Expr::Binary(Box::new(a), BinaryOp::Range, Box::new(end)),
+                e.span(),
+            )
+        })
+        .labelled("range")
+        .memoized()
 }

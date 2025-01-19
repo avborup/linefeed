@@ -1,11 +1,11 @@
 fn is_valid(key, val) {
   match key {
-    "byr" => int(val) in (1920..2003),
-    "iyr" => int(val) in (2010..2021),
-    "eyr" => int(val) in (2020..2031),
+    "byr" => int(val) in (1920..=2002),
+    "iyr" => int(val) in (2010..=2020),
+    "eyr" => int(val) in (2020..=2030),
     "hgt" => {
       num, unit = val.find(/^(\d+)(cm|in)$/n) or (return false);
-      (unit == "cm" and num in (150..194)) or (unit == "in" and num in (59..77))
+      (unit == "cm" and num in (150..=193)) or (unit == "in" and num in (59..=76))
     },
     "hcl" => val.is_match(/^#[0-9a-f]{6}$/),
     "ecl" => val.is_match(/amb|blu|brn|gry|grn|hzl|oth/),
