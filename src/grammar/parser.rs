@@ -205,18 +205,33 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
                 .map(Expr::List);
 
-            let list_comprehension = expr
+            let list_comprehension = inline_expr
                 .clone()
                 .then(just(Token::For).ignore_then(ident))
-                .then(just(Token::In).ignore_then(expr.clone()))
+                .then(just(Token::In).ignore_then(inline_expr.clone()))
+                .then(just(Token::If).ignore_then(inline_expr.clone()).or_not())
                 .delimited_by(just(Token::Ctrl('[')), just(Token::Ctrl(']')))
-                .map(|((body, loop_var), iter)| {
+                .map(|(((body, loop_var), iter), cond)| {
+                    let body = cond
+                        .map(|cond| {
+                            let span = cond.span();
+                            Spanned(
+                                Expr::If(
+                                    Box::new(cond),
+                                    Box::new(body.clone()),
+                                    Box::new(Spanned(Expr::Continue, span)),
+                                ),
+                                span,
+                            )
+                        })
+                        .unwrap_or(body);
+
                     Expr::ListComprehension(Box::new(body), loop_var, Box::new(iter))
                 })
                 .memoized()
                 .boxed();
 
-            let tuple = expr
+            let tuple = inline_expr
                 .clone()
                 .separated_by(just(Token::Ctrl(',')))
                 .at_least(2)
