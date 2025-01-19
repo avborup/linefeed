@@ -339,6 +339,17 @@ impl Compiler {
                     .then_instruction(Index, index.span())
             }
 
+            Expr::IndexAssign(target, index, value) => {
+                let target_program = self.compile_expr(target)?;
+                let index_program = self.compile_expr(index)?;
+                let value_program = self.compile_expr(value)?;
+
+                target_program
+                    .then_program(index_program)
+                    .then_program(value_program)
+                    .then_instruction(SetIndex, expr.span())
+            }
+
             Expr::If(cond, true_expr, false_expr) => {
                 let cond_program = self.compile_expr(cond)?;
                 let true_program = self.compile_expr(true_expr)?;
