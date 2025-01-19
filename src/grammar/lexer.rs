@@ -99,7 +99,7 @@ pub fn lexer<'src>(
         just("..").to(Token::RangeExclusive),
     ));
 
-    let op = one_of("+-*/!=<>%")
+    let op = one_of("+-*/!=<>%&")
         .repeated()
         .at_least(1)
         .to_slice()

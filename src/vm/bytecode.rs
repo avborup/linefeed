@@ -45,6 +45,7 @@ pub enum Bytecode {
     GreaterEq,
     Range,
     Xor,
+    BitwiseAnd,
 
     // Logic
     Not,
@@ -127,6 +128,7 @@ impl Bytecode {
             Instruction::GreaterEq => Bytecode::GreaterEq,
             Instruction::Range => Bytecode::Range,
             Instruction::Xor => Bytecode::Xor,
+            Instruction::BitwiseAnd => Bytecode::BitwiseAnd,
             Instruction::Not => Bytecode::Not,
             Instruction::Stop => Bytecode::Stop,
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),

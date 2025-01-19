@@ -30,9 +30,20 @@ impl RuntimeSet {
     }
 
     pub fn union(&self, other: &Self) -> Self {
-        let mut set = self.0.borrow().clone();
-        set.extend(other.0.borrow().iter().cloned());
-        Self::from_set(set)
+        let mut union = self.0.borrow().clone();
+        union.extend(other.0.borrow().iter().cloned());
+        Self::from_set(union)
+    }
+
+    pub fn intersection(&self, other: &Self) -> Self {
+        let intersection = self
+            .0
+            .borrow()
+            .intersection(&other.0.borrow())
+            .cloned()
+            .collect();
+
+        Self::from_set(intersection)
     }
 }
 

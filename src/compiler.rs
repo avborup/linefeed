@@ -56,6 +56,7 @@ pub enum Instruction {
     GreaterEq,
     Range,
     Xor,
+    BitwiseAnd,
 
     // Unary operations
     Not,
@@ -296,6 +297,7 @@ impl Compiler {
                     BinaryOp::Range => Range,
                     BinaryOp::Xor => Xor,
                     BinaryOp::In => IsIn,
+                    BinaryOp::BitwiseAnd => BitwiseAnd,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.span(),

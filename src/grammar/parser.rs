@@ -173,6 +173,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 just(Token::Op("*=")).to("*="),
                 just(Token::Op("/=")).to("/="),
                 just(Token::Op("%=")).to("%="),
+                just(Token::Op("&=")).to("&="),
             ));
 
             let single_assign = ident
@@ -190,6 +191,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                                     "*=" => BinaryOp::Mul,
                                     "/=" => BinaryOp::Div,
                                     "%=" => BinaryOp::Mod,
+                                    "&=" => BinaryOp::BitwiseAnd,
                                     _ => unreachable!(),
                                 },
                                 Box::new(val),
@@ -355,6 +357,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                     pow_parser,
                     product_parser,
                     sum_parser,
+                    bitwise_parser,
                     compare_parser,
                     contains_parser,
                     logical_parser,
@@ -584,6 +587,19 @@ fn contains_parser<'src, I>(
                 Spanned(check, e.span())
             },
         )
+        .memoized()
+        .boxed()
+}
+
+fn bitwise_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
+    let bitwise_op = just(Token::Op("&")).to(BinaryOp::BitwiseAnd);
+
+    prev.clone()
+        .foldl_with(bitwise_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
         .memoized()
         .boxed()
 }

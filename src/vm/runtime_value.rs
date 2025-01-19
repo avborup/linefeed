@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, cmp::Ordering, io::Write, ops::Deref, rc::Rc};
+use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
 use crate::{
     compiler::method::Method,
@@ -156,6 +156,17 @@ impl RuntimeValue {
             (RuntimeValue::Bool(a), RuntimeValue::Bool(b)) => Ok(RuntimeValue::Bool(a ^ b)),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "xor", self, other,
+            )),
+        }
+    }
+
+    pub fn bitwise_and(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
+                Ok(RuntimeValue::Set(a.intersection(b)))
+            }
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "use & on", self, other,
             )),
         }
     }

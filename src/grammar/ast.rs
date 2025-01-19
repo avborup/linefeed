@@ -83,6 +83,7 @@ pub enum BinaryOp {
     GreaterEq,
     Range,
     In,
+    BitwiseAnd,
 }
 
 #[derive(Clone, Debug)]
