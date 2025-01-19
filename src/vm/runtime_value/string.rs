@@ -73,7 +73,7 @@ impl RuntimeString {
 
     pub fn count(&self, substr: &RuntimeString) -> RuntimeNumber {
         let n = self.as_str().matches(substr.as_str()).count();
-        RuntimeNumber::Float(n as f64)
+        RuntimeNumber::Int(n as isize)
     }
 
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeString, RuntimeError> {

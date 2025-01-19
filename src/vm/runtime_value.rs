@@ -231,8 +231,8 @@ impl RuntimeValue {
 
     pub fn length(&self) -> Result<Self, RuntimeError> {
         let res = match self {
-            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::Float(list.len() as f64)),
-            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::Float(s.len() as f64)),
+            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::Int(list.len() as isize)),
+            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::Int(s.len() as isize)),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",
@@ -246,8 +246,8 @@ impl RuntimeValue {
 
     pub fn count(&self, item: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, item) {
-            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::Float(
-                list.as_slice().iter().filter(|x| *x == item).count() as f64,
+            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::Int(
+                list.as_slice().iter().filter(|x| *x == item).count() as isize,
             )),
             (RuntimeValue::Str(s), RuntimeValue::Str(sub)) => RuntimeValue::Num(s.count(sub)),
             _ => {

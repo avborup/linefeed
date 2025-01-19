@@ -16,7 +16,7 @@ impl RuntimeNumber {
     }
 
     pub fn floor(&self) -> Self {
-        Self::Float(self.float().floor())
+        Self::Int(self.floor_int())
     }
 
     pub fn bool(&self) -> bool {
@@ -54,9 +54,9 @@ impl RuntimeNumber {
     pub fn div_floor(&self, other: &Self) -> Self {
         match (self, other) {
             (Int(a), Int(b)) => Int(a / b),
-            (Int(a), Float(b)) => Float((*a as f64) / b.floor()),
-            (Float(a), Int(b)) => Float(a / (*b as f64).floor()),
-            (Float(a), Float(b)) => Float((a / b).floor()),
+            (Int(a), Float(b)) => Float((*a as f64) / b).floor(),
+            (Float(a), Int(b)) => Float(a / (*b as f64)).floor(),
+            (Float(a), Float(b)) => Float(a / b).floor(),
         }
     }
 

@@ -757,7 +757,7 @@ impl Compiler {
             .into_iter()
             .enumerate()
             .fold(Program::new(), |program, (i, address)| {
-                let index = Value(IrValue::Num(RuntimeNumber::Float(i as f64)));
+                let index = Value(IrValue::Num(RuntimeNumber::Int(i as isize)));
                 program
                     .then_instructions(vec![Dup, index, Index], expr.span())
                     .then_program(address)

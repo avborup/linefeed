@@ -77,6 +77,6 @@ impl Iterator for RangeIterator {
         let output = self.value;
         self.value += step;
 
-        Some(RuntimeValue::Num(RuntimeNumber::Float(output as f64)))
+        Some(RuntimeValue::Num(RuntimeNumber::Int(output)))
     }
 }
