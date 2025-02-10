@@ -1,19 +1,6 @@
-[package]
-name = "linefeed"
-version = "0.1.0"
-edition = "2021"
+[workspace]
+resolver = "2"
 
-[features]
-default = []
-aoc-secret = []
-debug-vm = []
-
-[dependencies]
-ariadne = "0.3.0"
-chumsky = { git = "https://github.com/zesterer/chumsky.git", branch = "main", features = ["memoization"] }
-regex = "1.11.1"
-yansi = "1.0.1"
-
-[dev-dependencies]
-indoc = "2.0.5"
-strip-ansi-escapes = "0.2.0"
+members = [
+    "linefeed",
+]
