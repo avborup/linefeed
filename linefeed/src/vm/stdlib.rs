@@ -91,7 +91,7 @@ pub fn sum(val: RuntimeValue) -> RuntimeResult {
         )));
     };
 
-    let mut sum = RuntimeValue::Num(RuntimeNumber::Int(0));
+    let mut sum = RuntimeValue::Num(RuntimeNumber::from(0));
     while let Some(val) = iter.next() {
         sum = sum.add(&val)?;
     }
@@ -107,7 +107,7 @@ pub fn mul(val: RuntimeValue) -> RuntimeResult {
         )));
     };
 
-    let mut prod = RuntimeValue::Num(RuntimeNumber::Int(1));
+    let mut prod = RuntimeValue::Num(RuntimeNumber::from(1));
     while let Some(val) = iter.next() {
         prod = prod.mul(&val)?;
     }

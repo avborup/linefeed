@@ -12,6 +12,7 @@ debug-vm = []
 ariadne = "0.3.0"
 chumsky = { git = "https://github.com/zesterer/chumsky.git", branch = "main", features = ["memoization"] }
 regex = "1.11.1"
+rug = "1.27.0"
 yansi = "1.0.1"
 
 [dev-dependencies]

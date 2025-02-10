@@ -98,8 +98,8 @@ impl TryFrom<RuntimeIterator> for RuntimeMap {
     fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
         let mut map = HashMap::new();
         while let Some(item) = iter.next() {
-            let key = item.index(&RuntimeValue::Num(RuntimeNumber::Int(0)))?;
-            let val = item.index(&RuntimeValue::Num(RuntimeNumber::Int(1)))?;
+            let key = item.index(&RuntimeValue::Num(RuntimeNumber::from(0)))?;
+            let val = item.index(&RuntimeValue::Num(RuntimeNumber::from(1)))?;
             map.insert(key, val);
         }
         Ok(Self::from_map(map))

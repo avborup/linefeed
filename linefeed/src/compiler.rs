@@ -239,7 +239,7 @@ impl Compiler {
 
                 let to_add = match op {
                     UnaryOp::Not => vec![Not],
-                    UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::Int(-1))), Mul],
+                    UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::from(-1))), Mul],
                 };
 
                 program.then_instructions(to_add, expr.span())
@@ -759,7 +759,7 @@ impl Compiler {
             .into_iter()
             .enumerate()
             .fold(Program::new(), |program, (i, address)| {
-                let index = Value(IrValue::Num(RuntimeNumber::Int(i as isize)));
+                let index = Value(IrValue::Num(RuntimeNumber::from(i as isize)));
                 program
                     .then_instructions(vec![Dup, index, Index], expr.span())
                     .then_program(address)

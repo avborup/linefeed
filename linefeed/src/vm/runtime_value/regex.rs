@@ -83,7 +83,7 @@ impl RuntimeRegex {
                 group.map_or(RuntimeValue::Null, |g| {
                     if self.0.modifiers.parse_nums {
                         if let Ok(num) = g.as_str().parse::<isize>() {
-                            return RuntimeValue::Num(RuntimeNumber::Int(num));
+                            return RuntimeValue::Num(RuntimeNumber::from(num));
                         }
                     }
 

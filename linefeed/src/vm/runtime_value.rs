@@ -54,7 +54,7 @@ pub enum RuntimeValue {
 const _: () = {
     // Just to make sure that we don't accidentally change the size of RuntimeValue and make
     // cloning super expensive.
-    assert!(std::mem::size_of::<RuntimeValue>() == 16);
+    assert!(std::mem::size_of::<RuntimeValue>() == 24);
 };
 
 impl RuntimeValue {
@@ -80,7 +80,7 @@ impl RuntimeValue {
     pub fn add(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) + (*b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a + b)),
             (RuntimeValue::Str(a), RuntimeValue::Str(b)) => Ok(RuntimeValue::Str(a.concat(b))),
             (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
                 a.concat(&RuntimeString::new(b.to_string())),
@@ -95,7 +95,7 @@ impl RuntimeValue {
     pub fn sub(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a - b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) - (*b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a - b)),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
             )),
@@ -105,7 +105,7 @@ impl RuntimeValue {
     pub fn mul(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) * (*b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "multiply", self, other,
             )),
@@ -115,7 +115,7 @@ impl RuntimeValue {
     pub fn div(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num((*a) / (*b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a / b)),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
@@ -243,9 +243,9 @@ impl RuntimeValue {
 
     pub fn length(&self) -> Result<Self, RuntimeError> {
         let res = match self {
-            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::Int(list.len() as isize)),
-            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::Int(s.len() as isize)),
-            RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::Int(s.len() as isize)),
+            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::from(list.len())),
+            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
+            RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",
@@ -259,8 +259,8 @@ impl RuntimeValue {
 
     pub fn count(&self, item: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, item) {
-            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::Int(
-                list.as_slice().iter().filter(|x| *x == item).count() as isize,
+            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::from(
+                list.as_slice().iter().filter(|x| *x == item).count(),
             )),
             (RuntimeValue::Str(s), RuntimeValue::Str(sub)) => RuntimeValue::Num(s.count(sub)),
             _ => {
@@ -326,10 +326,14 @@ impl RuntimeValue {
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {
-                RuntimeRange::new(Some(*start), Some(*end))
+                RuntimeRange::new(Some(start.clone()), Some(end.clone()))
             }
-            (RuntimeValue::Num(start), RuntimeValue::Null) => RuntimeRange::new(Some(*start), None),
-            (RuntimeValue::Null, RuntimeValue::Num(end)) => RuntimeRange::new(None, Some(*end)),
+            (RuntimeValue::Num(start), RuntimeValue::Null) => {
+                RuntimeRange::new(Some(start.clone()), None)
+            }
+            (RuntimeValue::Null, RuntimeValue::Num(end)) => {
+                RuntimeRange::new(None, Some(end.clone()))
+            }
             (RuntimeValue::Null, RuntimeValue::Null) => RuntimeRange::new(None, None),
             _ => {
                 return Err(RuntimeError::invalid_binary_op_for_types(
@@ -375,7 +379,7 @@ impl RuntimeValue {
             RuntimeValue::Uninit => RuntimeValue::Uninit,
             RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
-            RuntimeValue::Num(n) => RuntimeValue::Num(*n),
+            RuntimeValue::Num(n) => RuntimeValue::Num(n.clone()),
             RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.deep_clone()),
@@ -432,7 +436,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, "{{")?;
                 write_items(f, MapIterator::from(m.clone()), |f, kv| {
                     let write_item = |f: &mut std::fmt::Formatter, idx: isize| {
-                        kv.index(&RuntimeValue::Num(RuntimeNumber::Int(idx)))
+                        kv.index(&RuntimeValue::Num(RuntimeNumber::from(idx)))
                             .unwrap()
                             .repr_fmt(f)
                     };
