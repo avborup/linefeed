@@ -460,7 +460,8 @@ fn value_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Expr<'src>
     select! {
         Token::Null => Expr::Value(AstValue::Null),
         Token::Bool(x) => Expr::Value(AstValue::Bool(x)),
-        Token::Num(n) => Expr::Value(AstValue::Num(n)),
+        Token::Int(n) => Expr::Value(AstValue::Int(n)),
+        Token::Float(n) => Expr::Value(AstValue::Float(n)),
         Token::Str(s) => Expr::Value(AstValue::Str(s)),
     }
     .labelled("value")
@@ -684,7 +685,7 @@ fn range_parser<'src, I: ParserInput<'src>>(
                         Expr::Binary(
                             Box::new(b),
                             BinaryOp::Add,
-                            Box::new(Spanned(Expr::Value(AstValue::Num(1.0)), e.span())),
+                            Box::new(Spanned(Expr::Value(AstValue::Int(1)), e.span())),
                         ),
                         e.span(),
                     ),

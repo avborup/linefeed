@@ -41,7 +41,8 @@ impl<'src> TryFrom<&AstValue<'src>> for IrValue {
         let res = match val {
             AstValue::Null => IrValue::Null,
             AstValue::Bool(b) => IrValue::Bool(*b),
-            AstValue::Num(n) => IrValue::Num(RuntimeNumber::Float(*n)),
+            AstValue::Int(n) => IrValue::Num(RuntimeNumber::from(*n)),
+            AstValue::Float(n) => IrValue::Num(RuntimeNumber::Float(*n)),
             AstValue::Str(s) => IrValue::Str(s.to_string()),
             AstValue::List(xs) => IrValue::List(collect_try_from(xs)?),
             AstValue::Tuple(xs) => IrValue::Tuple(collect_try_from(xs)?),

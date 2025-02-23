@@ -48,7 +48,8 @@ pub enum Expr<'src> {
 pub enum AstValue<'src> {
     Null,
     Bool(bool),
-    Num(f64),
+    Int(i64),
+    Float(f64),
     Str(String),
     Regex(String, RegexModifiers),
     List(Vec<Self>),

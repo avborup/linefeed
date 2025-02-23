@@ -7,7 +7,8 @@ use crate::grammar::ast::{Span, Spanned};
 pub enum Token<'src> {
     Null,
     Bool(bool),
-    Num(f64),
+    Int(i64),
+    Float(f64),
     Str(String),
     Regex(String),
     Op(&'src str),
@@ -37,7 +38,8 @@ impl<'src> fmt::Display for Token<'src> {
         match self {
             Token::Null => write!(f, "null"),
             Token::Bool(x) => write!(f, "{}", x),
-            Token::Num(n) => write!(f, "{}", n),
+            Token::Int(n) => write!(f, "{}", n),
+            Token::Float(n) => write!(f, "{}", n),
             Token::Str(s) => write!(f, "{}", s),
             Token::Regex(r) => write!(f, "{}", r),
             Token::Op(s) => write!(f, "{}", s),
@@ -66,12 +68,20 @@ impl<'src> fmt::Display for Token<'src> {
 
 pub fn lexer<'src>(
 ) -> impl Parser<'src, &'src str, Vec<Spanned<Token<'src>>>, extra::Err<Rich<'src, char, Span>>> {
-    let num = text::int(10)
-        .then(just('.').then(text::digits(10)).or_not())
+    let int = text::int(10)
         .to_slice()
         .from_str()
         .unwrapped()
-        .map(Token::Num);
+        .map(Token::Int);
+
+    let float = text::int(10)
+        .then(just('.').then(text::digits(10)))
+        .to_slice()
+        .from_str()
+        .unwrapped()
+        .map(Token::Float);
+
+    let num = float.or(int);
 
     let raw_str = just("r\"")
         .ignore_then(none_of('"').repeated().collect())
