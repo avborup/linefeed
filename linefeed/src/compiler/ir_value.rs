@@ -30,7 +30,7 @@ impl IrValue {
     }
 }
 
-impl<'src> TryFrom<&AstValue<'src>> for IrValue {
+impl TryFrom<&AstValue<'_>> for IrValue {
     type Error = String;
 
     fn try_from(val: &AstValue) -> Result<Self, Self::Error> {

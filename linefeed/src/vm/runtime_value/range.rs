@@ -28,8 +28,8 @@ impl RuntimeRange {
             (self.end, self.start)
         };
 
-        let lower = lower.map_or(true, |lower| value >= &RuntimeNumber::from(lower));
-        let upper = upper.map_or(true, |upper| value < &RuntimeNumber::from(upper));
+        let lower = lower.is_none_or(|lower| value >= &RuntimeNumber::from(lower));
+        let upper = upper.is_none_or(|upper| value < &RuntimeNumber::from(upper));
 
         lower && upper
     }
@@ -72,8 +72,8 @@ impl Iterator for RangeIterator {
 
         let (value, step, end) = (self.value, self.step, self.range.end);
 
-        if step.is_positive() && end.map_or(false, |end| value >= end)
-            || step.is_negative() && end.map_or(false, |end| value <= end)
+        if step.is_positive() && end.is_some_and(|end| value >= end)
+            || step.is_negative() && end.is_some_and(|end| value <= end)
         {
             return None;
         }

@@ -99,13 +99,13 @@ pub struct Func<'src> {
     pub body: Rc<Spanned<Expr<'src>>>,
 }
 
-impl<'src> PartialEq for Func<'src> {
+impl PartialEq for Func<'_> {
     fn eq(&self, _: &Self) -> bool {
         false
     }
 }
 
-impl<'src> PartialOrd for Func<'src> {
+impl PartialOrd for Func<'_> {
     fn partial_cmp(&self, _: &Self) -> Option<std::cmp::Ordering> {
         None
     }
