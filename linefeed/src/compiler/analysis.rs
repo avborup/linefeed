@@ -148,6 +148,20 @@ pub fn eval_simple_constant(expr: &Spanned<Expr>) -> Result<Option<IrValue>, Str
             })
         }
 
+        Expr::Map(entries) => {
+            let mut values = Vec::new();
+            for (key, value) in entries {
+                let (k, v) = match eval_simple_constant(key)?.zip(eval_simple_constant(value)?) {
+                    Some((key, value)) => (key, value),
+                    _ => return Ok(None),
+                };
+
+                values.push((k, v));
+            }
+
+            Some(IrValue::Map(values))
+        }
+
         Expr::Block(sub_expr) => eval_simple_constant(sub_expr)?,
 
         Expr::Sequence(exprs) => {
