@@ -120,6 +120,15 @@ impl Compiler {
     }
 
     fn compile_expr(&mut self, expr: &Spanned<Expr>) -> Result<Program<Instruction>, CompileError> {
+        if let Some(constant) =
+            analysis::eval_simple_constant(expr).map_err(|msg| CompileError::Spanned {
+                span: expr.span(),
+                msg,
+            })?
+        {
+            return Ok(Program::from_instruction(Value(constant), expr.span()));
+        }
+
         let instructions = match &expr.0 {
             Expr::Local(name) => self.compile_var_load(expr, name)?,
 
