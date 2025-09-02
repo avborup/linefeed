@@ -19,6 +19,7 @@ use crate::{
 pub mod analysis;
 pub mod ir_value;
 pub mod method;
+pub mod register_manager;
 pub mod scoped_map;
 pub mod stdlib_fn;
 
@@ -39,6 +40,10 @@ pub enum Instruction {
     Dup,
     GetStackPtr,
     SetStackPtr,
+
+    // Register manipulation
+    SetRegister(usize),
+    GetRegister(usize),
 
     // Binary operations
     Add,
@@ -96,6 +101,7 @@ pub struct Program<T> {
 #[derive(Default)]
 pub struct Compiler {
     vars: ScopedMap<String, usize>,
+    registers: register_manager::RegisterManager,
     label_count: usize,
     loop_count: usize,
     loop_labels: HashMap<usize, (Label, Label)>,

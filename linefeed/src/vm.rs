@@ -3,7 +3,7 @@ use std::io::{Read, Write};
 use yansi::Paint;
 
 use crate::{
-    compiler::Program,
+    compiler::{register_manager::DEFAULT_MAX_REGISTERS, Program},
     grammar::ast::Span,
     vm::{
         bytecode::Bytecode,
@@ -22,6 +22,7 @@ pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
     program: Program<Bytecode>,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
+    registers: [isize; DEFAULT_MAX_REGISTERS],
     pc: usize,
     bp: usize,
     pub stdin: I,
@@ -35,6 +36,7 @@ impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
         Self {
             program,
             stack: vec![],
+            registers: [-1; DEFAULT_MAX_REGISTERS],
             stdin: std::io::stdin(),
             stdout: std::io::stdout(),
             stderr: std::io::stderr(),
@@ -112,6 +114,7 @@ where
         BytecodeInterpreter {
             program: self.program,
             stack: self.stack,
+            registers: self.registers,
             stdin,
             stdout,
             stderr,
@@ -217,6 +220,16 @@ where
                 Bytecode::SetStackPtr => {
                     let new_ptr = self.pop_stack()?.address()?;
                     self.stack.truncate(new_ptr + 1);
+                }
+
+                Bytecode::SetRegister(reg) => {
+                    let reg = *reg;
+                    self.registers[reg] = self.pop_stack()?.int()?;
+                }
+
+                Bytecode::GetRegister(reg) => {
+                    let reg = *reg;
+                    self.push_stack(RuntimeValue::Int(self.registers[reg]));
                 }
 
                 Bytecode::IfFalse(idx) => {
@@ -454,6 +467,16 @@ where
         eprintln!("{}", format!("pc: {}", self.pc).dim());
         eprintln!("{}", format!("bp: {}", self.bp).dim());
 
+        fn write_val(val: &RuntimeValue) {
+            match val {
+                RuntimeValue::Int(_) => eprint!("{}", val.repr_string().yellow()),
+                RuntimeValue::Str(_) => eprint!("{}", val.repr_string().green()),
+                RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
+                // RuntimeValue::List(l) => eprint!("{}", format!("[..; {}]", l.len()).blue()),
+                _ => eprint!("{}", format!("{val}").blue()),
+            }
+        }
+
         eprint!("{}: [", "Stack".underline());
         let mut first = true;
         for (i, val) in self.stack.iter().enumerate() {
@@ -466,13 +489,24 @@ where
                 eprint!("{} ", "(bp)".yellow());
             }
 
-            match val {
-                RuntimeValue::Int(_) => eprint!("{}", val.repr_string().yellow()),
-                RuntimeValue::Str(_) => eprint!("{}", val.repr_string().green()),
-                RuntimeValue::Uninit => eprint!("{}", "uninit".red()),
-                RuntimeValue::List(l) => eprint!("{}", format!("[..; {}]", l.len()).blue()),
-                _ => eprint!("{}", format!("{val}").blue()),
+            write_val(val);
+        }
+        eprintln!("]\n");
+
+        eprint!("{}: [", "Registers".underline());
+        let last_used_register = self
+            .registers
+            .iter()
+            .rposition(|val| *val != -1)
+            .unwrap_or(0);
+        let mut first = true;
+        for val in self.registers.iter().take(last_used_register + 1) {
+            if !first {
+                eprint!(", ");
             }
+            first = false;
+
+            write_val(&RuntimeValue::Int(*val));
         }
         eprintln!("]\n");
 

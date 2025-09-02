@@ -29,6 +29,10 @@ pub enum Bytecode {
     GetStackPtr,
     SetStackPtr,
 
+    // Register manipulation
+    SetRegister(usize),
+    GetRegister(usize),
+
     // Binary operations
     Add,
     Sub,
@@ -141,6 +145,8 @@ impl Bytecode {
             Instruction::Dup => Bytecode::Dup,
             Instruction::GetStackPtr => Bytecode::GetStackPtr,
             Instruction::SetStackPtr => Bytecode::SetStackPtr,
+            Instruction::SetRegister(register) => Bytecode::SetRegister(register),
+            Instruction::GetRegister(register) => Bytecode::GetRegister(register),
             Instruction::Call(num_args) => Bytecode::Call(num_args),
             Instruction::Return => Bytecode::Return,
             Instruction::Index => Bytecode::Index,

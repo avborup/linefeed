@@ -171,6 +171,20 @@ impl RuntimeValue {
         }
     }
 
+    pub fn int(&self) -> Result<isize, RuntimeError> {
+        let res = match self {
+            RuntimeValue::Int(val) => *val,
+            _ => {
+                return Err(RuntimeError::InternalBug(format!(
+                    "Expected integer, found '{}'",
+                    self.kind_str()
+                )))
+            }
+        };
+
+        Ok(res)
+    }
+
     pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
         let res = match (self, index) {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
