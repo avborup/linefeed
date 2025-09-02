@@ -130,7 +130,7 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
 
 pub fn eval_simple_constant(expr: &Spanned<Expr>) -> Result<Option<IrValue>, String> {
     let res = match &expr.0 {
-        Expr::Value(ast_val) => Some(IrValue::try_from(ast_val)?),
+        Expr::Value(ast_val) => IrValue::try_from(ast_val).ok(),
 
         Expr::List(items) | Expr::Tuple(items) => {
             let mut values = Vec::new();
