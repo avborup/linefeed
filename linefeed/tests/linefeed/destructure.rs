@@ -6,7 +6,7 @@ use crate::helpers::{
 };
 
 eval_and_assert!(
-    destructuring_works,
+    ident_destructuring_works,
     indoc! {r#"
         inp = "1-3 a: abcde";
 
@@ -39,5 +39,15 @@ eval_and_assert!(
     equals(indoc! {r#"
         1 2 3
     "#}),
+    empty()
+);
+
+eval_and_assert!(
+    nested_destructuring_works,
+    indoc! {r#"
+        foo, (bar, baz), qux = [1, (2, 3), 4];
+        print(qux, baz, bar, foo);
+    "#},
+    equals("4 3 2 1"),
     empty()
 );

@@ -9,7 +9,7 @@ use crate::{
         scoped_map::{ScopedMap, VarType},
         stdlib_fn::StdlibFn,
     },
-    grammar::ast::{AssignmentTarget, AstValue, BinaryOp, Expr, Span, Spanned, UnaryOp},
+    grammar::ast::{AstValue, BinaryOp, Expr, Pattern, Span, Spanned, UnaryOp},
     vm::{
         bytecode::Bytecode,
         runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
@@ -138,10 +138,9 @@ impl Compiler {
         let instructions = match &expr.0 {
             Expr::Local(name) => self.compile_var_load(expr, name)?,
 
-            Expr::Assign(AssignmentTarget::Local(name), val) => {
-                let val_program = self.compile_expr(val)?;
-                self.compile_var_assign(expr, name, val_program)?
-            }
+            Expr::Assign(pattern, val) => self
+                .compile_expr(val)?
+                .then_program(self.compile_pattern_assignment(expr, pattern)?),
 
             Expr::Value(AstValue::Func(func)) => {
                 // TODO: Implement
@@ -361,17 +360,6 @@ impl Compiler {
                     .then_instruction(Index, index.span())
             }
 
-            Expr::Assign(AssignmentTarget::Index(target, index), value) => {
-                let target_program = self.compile_expr(target)?;
-                let index_program = self.compile_expr(index)?;
-                let value_program = self.compile_expr(value)?;
-
-                target_program
-                    .then_program(index_program)
-                    .then_program(value_program)
-                    .then_instruction(SetIndex, expr.span())
-            }
-
             Expr::If(cond, true_expr, false_expr) => {
                 let cond_program = self.compile_expr(cond)?;
                 let true_program = self.compile_expr(true_expr)?;
@@ -583,10 +571,6 @@ impl Compiler {
                 program.then_instruction(MethodCall(method, args.len()), expr.span())
             }
 
-            Expr::Assign(AssignmentTarget::Destructure(targets), val) => self
-                .compile_expr(val)?
-                .then_program(self.compile_destructure_of_val(targets, expr)?),
-
             Expr::Match(val, arms) => {
                 let mut program = self.compile_expr(val)?;
 
@@ -745,67 +729,83 @@ impl Compiler {
             },
         )
     }
-    // Destructuring works on anything that can be indexed by numbers, assigning each
-    // variable to its corresponding index in the iterable, with index-out-of-bounds errors
-    // on runtime, of course. This also means that "too many elements" is not a concern,
-    // and extra elements are just ignored.
-    //
-    // Assumes that the destructured value is currently on top of the stack.
-    pub fn compile_destructure_of_val(
-        &mut self,
-        targets: &[AssignmentTarget],
-        expr: &Spanned<Expr>,
-    ) -> Result<Program<Instruction>, CompileError> {
-        let names = targets
-            .iter()
-            .map(|target| match target {
-                AssignmentTarget::Local(name) => Ok(name),
-                _ => Err(CompileError::Spanned {
-                    span: expr.span(),
-                    msg: "Destructuring only works on simple variable names (for now)".to_string(),
-                }),
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let prog = names
-            .iter()
-            .map(|name| self.compile_var_address(name, expr))
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .enumerate()
-            .fold(Program::new(), |program, (i, address)| {
-                let index = Value(IrValue::Num(RuntimeNumber::from(i as isize)));
-                program
-                    .then_instructions(vec![Dup, index, Index], expr.span())
-                    .then_program(address)
-                    .then_instructions(vec![Store, Pop], expr.span())
-            });
-
-        Ok(prog)
-    }
 
     // Assumes that the value is currently on top of the stack.
-    fn compile_loop_var_assign(
+    pub fn compile_pattern_assignment(
         &mut self,
-        target: &AssignmentTarget,
         expr: &Spanned<Expr>,
+        pattern: &Spanned<Pattern>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let program = match target {
-            AssignmentTarget::Local(name) => self
+        let prog = match &pattern.0 {
+            Pattern::Ident(name) => self
                 .compile_var_address(name, expr)?
-                .then_instructions(vec![Store, Pop], expr.span()),
-            AssignmentTarget::Destructure(targets) => self
-                .compile_destructure_of_val(targets, expr)?
-                .then_instruction(Pop, expr.span()),
-            AssignmentTarget::Index(_, _) => {
+                .then_instruction(Store, pattern.span()),
+
+            Pattern::Sequence(patterns) => patterns
+                .iter()
+                .map(|p| self.compile_pattern_assignment(expr, p))
+                .collect::<Result<Vec<_>, _>>()?
+                .into_iter()
+                .enumerate()
+                .fold(Program::new(), |program, (i, p)| {
+                    let index = Value(IrValue::Num(RuntimeNumber::from(i as isize)));
+                    program
+                        .then_instructions(vec![Dup, index, Index], expr.span())
+                        .then_program(p)
+                        .then_instruction(Pop, expr.span())
+                }),
+
+            Pattern::Index(target, index) => {
+                let val_addr_register = self.get_available_register(expr.span())?;
+
+                let target_program = self.compile_expr(target)?;
+                let index_program = self.compile_expr(index)?;
+
+                let program = Program::from_instructions(
+                    vec![GetStackPtr, SetRegister(val_addr_register)],
+                    pattern.span(),
+                )
+                .then_program(target_program)
+                .then_program(index_program)
+                .then_instructions(vec![GetRegister(val_addr_register), Load], pattern.span())
+                .then_instruction(SetIndex, pattern.span())
+                .then_instruction(Pop, pattern.span());
+
+                self.registers.free_register(val_addr_register);
+
+                program
+            }
+
+            _ => {
                 return Err(CompileError::Spanned {
-                    span: expr.span(),
-                    msg: "Cannot destructure into index yet (future feature)".to_string(),
+                    span: pattern.span(),
+                    msg: "Pattern matching not implemented yet".to_string(),
                 })
             }
         };
 
-        Ok(program)
+        Ok(prog)
+    }
+
+    fn compile_loop_var_assign(
+        &mut self,
+        pattern: &Spanned<Pattern>,
+        expr: &Spanned<Expr>,
+    ) -> Result<Program<Instruction>, CompileError> {
+        let prog = self
+            .compile_pattern_assignment(expr, pattern)?
+            .then_instruction(Pop, pattern.span());
+
+        Ok(prog)
+    }
+
+    pub fn get_available_register(&mut self, span: Span) -> Result<usize, CompileError> {
+        self.registers
+            .get_available_register()
+            .ok_or_else(|| CompileError::Spanned {
+                span,
+                msg: "The program requires too many registers".to_string(),
+            })
     }
 
     pub fn new_label(&mut self) -> Label {

@@ -19,7 +19,7 @@ pub enum Expr<'src> {
     Map(Vec<(Spanned<Self>, Spanned<Self>)>),
     Index(Box<Spanned<Self>>, Box<Spanned<Self>>),
     Local(&'src str),
-    Assign(AssignmentTarget<'src>, Box<Spanned<Self>>),
+    Assign(Spanned<Pattern<'src>>, Box<Spanned<Self>>),
     Unary(UnaryOp, Box<Spanned<Self>>),
     Binary(Box<Spanned<Self>>, BinaryOp, Box<Spanned<Self>>),
     Call(Box<Spanned<Self>>, Vec<Spanned<Self>>),
@@ -30,7 +30,7 @@ pub enum Expr<'src> {
     Return(Box<Spanned<Self>>),
     While(Box<Spanned<Self>>, Box<Spanned<Self>>),
     For(
-        AssignmentTarget<'src>,
+        Spanned<Pattern<'src>>,
         Box<Spanned<Self>>,
         Box<Spanned<Self>>,
     ),
@@ -38,7 +38,7 @@ pub enum Expr<'src> {
     Continue,
     ListComprehension(
         Box<Spanned<Self>>,
-        AssignmentTarget<'src>,
+        Spanned<Pattern<'src>>,
         Box<Spanned<Self>>,
     ),
     Match(Box<Spanned<Self>>, Vec<(Spanned<Self>, Spanned<Self>)>),
@@ -58,9 +58,10 @@ pub enum AstValue<'src> {
 }
 
 #[derive(Clone, Debug)]
-pub enum AssignmentTarget<'src> {
-    Local(&'src str),
-    Destructure(Vec<AssignmentTarget<'src>>),
+pub enum Pattern<'src> {
+    Ident(&'src str),
+    Value(AstValue<'src>),
+    Sequence(Vec<Spanned<Pattern<'src>>>),
     Index(Box<Spanned<Expr<'src>>>, Box<Spanned<Expr<'src>>>),
 }
 

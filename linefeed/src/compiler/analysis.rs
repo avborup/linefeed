@@ -2,33 +2,33 @@ use std::collections::HashSet;
 
 use crate::{
     compiler::ir_value::IrValue,
-    grammar::ast::{AssignmentTarget, Expr, Span, Spanned},
+    grammar::ast::{Expr, Pattern, Spanned},
 };
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
     fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
         fn resolve_assignment_target<'src>(
-            target: &AssignmentTarget<'src>,
-            span: Span,
+            target: &Spanned<Pattern<'src>>,
         ) -> Vec<Spanned<&'src str>> {
-            match target {
-                AssignmentTarget::Local(local) => vec![Spanned(local, span)],
-                AssignmentTarget::Destructure(locals) => locals
+            match &target.0 {
+                Pattern::Ident(local) => vec![Spanned(local, target.span())],
+                Pattern::Sequence(patterns) => patterns
                     .iter()
-                    .flat_map(|local| resolve_assignment_target(local, span))
+                    .flat_map(|pattern| resolve_assignment_target(pattern))
                     .collect(),
-                AssignmentTarget::Index(target, index) => {
+                Pattern::Index(target, index) => {
                     let mut res = find_all_assignments_inner(target);
                     res.extend(find_all_assignments_inner(index));
                     res
                 }
+                Pattern::Value(_) => vec![],
             }
         }
 
         match &expr.0 {
             Expr::Assign(target, val) => {
                 let mut res = find_all_assignments_inner(val);
-                res.extend(resolve_assignment_target(target, expr.span()));
+                res.extend(resolve_assignment_target(target));
                 res
             }
 
@@ -60,14 +60,14 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::For(loop_var, iterable, body) => {
-                let mut res = resolve_assignment_target(loop_var, expr.span());
+                let mut res = resolve_assignment_target(loop_var);
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res
             }
 
             Expr::ListComprehension(body, loop_var, iterable) => {
-                let mut res = resolve_assignment_target(loop_var, expr.span());
+                let mut res = resolve_assignment_target(loop_var);
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res

@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use chumsky::{input::ValueInput, prelude::*};
 
-use crate::{grammar::ast::AssignmentTarget, lexer::Token};
+use crate::{grammar::ast::Pattern, lexer::Token};
 use crate::{
     grammar::ast::{AstValue, BinaryOp, Expr, Func, Span, Spanned, UnaryOp},
     vm::runtime_value::regex::RegexModifiers,
@@ -72,16 +72,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
         let ident = ident_parser();
 
-        let single_var = ident.map(AssignmentTarget::Local);
-        let destructured_vars = ident
-            .separated_by(just(Token::Ctrl(',')))
-            .at_least(2)
-            .collect::<Vec<_>>()
-            .map(|vars| {
-                let vars = vars.into_iter().map(AssignmentTarget::Local).collect();
-                AssignmentTarget::Destructure(vars)
-            });
-        let loop_var = destructured_vars.clone().or(single_var);
+        let loop_var = pattern_parser();
 
         let for_ = just(Token::For)
             .ignore_then(loop_var.clone())
@@ -134,7 +125,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
                     match name {
                         Some(name) => Expr::Assign(
-                            AssignmentTarget::Local(name),
+                            Spanned(Pattern::Ident(name), e.span()),
                             Box::new(Spanned(val, e.span())),
                         ),
                         None => val,
@@ -156,18 +147,9 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .then(match_arms.delimited_by(just(Token::Ctrl('{')), just(Token::Ctrl('}'))))
                 .map(|(expr, arms)| Expr::Match(Box::new(expr), arms));
 
-            // TODO: allow index assignment in destructuring
-            let destructure_assign = destructured_vars
-                .then_ignore(just(Token::Op("=")))
-                .then(inline_expr.clone())
-                .map(|(vars, val)| Expr::Assign(vars, Box::new(val)))
-                .memoized()
-                .boxed();
-
             // TODO: This should probably be in the lexer
             // Variable assignment
-            let assign_op = choice((
-                just(Token::Op("=")).to("="),
+            let update_assign_op = choice((
                 just(Token::Op("+=")).to("+="),
                 just(Token::Op("-=")).to("-="),
                 just(Token::Op("*=")).to("*="),
@@ -176,36 +158,41 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 just(Token::Op("&=")).to("&="),
             ));
 
-            let single_assign = ident
-                .then(assign_op)
+            let update_assign = ident
+                .then(update_assign_op)
                 .then(inline_expr.clone())
                 .map_with(|((name, op), val), e| {
-                    let new_val = match op {
-                        "=" => val,
-                        _ => Spanned(
-                            Expr::Binary(
-                                Box::new(Spanned(Expr::Local(name), e.span())),
-                                match op {
-                                    "+=" => BinaryOp::Add,
-                                    "-=" => BinaryOp::Sub,
-                                    "*=" => BinaryOp::Mul,
-                                    "/=" => BinaryOp::Div,
-                                    "%=" => BinaryOp::Mod,
-                                    "&=" => BinaryOp::BitwiseAnd,
-                                    _ => unreachable!(),
-                                },
-                                Box::new(val),
-                            ),
-                            e.span(),
+                    let new_val = Spanned(
+                        Expr::Binary(
+                            Box::new(Spanned(Expr::Local(name), e.span())),
+                            match op {
+                                "+=" => BinaryOp::Add,
+                                "-=" => BinaryOp::Sub,
+                                "*=" => BinaryOp::Mul,
+                                "/=" => BinaryOp::Div,
+                                "%=" => BinaryOp::Mod,
+                                "&=" => BinaryOp::BitwiseAnd,
+                                _ => unreachable!(),
+                            },
+                            Box::new(val),
                         ),
-                    };
+                        e.span(),
+                    );
+                    let target = Spanned(Pattern::Ident(name), e.span());
 
-                    Expr::Assign(AssignmentTarget::Local(name), Box::new(new_val))
+                    Expr::Assign(target, Box::new(new_val))
                 })
                 .memoized()
                 .boxed();
 
-            let let_ = choice((destructure_assign, single_assign)).labelled("assignment");
+            let pattern_assign = pattern_parser()
+                .then_ignore(just(Token::Op("=")))
+                .then(inline_expr.clone())
+                .map(|(pattern, val)| Expr::Assign(pattern, Box::new(val)))
+                .memoized()
+                .boxed();
+
+            let let_ = choice((pattern_assign, update_assign)).labelled("assignment");
 
             let list = items
                 .clone()
@@ -659,7 +646,10 @@ fn index_assign_parser<'src, I: ParserInput<'src>>(
         .then(val_parser)
         .map_with(|(indexed, value), e| match indexed.0 {
             Expr::Index(target, idx) => Spanned(
-                Expr::Assign(AssignmentTarget::Index(target, idx), Box::new(value)),
+                Expr::Assign(
+                    Spanned(Pattern::Index(target, idx), e.span()),
+                    Box::new(value),
+                ),
                 e.span(),
             ),
             _ => unreachable!(),
@@ -700,4 +690,32 @@ fn range_parser<'src, I: ParserInput<'src>>(
         })
         .labelled("range")
         .memoized()
+}
+
+fn pattern_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned<Pattern<'src>>> {
+    recursive(|pattern| {
+        let single_var =
+            ident_parser().map_with(|ident, e| Spanned(Pattern::Ident(ident), e.span()));
+
+        let nested_pattern = pattern
+            .clone()
+            .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')));
+
+        let item = single_var.or(nested_pattern);
+
+        let sequence = item
+            .separated_by(just(Token::Ctrl(',')))
+            .collect::<Vec<_>>()
+            .map_with(|items, e| {
+                if items.len() == 1 {
+                    return items.into_iter().next().unwrap();
+                }
+
+                Spanned(Pattern::Sequence(items), e.span())
+            });
+
+        sequence
+    })
+    .labelled("pattern")
+    .boxed()
 }
