@@ -187,7 +187,17 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
             let pattern_assign = pattern_parser()
                 .then_ignore(just(Token::Op("=")))
-                .then(inline_expr.clone())
+                .then(
+                    // Try parsing as comma-separated sequence (implicit tuple)
+                    inline_expr
+                        .clone()
+                        .separated_by(just(Token::Ctrl(',')))
+                        .at_least(2)
+                        .collect::<Vec<_>>()
+                        .map_with(|items, e| Spanned(Expr::Tuple(items), e.span()))
+                        // Otherwise parse as single expression
+                        .or(inline_expr.clone()),
+                )
                 .map(|(pattern, val)| Expr::Assign(pattern, Box::new(val)))
                 .memoized()
                 .boxed();
