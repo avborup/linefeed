@@ -73,11 +73,11 @@ eval_and_assert!(
     multi_index_destructuring_works,
     indoc! {r#"
         foo = [0, [1]];
-        foo[0], foo[1][0] = ("top, bottom");
+        foo[0], foo[1][0] = ("top", "bottom");
         print(foo);
     "#},
     equals(indoc! {r#"
-        ["top", "bottom"]
+        ["top", ["bottom"]]
     "#}),
     empty()
 );
@@ -87,11 +87,11 @@ eval_and_assert!(
     indoc! {r#"
         foo = [0, [1]];
         index1, index2 = 0, 1;
-        foo[index1], foo[index2][index1] = ("top, bottom");
+        foo[index1], foo[index2][index1] = ("top", "bottom");
         print(foo);
     "#},
     equals(indoc! {r#"
-        ["top", "bottom"]
+        ["top", ["bottom"]]
     "#}),
     empty()
 );
