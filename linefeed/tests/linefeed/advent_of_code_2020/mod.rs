@@ -161,7 +161,7 @@ eval_and_assert!(
     include_str!("inputs/day07-secret.txt"),
     equals(indoc! {r#"
         Part 1: 115
-        Part 2: ...
+        Part 2: 1250
     "#}),
     empty()
 );

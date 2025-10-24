@@ -1,24 +1,26 @@
-rev = {};
+forward, backward = {}, {};
 for line in input().lines() {
   color, _ = line.find(r/(.*) bags contain/);
   for num, c in line.find_all(r/(\d+) (.*?) bag/) {
-    rev[c] = [] if c not in rev;
-    rev[c].append((int(num), color));
+    forward[color] = [] if color not in forward;
+    forward[color].append((int(num), c));
+    backward[c] = [] if c not in backward;
+    backward[c].append((int(num), color));
   };
 };
 
-reachable = set();
-fn dfs(color) {
-  return if color not in rev;
-
-  for num, c in rev[color] {
-    continue if c in reachable;
+fn dfs(graph, color, reachable) {
+  num_bags = 1;
+  for num, c in (graph[color] or []) {
     reachable.add(c);
-    dfs(c);
+    num_bags += num * dfs(graph, c, reachable);
   };
+  num_bags
 };
 
-dfs("shiny gold");
+dfs(backward, "shiny gold", (reachable = set()));
+part1 = reachable.len();
+part2 = dfs(forward, "shiny gold", set()) - 1;
 
-print("Part 1:", reachable.len());
-print("Part 2:", "?");
+print("Part 1:", part1);
+print("Part 2:", part2);
