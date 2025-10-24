@@ -1,17 +1,15 @@
-forward, backward = {}, {};
+forward, backward = default_map([]), default_map([]);
 for line in input().lines() {
   color, _ = line.find(r/(.*) bags contain/);
   for num, c in line.find_all(r/(\d+) (.*?) bag/) {
-    forward[color] = [] if color not in forward;
     forward[color].append((int(num), c));
-    backward[c] = [] if c not in backward;
     backward[c].append((int(num), color));
   };
 };
 
 fn dfs(graph, color, reachable) {
   num_bags = 1;
-  for num, c in (graph[color] or []) {
+  for num, c in graph[color] {
     reachable.add(c);
     num_bags += num * dfs(graph, c, reachable);
   };
