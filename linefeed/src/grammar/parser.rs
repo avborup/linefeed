@@ -701,7 +701,29 @@ fn pattern_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned<
             .clone()
             .delimited_by(just(Token::Ctrl('(')), just(Token::Ctrl(')')));
 
-        let item = single_var.or(nested_pattern);
+        let simple_index_parser = ident_parser()
+            .map_with(|ident, e| Spanned(Expr::Local(ident), e.span()))
+            .or(value_parser().map_with(|val, e| Spanned(val, e.span())));
+        let index_item = ident_parser()
+            .map_with(|val, e| Spanned(Expr::Local(val), e.span()))
+            .foldl_with(
+                just(Token::Ctrl('['))
+                    .then(simple_index_parser)
+                    .then_ignore(just(Token::Ctrl(']')))
+                    .map_with(|(_, idx), _e| idx)
+                    .repeated()
+                    .at_least(1),
+                |val, idx, e| Spanned(Expr::Index(Box::new(val), Box::new(idx)), e.span()),
+            )
+            .map_with(|expr, e| {
+                if let Expr::Index(target, index) = &expr.0 {
+                    Spanned(Pattern::Index(target.clone(), index.clone()), e.span())
+                } else {
+                    unreachable!()
+                }
+            });
+        let item = index_item.or(single_var).or(nested_pattern);
+        // let item = single_var.or(nested_pattern);
 
         let sequence = item
             .separated_by(just(Token::Ctrl(',')))

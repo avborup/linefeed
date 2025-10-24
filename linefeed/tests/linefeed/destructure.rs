@@ -51,3 +51,47 @@ eval_and_assert!(
     equals("4 3 2 1"),
     empty()
 );
+
+eval_and_assert!(
+    index_destructuring_works,
+    indoc! {r#"
+        swp = ["tmp", "second"];
+        swp[0] = "first";
+        print(swp);
+
+        swp[0], swp[1] = swp[1], swp[0];
+        print(swp);
+    "#},
+    equals(indoc! {r#"
+        ["first", "second"]
+        ["second", "first"]
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    multi_index_destructuring_works,
+    indoc! {r#"
+        foo = [0, [1]];
+        foo[0], foo[1][0] = ("top, bottom");
+        print(foo);
+    "#},
+    equals(indoc! {r#"
+        ["top", "bottom"]
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    ident_index_destructuring_works,
+    indoc! {r#"
+        foo = [0, [1]];
+        index1, index2 = 0, 1;
+        foo[index1], foo[index2][index1] = ("top, bottom");
+        print(foo);
+    "#},
+    equals(indoc! {r#"
+        ["top", "bottom"]
+    "#}),
+    empty()
+);
