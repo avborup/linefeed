@@ -1,4 +1,4 @@
-part1, part2 = (0, 0);
+part1, part2 = 0, 0;
 
 for min, max, char, password in input().find_all(r/(\d+)-(\d+) (\w): (\w+)/n) {
   part1 += 1 if password.count(char) in (min..=max);

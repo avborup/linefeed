@@ -13,7 +13,7 @@ fn is_valid(key, val) {
   }
 };
 
-part1, part2 = (0, 0);
+part1, part2 = 0, 0;
 required_fields = ["byr", "iyr", "eyr", "hgt", "hcl", "ecl", "pid"];
 
 for passport in input().split("\n\n") {

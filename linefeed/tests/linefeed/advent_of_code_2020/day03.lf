@@ -1,14 +1,14 @@
 grid = [line for line in input().lines()];
-H, W = (grid.len(), grid[0].len());
+H, W = grid.len(), grid[0].len();
 
 slopes = [(1, 1), (3, 1), (5, 1), (7, 1), (1, 2)];
 
 fn count_slope(slope) {
   dx, dy = slope;
-  px, py, trees = (0, 0, 0);
+  px, py, trees = 0, 0, 0;
   while py < H {
       trees += 1 if grid[py][px] == "#";
-      px, py = ((px + dx) % W, py + dy);
+      px, py = (px + dx) % W, py + dy;
   };
   trees
 };

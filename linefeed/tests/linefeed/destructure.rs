@@ -83,6 +83,19 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
+    multi_index_destructuring_on_implicit_tuple_works,
+    indoc! {r#"
+        foo = [0, [1]];
+        foo[0], foo[1][0] = "top", "bottom";
+        print(foo);
+    "#},
+    equals(indoc! {r#"
+        ["top", ["bottom"]]
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
     ident_index_destructuring_works,
     indoc! {r#"
         foo = [0, [1]];

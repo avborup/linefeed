@@ -1,6 +1,6 @@
-part1, part2 = (0, 0);
+part1, part2 = 0, 0;
 for group in [b.lines() for b in input().split("\n\n")] {
-  union, intersection = (set(), set(group[0]));
+  union, intersection = set(), set(group[0]);
 
   for line in group {
     union += set(line);
