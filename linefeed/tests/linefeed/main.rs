@@ -13,6 +13,7 @@ mod list;
 mod list_comprehensions;
 mod logical;
 mod map;
+mod map_with_default;
 mod match_;
 mod math;
 mod method;

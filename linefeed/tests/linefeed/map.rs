@@ -113,14 +113,3 @@ eval_and_assert!(
     equals("(1, 2)"),
     empty()
 );
-
-eval_and_assert!(
-    map_default_generator_works,
-    indoc! {r#"
-        m = map(fn() 42);
-        m["b"] = 100;
-        print(m["a"], m["b"]);
-    "#},
-    equals("42 100"),
-    empty()
-);

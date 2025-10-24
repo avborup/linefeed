@@ -2,8 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::vm::{
     runtime_value::{
-        function::RuntimeFunction, iterator::RuntimeIterator, number::RuntimeNumber,
-        tuple::RuntimeTuple, RuntimeValue,
+        iterator::RuntimeIterator, number::RuntimeNumber, tuple::RuntimeTuple, RuntimeValue,
     },
     RuntimeError,
 };
@@ -14,7 +13,7 @@ pub struct RuntimeMap(Rc<RefCell<InnerRuntimeMap>>);
 #[derive(Debug, Clone)]
 pub struct InnerRuntimeMap {
     pub map: HashMap<RuntimeValue, RuntimeValue>,
-    pub default_generator: Option<Rc<RuntimeFunction>>,
+    pub default_value: Option<RuntimeValue>,
 }
 
 impl RuntimeMap {
@@ -25,13 +24,13 @@ impl RuntimeMap {
     pub fn from_map(map: HashMap<RuntimeValue, RuntimeValue>) -> Self {
         Self(Rc::new(RefCell::new(InnerRuntimeMap {
             map,
-            default_generator: None,
+            default_value: None,
         })))
     }
 
-    pub fn from_default_generator(default_generator: Rc<RuntimeFunction>) -> Self {
+    pub fn new_with_default_value(default_value: RuntimeValue) -> Self {
         let runtime_map = Self::new();
-        runtime_map.borrow_mut().default_generator = Some(default_generator);
+        runtime_map.borrow_mut().default_value = Some(default_value);
         runtime_map
     }
 

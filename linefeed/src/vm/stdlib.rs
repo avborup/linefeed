@@ -53,13 +53,15 @@ pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
     Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
 }
 
+pub fn map_with_default(default_value: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+    Ok(RuntimeValue::Map(RuntimeMap::new_with_default_value(
+        default_value,
+    )))
+}
+
 pub fn to_map(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
     if let RuntimeValue::Map(_) = val {
         return Ok(val.clone());
-    }
-
-    if let RuntimeValue::Function(func) = val {
-        return Ok(RuntimeValue::Map(RuntimeMap::from_default_generator(func)));
     }
 
     let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
