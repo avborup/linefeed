@@ -45,6 +45,10 @@ impl RuntimeSet {
 
         Self::from_set(intersection)
     }
+
+    pub fn contains(&self, value: &RuntimeValue) -> bool {
+        self.0.borrow().contains(value)
+    }
 }
 
 impl Default for RuntimeSet {

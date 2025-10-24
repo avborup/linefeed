@@ -643,6 +643,7 @@ impl RuntimeValue {
         let contains = match (self, item) {
             (RuntimeValue::Map(m), k) => m.contains_key(k),
             (RuntimeValue::List(l), v) => l.contains(v),
+            (RuntimeValue::Set(l), v) => l.contains(v),
             (RuntimeValue::Tuple(t), v) => t.contains(v),
             (RuntimeValue::Range(r), RuntimeValue::Num(n)) => r.contains(n),
             (RuntimeValue::Str(s1), RuntimeValue::Str(s2)) => s1.contains(s2),

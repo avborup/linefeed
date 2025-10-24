@@ -171,7 +171,7 @@ impl Bytecode {
                 StdlibFn::Min => Bytecode::Min(num_args),
             },
             Instruction::MethodCall(method, num_args) => match method {
-                Method::Append => Bytecode::Append,
+                Method::Append | Method::Add => Bytecode::Append,
                 Method::ToUpperCase => Bytecode::ToUpperCase,
                 Method::ToLowerCase => Bytecode::ToLowerCase,
                 Method::Split => Bytecode::Split,

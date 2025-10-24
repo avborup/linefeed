@@ -3,6 +3,7 @@ use std::ops::RangeInclusive;
 #[derive(Debug, Clone)]
 pub enum Method {
     Append,
+    Add,
     ToUpperCase,
     ToLowerCase,
     Split,
@@ -20,6 +21,7 @@ pub enum Method {
 impl Method {
     define_names! {
         Append => "append",
+        Add => "add",
         ToUpperCase => "upper",
         ToLowerCase => "lower",
         Split => "split",
@@ -38,6 +40,7 @@ impl Method {
     pub fn num_args(&self) -> RangeInclusive<usize> {
         match self {
             Self::Append => 1..=1,
+            Self::Add => 1..=1,
             Self::ToUpperCase => 0..=0,
             Self::ToLowerCase => 0..=0,
             Self::Split => 1..=1,
