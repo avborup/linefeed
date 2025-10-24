@@ -58,6 +58,10 @@ pub fn to_map(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         return Ok(val.clone());
     }
 
+    if let RuntimeValue::Function(func) = val {
+        return Ok(RuntimeValue::Map(RuntimeMap::from_default_generator(func)));
+    }
+
     let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot convert type {} to a map",

@@ -2,13 +2,20 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use crate::vm::{
     runtime_value::{
-        iterator::RuntimeIterator, number::RuntimeNumber, tuple::RuntimeTuple, RuntimeValue,
+        function::RuntimeFunction, iterator::RuntimeIterator, number::RuntimeNumber,
+        tuple::RuntimeTuple, RuntimeValue,
     },
     RuntimeError,
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeMap(Rc<RefCell<HashMap<RuntimeValue, RuntimeValue>>>);
+pub struct RuntimeMap(Rc<RefCell<InnerRuntimeMap>>);
+
+#[derive(Debug, Clone)]
+pub struct InnerRuntimeMap {
+    pub map: HashMap<RuntimeValue, RuntimeValue>,
+    pub default_generator: Option<Rc<RuntimeFunction>>,
+}
 
 impl RuntimeMap {
     pub fn new() -> Self {
@@ -16,7 +23,16 @@ impl RuntimeMap {
     }
 
     pub fn from_map(map: HashMap<RuntimeValue, RuntimeValue>) -> Self {
-        Self(Rc::new(RefCell::new(map)))
+        Self(Rc::new(RefCell::new(InnerRuntimeMap {
+            map,
+            default_generator: None,
+        })))
+    }
+
+    pub fn from_default_generator(default_generator: Rc<RuntimeFunction>) -> Self {
+        let runtime_map = Self::new();
+        runtime_map.borrow_mut().default_generator = Some(default_generator);
+        runtime_map
     }
 
     pub fn len(&self) -> usize {
@@ -27,14 +43,17 @@ impl RuntimeMap {
         self.borrow().is_empty()
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<'_, HashMap<RuntimeValue, RuntimeValue>> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, InnerRuntimeMap> {
         self.0.borrow()
+    }
+
+    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, InnerRuntimeMap> {
+        self.0.borrow_mut()
     }
 
     pub fn deep_clone(&self) -> Self {
         Self::from_map(
-            self.0
-                .borrow()
+            self.borrow()
                 .iter()
                 .map(|(k, v)| (k.deep_clone(), v.deep_clone()))
                 .collect(),
@@ -42,19 +61,32 @@ impl RuntimeMap {
     }
 
     pub fn get(&self, key: &RuntimeValue) -> RuntimeValue {
-        self.0
-            .borrow()
+        self.borrow()
             .get(key)
             .cloned()
             .unwrap_or(RuntimeValue::Null)
     }
 
     pub fn insert(&self, key: RuntimeValue, value: RuntimeValue) {
-        self.0.borrow_mut().insert(key, value);
+        self.borrow_mut().insert(key, value);
     }
 
     pub fn contains_key(&self, key: &RuntimeValue) -> bool {
-        self.0.borrow().contains_key(key)
+        self.borrow().contains_key(key)
+    }
+}
+
+impl std::ops::Deref for InnerRuntimeMap {
+    type Target = HashMap<RuntimeValue, RuntimeValue>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.map
+    }
+}
+
+impl std::ops::DerefMut for InnerRuntimeMap {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.map
     }
 }
 
@@ -66,8 +98,8 @@ impl Default for RuntimeMap {
 
 impl PartialEq for RuntimeMap {
     fn eq(&self, other: &Self) -> bool {
-        let a = self.0.borrow();
-        let b = other.0.borrow();
+        let a = self.borrow();
+        let b = other.borrow();
 
         a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
     }
@@ -77,7 +109,7 @@ impl Eq for RuntimeMap {}
 
 impl std::hash::Hash for RuntimeMap {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        let set = self.0.borrow();
+        let set = self.borrow();
         let mut items = set.iter().collect::<Vec<_>>();
         items.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
         items.hash(state);
@@ -86,8 +118,8 @@ impl std::hash::Hash for RuntimeMap {
 
 impl std::cmp::PartialOrd for RuntimeMap {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        let a = self.0.borrow();
-        let b = other.0.borrow();
+        let a = self.borrow();
+        let b = other.borrow();
         a.len().partial_cmp(&b.len())
     }
 }
