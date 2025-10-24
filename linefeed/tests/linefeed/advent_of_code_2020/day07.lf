@@ -1,4 +1,4 @@
-forward, backward = default_map([]), default_map([]);
+forward, backward = defaultmap([]), defaultmap([]);
 for line in input().lines() {
   color, _ = line.find(r/(.*) bags contain/);
   for num, c in line.find_all(r/(\d+) (.*?) bag/) {

@@ -30,7 +30,7 @@ impl StdlibFn {
         ToList => "list",
         ToTuple => "tuple",
         ToMap => "map",
-        MapWithDefault => "default_map",
+        MapWithDefault => "defaultmap",
         ToSet => "set",
         Product => "mul",
         Sum => "sum",
