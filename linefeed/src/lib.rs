@@ -43,7 +43,7 @@ pub fn run_with_handles(
         (Some(tokens), e) if e.is_empty() => tokens,
         (_, e) => return pretty_print_errors(stderr, src, e),
     };
-    let ast = match dbg!(parse_tokens(src, &tokens)) {
+    let ast = match parse_tokens(src, &tokens) {
         Ok(ast) => ast,
         Err(errs) => return pretty_print_errors(stderr, src, errs),
     };
