@@ -1,0 +1,24 @@
+rev = {};
+for line in input().lines() {
+  color, _ = line.find(r/(.*) bags contain/);
+  for num, c in line.find_all(r/(\d+) (.*?) bag/) {
+    rev[c] = [] if c not in rev;
+    rev[c].append((int(num), color));
+  };
+};
+
+reachable = set();
+fn dfs(color) {
+  return if color not in rev;
+
+  for num, c in rev[color] {
+    continue if c in reachable;
+    reachable.add(c);
+    dfs(c);
+  };
+};
+
+dfs("shiny gold");
+
+print("Part 1:", reachable.len());
+print("Part 2:", "?");
