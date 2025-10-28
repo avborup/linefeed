@@ -1,15 +1,41 @@
 instrs = [line.find(r/(\w+) ([\-+]?\d+)/n) for line in input().lines()];
-acc, i, visited = 0, 0, set();
 
-while i not in visited {
-  visited.add(i);
+fn execute() {
+  acc, i, visited = 0, 0, set();
 
-  op, inc = instrs[i];
-  match op {
-    "nop" => i += 1,
-    "acc" => { acc += inc; i += 1; },
-    "jmp" => i += inc,
+  while i not in visited and i in (0..instrs.len()) {
+    visited.add(i);
+    op, inc = instrs[i];
+    match op {
+      "nop" => i += 1,
+      "acc" => { acc += inc; i += 1; },
+      "jmp" => i += inc,
+    };
   };
+
+  return (acc, i);
 };
 
-print("Part 1:", acc);
+fn search() {
+  for i in 0..instrs.len() {
+    op, inc = instrs[i];
+
+    flipped = match op {
+      "nop" => "jmp",
+      "jmp" => "nop",
+      "acc" => continue,
+    };
+
+    instrs[i] = (flipped, inc);
+    acc, end_i = execute();
+    instrs[i] = (op, inc);
+
+    return acc if end_i == instrs.len();
+  }
+};
+
+part1, _ = execute();
+part2 = search();
+
+print("Part 1:", part1);
+print("Part 2:", part2);
