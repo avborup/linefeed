@@ -32,3 +32,17 @@ eval_and_assert!(
     equals("[3, 7, 11]"),
     empty()
 );
+
+// This test is here to cover a (fixed) issue where the list comprehension would create temporary
+// variables that would be stored relative to the the base pointer, but this would overwrite values
+// currently on the stack (e.g. the 5 in the test below). If the 5 was *after* the list
+// comprehension, there would be no issue.
+eval_and_assert!(
+    list_comprehension_doesnt_overwrite_stack_entry,
+    indoc::indoc! {r#"
+        a = 5 + sum([i for i in 1..=1]);
+        print(a);
+    "#},
+    equals("6"),
+    empty()
+);

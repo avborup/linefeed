@@ -1,20 +1,20 @@
 use std::collections::HashSet;
 
 use crate::{
-    compiler::ir_value::IrValue,
+    compiler::{ir_value::IrValue, make_loop_vars},
     grammar::ast::{Expr, Pattern, Spanned},
 };
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
-    fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<&'src str>> {
+    fn find_all_assignments_inner<'src>(expr: &Spanned<Expr<'src>>) -> Vec<Spanned<String>> {
         fn resolve_assignment_target<'src>(
             target: &Spanned<Pattern<'src>>,
-        ) -> Vec<Spanned<&'src str>> {
+        ) -> Vec<Spanned<String>> {
             match &target.0 {
-                Pattern::Ident(local) => vec![Spanned(local, target.span())],
+                Pattern::Ident(local) => vec![Spanned(local.to_string(), target.span())],
                 Pattern::Sequence(patterns) => patterns
                     .iter()
-                    .flat_map(|pattern| resolve_assignment_target(pattern))
+                    .flat_map(resolve_assignment_target)
                     .collect(),
                 Pattern::Index(target, index) => {
                     let mut res = find_all_assignments_inner(target);
@@ -23,6 +23,14 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
                 }
                 Pattern::Value(_) => vec![],
             }
+        }
+
+        fn resolve_tmp_loop_vars<'src>(loop_expr: &Spanned<Expr<'src>>) -> Vec<Spanned<String>> {
+            let vars = make_loop_vars(loop_expr.span());
+            vec![
+                Spanned(vars.stack_ptr_var, loop_expr.span()),
+                Spanned(vars.iterator_var, loop_expr.span()),
+            ]
         }
 
         match &expr.0 {
@@ -54,20 +62,23 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::While(cond, body) => {
-                let mut res = find_all_assignments_inner(cond);
+                let mut res = resolve_tmp_loop_vars(expr);
+                res.extend(find_all_assignments_inner(cond));
                 res.extend(find_all_assignments_inner(body));
                 res
             }
 
             Expr::For(loop_var, iterable, body) => {
-                let mut res = resolve_assignment_target(loop_var);
+                let mut res = resolve_tmp_loop_vars(expr);
+                res.extend(resolve_assignment_target(loop_var));
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res
             }
 
             Expr::ListComprehension(body, loop_var, iterable) => {
-                let mut res = resolve_assignment_target(loop_var);
+                let mut res = resolve_tmp_loop_vars(expr);
+                res.extend(resolve_assignment_target(loop_var));
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
                 res
@@ -123,7 +134,7 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
     let mut seen = HashSet::new();
     find_all_assignments_inner(expr)
         .into_iter()
-        .filter(|Spanned(name, _)| seen.insert(*name))
+        .filter(|Spanned(name, _)| seen.insert(name.clone()))
         .map(|Spanned(name, span)| Spanned(name.to_string(), span))
         .collect()
 }
