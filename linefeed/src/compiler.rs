@@ -513,7 +513,10 @@ impl Compiler {
                     .compile_var_assign(
                         expr,
                         &loop_vars.stack_ptr_var,
-                        Program::from_instructions(vec![GetStackPtr], expr.span()),
+                        Program::from_instructions(
+                            vec![GetStackPtr, ConstantInt(1), Add],
+                            expr.span(),
+                        ),
                     )?
                     .then_instruction(Pop, expr.span());
 
