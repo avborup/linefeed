@@ -1,24 +1,24 @@
-forward, backward = defaultmap([]), defaultmap([]);
+fwd, bwd = defaultmap([]), defaultmap([]);
 for line in input().lines() {
   color, _ = line.find(r/(.*) bags contain/);
-  for num, c in line.find_all(r/(\d+) (.*?) bag/) {
-    forward[color].append((int(num), c));
-    backward[c].append((int(num), color));
+  for num, child in line.find_all(r/(\d+) (.*?) bag/) {
+    fwd[color].append((int(num), child));
+    bwd[child].append((int(num), color));
   };
 };
 
-fn dfs(graph, color, reachable) {
-  num_bags = 1;
-  for num, c in graph[color] {
-    reachable.add(c);
-    num_bags += num * dfs(graph, c, reachable);
+fn reach(color, reachable) {
+  reachable.add(color);
+  for _, parent in bwd[color] {
+    reach(parent, reachable)
   };
-  num_bags
 };
 
-dfs(backward, "shiny gold", (reachable = set()));
-part1 = reachable.len();
-part2 = dfs(forward, "shiny gold", set()) - 1;
+fn count(c) {
+  sum([num * count(child) for num, child in fwd[c]]) + 1
+};
 
-print("Part 1:", part1);
-print("Part 2:", part2);
+reach("shiny gold", (reachable = set()));
+
+print("Part 1:", reachable.len() - 1);
+print("Part 2:", count("shiny gold") - 1);
