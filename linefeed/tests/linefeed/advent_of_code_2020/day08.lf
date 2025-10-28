@@ -1,0 +1,15 @@
+instrs = [line.find(r/(\w+) ([\-+]?\d+)/n) for line in input().lines()];
+acc, i, visited = 0, 0, set();
+
+while i not in visited {
+  visited.add(i);
+
+  op, inc = instrs[i];
+  match op {
+    "nop" => i += 1,
+    "acc" => { acc += inc; i += 1; },
+    "jmp" => i += inc,
+  };
+};
+
+print("Part 1:", acc);
