@@ -15,7 +15,7 @@ fn reach(color, reachable) {
 };
 
 fn count(c) {
-  sum([num * count(child) for num, child in fwd[c]]) + 1
+  1 + sum([num * count(child) for num, child in fwd[c]])
 };
 
 reach("shiny gold", (reachable = set()));

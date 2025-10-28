@@ -92,6 +92,8 @@ pub enum Instruction {
 use chumsky::span::Span as _;
 use Instruction::*;
 
+type LoopId = Span;
+
 #[derive(Debug, Default)]
 pub struct Program<T> {
     pub instructions: Vec<T>,
@@ -103,8 +105,8 @@ pub struct Compiler {
     vars: ScopedMap<String, usize>,
     registers: register_manager::RegisterManager,
     label_count: usize,
-    loop_count: usize,
-    loop_labels: HashMap<usize, (Label, Label)>,
+    loop_labels: HashMap<LoopId, (Label, Label)>,
+    loop_stack: Vec<LoopId>,
 }
 
 impl Compiler {
@@ -382,15 +384,19 @@ impl Compiler {
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
-                let loop_id = self.new_loop_id();
-                let loop_name = self.loop_name(loop_id);
-                self.loop_labels.insert(loop_id, (cond_label, end_label));
+                let loop_vars = make_loop_vars(expr.span());
+
+                self.loop_labels
+                    .insert(loop_vars.id, (cond_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
+
                 let register_loop = self
                     .compile_var_assign(
                         expr,
-                        &loop_name,
+                        &loop_vars.stack_ptr_var,
                         Program::from_instructions(
-                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            vec![GetStackPtr, ConstantInt(1), Add],
                             expr.span(),
                         ),
                     )?
@@ -403,9 +409,9 @@ impl Compiler {
                     .then_instruction(IfFalse(end_label), cond.span())
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
-                    .then_instructions(vec![Instruction::Label(end_label), Swap, Pop], expr.span());
+                    .then_instructions(vec![Instruction::Label(end_label)], expr.span());
 
-                self.vars.remove_local(&loop_name);
+                self.loop_stack.pop();
 
                 program
             }
@@ -442,42 +448,43 @@ impl Compiler {
 
                 let scope_size_before = self.vars.cur_scope_len();
 
-                let loop_id = self.new_loop_id();
-                let loop_name = self.loop_name(loop_id);
-                self.loop_labels.insert(loop_id, (iter_label, end_label));
+                let loop_vars = make_loop_vars(expr.span());
+
+                self.loop_labels
+                    .insert(loop_vars.id, (iter_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
+
                 let register_loop = self
                     .compile_var_assign(
                         expr,
-                        &loop_name,
+                        &loop_vars.stack_ptr_var,
                         Program::from_instructions(
-                            vec![GetStackPtr, Value(IrValue::Int(2)), Add],
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
                             expr.span(),
                         ),
                     )?
                     .then_instruction(Pop, expr.span());
 
-                let iterable_name = format!("{loop_name}_iter");
                 let iterator = self
                     .compile_expr(iterable)?
                     .then_instruction(ToIter, iterable.span());
                 let register_iterable = self
-                    .compile_var_assign(expr, &iterable_name, iterator)?
+                    .compile_var_assign(expr, &loop_vars.iterator_var, iterator)?
                     .then_instruction(Pop, iterable.span());
 
                 let program = register_loop
                     .then_program(register_iterable)
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
-                    .then_program(self.compile_var_load(expr, &iterable_name)?)
+                    .then_program(self.compile_var_load(expr, &loop_vars.iterator_var)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
-                    .then_instruction(Instruction::Label(end_label), expr.span())
-                    .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
+                    .then_instruction(Instruction::Label(end_label), expr.span());
 
-                self.vars.remove_local(&iterable_name);
-                self.vars.remove_local(&loop_name);
+                self.loop_stack.pop();
 
                 debug_assert!(
                     self.vars.cur_scope_len() == scope_size_before,
@@ -497,33 +504,36 @@ impl Compiler {
 
                 let scope_size_before = self.vars.cur_scope_len();
 
-                let loop_id = self.new_loop_id();
-                let loop_name = self.loop_name(loop_id);
-                self.loop_labels.insert(loop_id, (iter_label, end_label));
+                let loop_vars = make_loop_vars(expr.span());
+
+                self.loop_labels
+                    .insert(loop_vars.id, (iter_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
+
                 let register_loop = self
                     .compile_var_assign(
                         expr,
-                        &loop_name,
+                        &loop_vars.stack_ptr_var,
                         Program::from_instructions(
-                            vec![GetStackPtr, Value(IrValue::Int(2)), Add],
+                            vec![GetStackPtr, ConstantInt(1), Add],
                             expr.span(),
                         ),
                     )?
                     .then_instruction(Pop, expr.span());
 
-                let iterable_name = format!("{loop_name}_iter");
                 let iterator = self
                     .compile_expr(iterable)?
                     .then_instruction(ToIter, iterable.span());
                 let register_iterable = self
-                    .compile_var_assign(expr, &iterable_name, iterator)?
+                    .compile_var_assign(expr, &loop_vars.iterator_var, iterator)?
                     .then_instruction(Pop, iterable.span());
 
                 let program = register_loop
                     .then_program(register_iterable)
                     .then_instruction(Value(IrValue::List(Vec::new())), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
-                    .then_program(self.compile_var_load(expr, &iterable_name)?)
+                    .then_program(self.compile_var_load(expr, &loop_vars.iterator_var)?)
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
@@ -531,11 +541,9 @@ impl Compiler {
                         vec![MethodCall(Method::Append, 1), Goto(iter_label)],
                         expr.span(),
                     )
-                    .then_instruction(Instruction::Label(end_label), expr.span())
-                    .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
+                    .then_instruction(Instruction::Label(end_label), expr.span());
 
-                self.vars.remove_local(&iterable_name);
-                self.vars.remove_local(&loop_name);
+                self.loop_stack.pop();
 
                 debug_assert!(
                     self.vars.cur_scope_len() == scope_size_before,
@@ -686,28 +694,17 @@ impl Compiler {
         name: &str,
         value_program: Program<Instruction>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let mut program = Program::new();
-
         let key = name.to_string();
         if self.vars.get(&key).is_none() {
-            // Allocate stack space for new local variable if it doesn't exist. Should only be used
-            // for temporary compiler variables, such as loop iterators and storing stack pointers.
-            debug_assert!(name.starts_with("!"));
-
-            program.add_instruction(Value(IrValue::Uninit), expr.span());
-
-            // TODO: Fix stack issues with local variable assignment. This assumes that there are
-            // no temporary values on the stack (i.e. only variables are currently on the stack).
-            // But this breaks for expressions like "something" + sum([x for x in xs]) because the
-            // comprehension defines temporary variables, which overwrite the slack space for the
-            // "something" string. Yikes. The variable would need to be stored on the current top
-            // of the stack, not at offset "how many vars exist right now".
-            let offset = self.vars.cur_scope_len();
-            self.vars.set_local(key, offset);
+            return Err(CompileError::Spanned {
+                msg: format!(
+                    "Internal compiler bug: allocation for variable {name:?} should have been done before assignment"
+                ),
+                span: expr.span(),
+            });
         };
 
-        Ok(program
-            .then_program(value_program)
+        Ok(value_program
             .then_program(self.compile_var_address(name, expr)?)
             .then_instruction(Store, expr.span()))
     }
@@ -814,37 +811,18 @@ impl Compiler {
         label
     }
 
-    pub fn new_loop_id(&mut self) -> usize {
-        let loop_id = self.loop_count;
-        self.loop_count += 1;
-        loop_id
-    }
-
-    pub fn loop_name(&self, id: usize) -> String {
-        format!("!loop_{id}")
-    }
-
-    pub fn local_loop_vars(&self) -> impl Iterator<Item = (&String, &usize)> {
-        self.vars
-            .iter_local()
-            .filter(|(name, _)| name.starts_with("!loop_"))
-    }
-
     pub fn is_in_loop(&mut self) -> bool {
-        self.local_loop_vars().next().is_some()
+        self.loop_stack
+            .last()
+            .filter(|loop_id| {
+                let loop_vars = make_loop_vars(**loop_id);
+                self.vars.get_local(&loop_vars.stack_ptr_var).is_some()
+            })
+            .is_some()
     }
 
-    pub fn cur_loop_id(&self) -> usize {
-        self.local_loop_vars()
-            .max_by_key(|(_, offset)| **offset)
-            .map(|(name, _)| {
-                name.strip_prefix("!loop_")
-                    .unwrap()
-                    .trim_end_matches("_iter")
-                    .parse()
-                    .expect("loop name is not a number")
-            })
-            .expect("not in a loop")
+    pub fn cur_loop_id(&self) -> LoopId {
+        *self.loop_stack.last().expect("not in a loop")
     }
 
     // 1. Get the current loop name
@@ -865,7 +843,7 @@ impl Compiler {
         }
 
         let loop_id = self.cur_loop_id();
-        let loop_name = self.loop_name(loop_id);
+        let loop_vars = make_loop_vars(loop_id);
         let (cond_label, end_label) = *self
             .loop_labels
             .get(&loop_id)
@@ -873,7 +851,7 @@ impl Compiler {
         let jump_to = get_jump_to((cond_label, end_label));
 
         Ok(self
-            .compile_var_load(expr, &loop_name)?
+            .compile_var_load(expr, &loop_vars.stack_ptr_var)?
             .then_instructions(vec![SetStackPtr, Goto(jump_to)], expr.span()))
     }
 
@@ -898,6 +876,27 @@ impl Compiler {
             .fold(Program::new(), Program::then_program);
 
         Ok(program.then_instruction(StdlibCall(stdlib_fn, args.len()), expr.span()))
+    }
+}
+
+pub struct LoopVars {
+    pub stack_ptr_var: String,
+    pub iterator_var: String,
+    pub name: String,
+    pub id: LoopId,
+}
+
+// This is an easy way to standardise loop variable names without collisions (since loops
+// should be unique in the source code) and without adding synchronized logic between analysis
+// and the compiler.
+fn make_loop_vars(span: LoopId) -> LoopVars {
+    let loop_id = format!("{}..{}", span.start, span.end);
+    let loop_name = format!("!loop_{}", loop_id);
+    LoopVars {
+        stack_ptr_var: format!("{loop_name}_sp"),
+        iterator_var: format!("{loop_name}_iter"),
+        name: loop_name,
+        id: span,
     }
 }
 
