@@ -127,7 +127,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "chumsky"
 version = "1.0.0-alpha.7"
-source = "git+https://github.com/zesterer/chumsky.git?branch=main#282bf5ec3bdfe10970494cc23565708acd27984b"
+source = "git+https://github.com/zesterer/chumsky.git?rev=282bf5e#282bf5ec3bdfe10970494cc23565708acd27984b"
 dependencies = [
  "hashbrown 0.15.2",
  "regex-automata 0.3.9",
