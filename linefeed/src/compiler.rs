@@ -384,8 +384,6 @@ impl Compiler {
             Expr::While(cond, body) => {
                 let (cond_label, end_label) = (self.new_label(), self.new_label());
 
-                dbg!(&self.vars);
-
                 let loop_vars = make_loop_vars(expr.span());
 
                 self.loop_labels
