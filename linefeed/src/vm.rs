@@ -350,6 +350,7 @@ where
                 Bytecode::Contains => binary_op!(self, contains),
                 Bytecode::IsIn => binary_op_swapped!(self, contains),
                 Bytecode::Sort => unary_mapper_method!(self, sort),
+                Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
 
                 Bytecode::ParseInt => stdlib_fn!(self, parse_int),
                 Bytecode::ToList => stdlib_fn!(self, to_list),

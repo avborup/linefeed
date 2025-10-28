@@ -3,8 +3,10 @@ use std::{cell::RefCell, rc::Rc};
 use crate::vm::runtime_value::{
     list::RuntimeList,
     map::{MapIterator, RuntimeMap},
+    number::RuntimeNumber,
     range::{RangeIterator, RuntimeRange},
     string::RuntimeString,
+    tuple::RuntimeTuple,
     RuntimeValue,
 };
 
@@ -43,6 +45,35 @@ impl Iterator for ListIterator {
 impl From<RuntimeList> for RuntimeIterator {
     fn from(list: RuntimeList) -> Self {
         Self(Rc::new(RefCell::new(ListIterator { list, index: 0 })))
+    }
+}
+
+pub struct EnumeratedListIterator {
+    list: RuntimeList,
+    index: usize,
+}
+
+impl EnumeratedListIterator {
+    pub fn new(list: RuntimeList) -> Self {
+        Self { list, index: 0 }
+    }
+}
+
+impl Iterator for EnumeratedListIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.list.as_slice().get(self.index).cloned()?;
+        let index_val = RuntimeValue::Num(RuntimeNumber::from(self.index));
+        let enumerated = RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![index_val, value]));
+        self.index += 1;
+        Some(enumerated)
+    }
+}
+
+impl From<EnumeratedListIterator> for RuntimeIterator {
+    fn from(iter: EnumeratedListIterator) -> Self {
+        Self(Rc::new(RefCell::new(iter)))
     }
 }
 

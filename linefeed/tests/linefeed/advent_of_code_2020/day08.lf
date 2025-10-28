@@ -17,9 +17,7 @@ fn execute() {
 };
 
 fn search() {
-  for i in 0..instrs.len() {
-    op, inc = instrs[i];
-
+  for i, (op, inc) in instrs.enumerate() {
     flipped = match op {
       "nop" => "jmp",
       "jmp" => "nop",

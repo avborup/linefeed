@@ -5,7 +5,7 @@ use crate::{
     vm::{
         runtime_value::{
             function::RuntimeFunction,
-            iterator::RuntimeIterator,
+            iterator::{EnumeratedListIterator, RuntimeIterator},
             list::RuntimeList,
             map::{MapIterator, RuntimeMap},
             number::RuntimeNumber,
@@ -334,6 +334,18 @@ impl RuntimeValue {
                 Ok(RuntimeValue::List(list.clone()))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Sort, self)),
+        }
+    }
+
+    pub fn enumerate(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
+                RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
+            ))),
+            _ => Err(RuntimeError::invalid_method_for_type(
+                Method::Enumerate,
+                self,
+            )),
         }
     }
 
