@@ -105,7 +105,6 @@ pub struct Compiler {
     vars: ScopedMap<String, usize>,
     registers: register_manager::RegisterManager,
     label_count: usize,
-    loop_count: usize,
     loop_labels: HashMap<LoopId, (Label, Label)>,
     loop_stack: Vec<LoopId>,
 }
@@ -383,35 +382,40 @@ impl Compiler {
             // for loops. The only difference is that no iterator is needed, so the stack pointer
             // is only added with 1 (only 1 tmp variable).
             Expr::While(cond, body) => {
-                todo!()
-                // let (cond_label, end_label) = (self.new_label(), self.new_label());
-                //
-                // let loop_id = self.new_loop_id();
-                // let loop_name = self.loop_name(loop_id);
-                // self.loop_labels.insert(loop_id, (cond_label, end_label));
-                // let register_loop = self
-                //     .compile_var_assign(
-                //         expr,
-                //         &loop_name,
-                //         Program::from_instructions(
-                //             vec![GetStackPtr, Value(IrValue::Int(1)), Add],
-                //             expr.span(),
-                //         ),
-                //     )?
-                //     .then_instruction(Pop, expr.span());
-                //
-                // let program = register_loop
-                //     .then_instruction(Value(IrValue::Null), expr.span())
-                //     .then_instruction(Instruction::Label(cond_label), expr.span())
-                //     .then_program(self.compile_expr(cond)?)
-                //     .then_instruction(IfFalse(end_label), cond.span())
-                //     .then_program(self.compile_expr(body)?)
-                //     .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
-                //     .then_instructions(vec![Instruction::Label(end_label), Swap, Pop], expr.span());
-                //
-                // self.vars.remove_local(&loop_name);
-                //
-                // program
+                let (cond_label, end_label) = (self.new_label(), self.new_label());
+
+                dbg!(&self.vars);
+
+                let loop_vars = make_loop_vars(expr.span());
+
+                self.loop_labels
+                    .insert(loop_vars.id, (cond_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
+
+                let register_loop = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_vars.stack_ptr_var,
+                        Program::from_instructions(
+                            vec![GetStackPtr, ConstantInt(1), Add],
+                            expr.span(),
+                        ),
+                    )?
+                    .then_instruction(Pop, expr.span());
+
+                let program = register_loop
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(cond_label), expr.span())
+                    .then_program(self.compile_expr(cond)?)
+                    .then_instruction(IfFalse(end_label), cond.span())
+                    .then_program(self.compile_expr(body)?)
+                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
+                    .then_instructions(vec![Instruction::Label(end_label)], expr.span());
+
+                self.loop_stack.pop();
+
+                program
             }
 
             // The stack layout for a for loop is as follows:
@@ -442,54 +446,54 @@ impl Compiler {
             // discarding all local state after the iteration was started), then jumping to either
             // the next iteration or the end of the loop.
             Expr::For(loop_var, iterable, body) => {
-                todo!()
-                // let (iter_label, end_label) = (self.new_label(), self.new_label());
-                //
-                // let scope_size_before = self.vars.cur_scope_len();
-                //
-                // let loop_id = self.new_loop_id();
-                // let loop_name = self.loop_name(loop_id);
-                // self.loop_labels.insert(loop_id, (iter_label, end_label));
-                // let register_loop = self
-                //     .compile_var_assign(
-                //         expr,
-                //         &loop_name,
-                //         Program::from_instructions(
-                //             vec![GetStackPtr, Value(IrValue::Int(2)), Add],
-                //             expr.span(),
-                //         ),
-                //     )?
-                //     .then_instruction(Pop, expr.span());
-                //
-                // let iterable_name = format!("{loop_name}_iter");
-                // let iterator = self
-                //     .compile_expr(iterable)?
-                //     .then_instruction(ToIter, iterable.span());
-                // let register_iterable = self
-                //     .compile_var_assign(expr, &iterable_name, iterator)?
-                //     .then_instruction(Pop, iterable.span());
-                //
-                // let program = register_loop
-                //     .then_program(register_iterable)
-                //     .then_instruction(Value(IrValue::Null), expr.span())
-                //     .then_instruction(Instruction::Label(iter_label), expr.span())
-                //     .then_program(self.compile_var_load(expr, &iterable_name)?)
-                //     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
-                //     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
-                //     .then_program(self.compile_expr(body)?)
-                //     .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
-                //     .then_instruction(Instruction::Label(end_label), expr.span())
-                //     .then_instructions(vec![Swap, Pop, Swap, Pop], expr.span());
-                //
-                // self.vars.remove_local(&iterable_name);
-                // self.vars.remove_local(&loop_name);
-                //
-                // debug_assert!(
-                //     self.vars.cur_scope_len() == scope_size_before,
-                //     "Variables were left on the stack within loop"
-                // );
-                //
-                // program
+                let (iter_label, end_label) = (self.new_label(), self.new_label());
+
+                let scope_size_before = self.vars.cur_scope_len();
+
+                let loop_vars = make_loop_vars(expr.span());
+
+                self.loop_labels
+                    .insert(loop_vars.id, (iter_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
+
+                let register_loop = self
+                    .compile_var_assign(
+                        expr,
+                        &loop_vars.stack_ptr_var,
+                        Program::from_instructions(
+                            vec![GetStackPtr, Value(IrValue::Int(1)), Add],
+                            expr.span(),
+                        ),
+                    )?
+                    .then_instruction(Pop, expr.span());
+
+                let iterator = self
+                    .compile_expr(iterable)?
+                    .then_instruction(ToIter, iterable.span());
+                let register_iterable = self
+                    .compile_var_assign(expr, &loop_vars.iterator_var, iterator)?
+                    .then_instruction(Pop, iterable.span());
+
+                let program = register_loop
+                    .then_program(register_iterable)
+                    .then_instruction(Value(IrValue::Null), expr.span())
+                    .then_instruction(Instruction::Label(iter_label), expr.span())
+                    .then_program(self.compile_var_load(expr, &loop_vars.iterator_var)?)
+                    .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
+                    .then_program(self.compile_loop_var_assign(loop_var, expr)?)
+                    .then_program(self.compile_expr(body)?)
+                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
+                    .then_instruction(Instruction::Label(end_label), expr.span());
+
+                self.loop_stack.pop();
+
+                debug_assert!(
+                    self.vars.cur_scope_len() == scope_size_before,
+                    "Variables were left on the stack within loop"
+                );
+
+                program
             }
 
             Expr::Break => self.compile_loop_jump("break", expr, |(_, end_label)| end_label)?,
@@ -500,14 +504,14 @@ impl Compiler {
             Expr::ListComprehension(body, loop_var, iterable) => {
                 let (iter_label, end_label) = (self.new_label(), self.new_label());
 
-                dbg!(&self.vars);
-
                 let scope_size_before = self.vars.cur_scope_len();
 
                 let loop_vars = make_loop_vars(expr.span());
 
                 self.loop_labels
                     .insert(loop_vars.id, (iter_label, end_label));
+
+                self.loop_stack.push(loop_vars.id);
 
                 let register_loop = self
                     .compile_var_assign(
@@ -540,6 +544,8 @@ impl Compiler {
                         expr.span(),
                     )
                     .then_instruction(Instruction::Label(end_label), expr.span());
+
+                self.loop_stack.pop();
 
                 debug_assert!(
                     self.vars.cur_scope_len() == scope_size_before,
@@ -807,24 +813,14 @@ impl Compiler {
         label
     }
 
-    pub fn new_loop_id(&mut self) -> usize {
-        let loop_id = self.loop_count;
-        self.loop_count += 1;
-        loop_id
-    }
-
-    pub fn loop_name(&self, id: usize) -> String {
-        format!("!loop_{id}")
-    }
-
-    pub fn local_loop_vars(&self) -> impl Iterator<Item = (&String, &usize)> {
-        self.vars
-            .iter_local()
-            .filter(|(name, _)| name.starts_with("!loop_"))
-    }
-
     pub fn is_in_loop(&mut self) -> bool {
-        self.local_loop_vars().next().is_some()
+        self.loop_stack
+            .last()
+            .filter(|loop_id| {
+                let loop_vars = make_loop_vars(**loop_id);
+                self.vars.get_local(&loop_vars.stack_ptr_var).is_some()
+            })
+            .is_some()
     }
 
     pub fn cur_loop_id(&self) -> LoopId {

@@ -25,14 +25,6 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
         }
 
-        fn resolve_tmp_loop_vars<'src>(loop_expr: &Spanned<Expr<'src>>) -> Vec<Spanned<String>> {
-            let vars = make_loop_vars(loop_expr.span());
-            vec![
-                Spanned(vars.stack_ptr_var, loop_expr.span()),
-                Spanned(vars.iterator_var, loop_expr.span()),
-            ]
-        }
-
         match &expr.0 {
             Expr::Assign(target, val) => {
                 let mut res = find_all_assignments_inner(val);
@@ -62,14 +54,19 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::While(cond, body) => {
-                let mut res = resolve_tmp_loop_vars(expr);
+                let vars = make_loop_vars(expr.span());
+                let mut res = vec![Spanned(vars.stack_ptr_var, expr.span())];
                 res.extend(find_all_assignments_inner(cond));
                 res.extend(find_all_assignments_inner(body));
                 res
             }
 
             Expr::For(loop_var, iterable, body) => {
-                let mut res = resolve_tmp_loop_vars(expr);
+                let vars = make_loop_vars(expr.span());
+                let mut res = vec![
+                    Spanned(vars.stack_ptr_var, expr.span()),
+                    Spanned(vars.iterator_var, expr.span()),
+                ];
                 res.extend(resolve_assignment_target(loop_var));
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
@@ -77,7 +74,11 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             }
 
             Expr::ListComprehension(body, loop_var, iterable) => {
-                let mut res = resolve_tmp_loop_vars(expr);
+                let vars = make_loop_vars(expr.span());
+                let mut res = vec![
+                    Spanned(vars.stack_ptr_var, expr.span()),
+                    Spanned(vars.iterator_var, expr.span()),
+                ];
                 res.extend(resolve_assignment_target(loop_var));
                 res.extend(find_all_assignments_inner(iterable));
                 res.extend(find_all_assignments_inner(body));
