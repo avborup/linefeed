@@ -32,10 +32,12 @@ impl LanguageServer for Backend {
         // Cache the source
         self.sources.lock().await.insert(uri.clone(), text.clone());
 
-        // Validate syntax and publish diagnostics
-        let (_symbol_table, diagnostics) = semantic_tokens::safe_parse(&text);
+        // Validate syntax and compilation, publish diagnostics
+        let (_symbol_table, parse_diagnostics) = semantic_tokens::safe_parse(&text);
+        let compile_diagnostics = semantic_tokens::safe_compile(&text);
+        let all_diagnostics = [parse_diagnostics, compile_diagnostics].concat();
         self.client
-            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .publish_diagnostics(params.text_document.uri, all_diagnostics, None)
             .await;
     }
 
@@ -50,10 +52,12 @@ impl LanguageServer for Backend {
             // Cache the updated source
             self.sources.lock().await.insert(uri_string, text.clone());
 
-            // Revalidate syntax and publish diagnostics
-            let (_symbol_table, diagnostics) = semantic_tokens::safe_parse(&text);
+            // Revalidate syntax and compilation, publish diagnostics
+            let (_symbol_table, parse_diagnostics) = semantic_tokens::safe_parse(&text);
+            let compile_diagnostics = semantic_tokens::safe_compile(&text);
+            let all_diagnostics = [parse_diagnostics, compile_diagnostics].concat();
             self.client
-                .publish_diagnostics(uri, diagnostics, None)
+                .publish_diagnostics(uri, all_diagnostics, None)
                 .await;
         }
     }

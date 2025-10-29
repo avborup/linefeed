@@ -2,6 +2,7 @@ use std::collections::HashMap;
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use linefeed::chumsky::Parser as _;
+use linefeed::compiler::{CompileError, Compiler};
 use linefeed::grammar::ast::{AstValue, Expr, Func, Pattern, Span, Spanned};
 use linefeed::grammar::lexer::Token;
 use tower_lsp::lsp_types::*;
@@ -87,6 +88,38 @@ pub fn rich_error_to_diagnostic(
             format!("Expected {expected_str}, found {found_str:?}")
         }
         linefeed::chumsky::error::RichReason::Custom(msg) => msg.to_string(),
+    };
+
+    Diagnostic {
+        range,
+        severity: Some(DiagnosticSeverity::ERROR),
+        message,
+        source: Some("linefeed".to_string()),
+        ..Default::default()
+    }
+}
+
+/// Convert CompileError to LSP Diagnostic
+pub fn compile_error_to_diagnostic(source: &str, error: CompileError) -> Diagnostic {
+    let (range, message) = match error {
+        CompileError::Spanned { span, msg } => {
+            let range = span_to_range(source, span);
+            (range, msg)
+        }
+        CompileError::Plain(msg) => {
+            // No location info - report at start of file
+            let range = Range {
+                start: Position {
+                    line: 0,
+                    character: 0,
+                },
+                end: Position {
+                    line: 0,
+                    character: 0,
+                },
+            };
+            (range, msg)
+        }
     };
 
     Diagnostic {
@@ -435,6 +468,60 @@ pub fn safe_parse(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnosti
                 ..Default::default()
             };
             (HashMap::new(), vec![diagnostic])
+        }
+    }
+}
+
+/// Safely compile source code with panic protection
+/// Returns diagnostics (empty if compilation succeeds)
+pub fn safe_compile(source: &str) -> Vec<Diagnostic> {
+    // Lex tokens
+    let tokens = match linefeed::grammar::lexer::lexer()
+        .parse(source)
+        .into_output_errors()
+    {
+        (Some(tokens), _) => tokens,
+        (None, _) => return vec![], // Lex failed - already reported by safe_parse
+    };
+
+    // Parse tokens
+    let ast = match linefeed::parse_tokens(source, &tokens) {
+        Ok(ast) => ast,
+        Err(_) => return vec![], // Parse failed - already reported by safe_parse
+    };
+
+    // Compile with panic protection
+    match catch_unwind(AssertUnwindSafe(|| {
+        let mut compiler = Compiler::default();
+        compiler.compile(&ast)
+    })) {
+        Ok(Ok(_program)) => {
+            // Successful compilation
+            vec![]
+        }
+        Ok(Err(err)) => {
+            // Compilation error - convert to diagnostic
+            vec![compile_error_to_diagnostic(source, err)]
+        }
+        Err(_) => {
+            // Panic occurred - create a generic error diagnostic
+            let diagnostic = Diagnostic {
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 0,
+                        character: 0,
+                    },
+                },
+                severity: Some(DiagnosticSeverity::ERROR),
+                message: "Internal compiler error (compiler panicked)".to_string(),
+                source: Some("linefeed".to_string()),
+                ..Default::default()
+            };
+            vec![diagnostic]
         }
     }
 }
