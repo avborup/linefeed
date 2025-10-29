@@ -324,13 +324,13 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
 
             let neg = just(Token::Op("-"))
                 .repeated()
-                .foldr_with(atom.clone(), |_op, rhs, e| {
+                .foldr_with(with_method_call.clone(), |_op, rhs, e| {
                     Spanned(Expr::Unary(UnaryOp::Neg, Box::new(rhs)), e.span())
                 });
 
             let not = just(Token::Not)
                 .repeated()
-                .foldr_with(atom.clone(), |_op, rhs, e| {
+                .foldr_with(with_method_call.clone(), |_op, rhs, e| {
                     Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), e.span())
                 });
 

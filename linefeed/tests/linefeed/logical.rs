@@ -134,3 +134,49 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    not_with_function_calls,
+    indoc::indoc! {r#"
+        fn returns_true() {
+            return true;
+        };
+        fn returns_false() {
+            return false;
+        };
+
+        print(not returns_true());
+        print(not returns_false());
+        print(not not returns_true());
+        print(not returns_true() and true);
+        print(not returns_false() or false);
+    "#},
+    equals(indoc! {r#"
+        false
+        true
+        true
+        false
+        true
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    not_with_method_calls,
+    indoc::indoc! {r#"
+        items = [1, 2, 3];
+        print(not items.contains(4));
+        print(not items.contains(2));
+        print(not items.contains(1));
+
+        more_items = [10, 20];
+        print(not more_items.contains(5));
+    "#},
+    equals(indoc! {r#"
+        true
+        false
+        false
+        true
+    "#}),
+    empty()
+);

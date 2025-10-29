@@ -34,3 +34,27 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    negation_with_function_calls,
+    indoc::indoc! {r#"
+        fn returns_five() {
+            return 5;
+        };
+        fn returns_negative() {
+            return -3;
+        };
+
+        print(-returns_five());
+        print(-returns_negative());
+        print(-returns_five() + 10);
+        print(-returns_five() * 2);
+    "#},
+    equals(indoc::indoc! {r#"
+        -5
+        3
+        5
+        -10
+    "#}),
+    empty()
+);

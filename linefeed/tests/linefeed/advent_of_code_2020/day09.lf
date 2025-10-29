@@ -10,7 +10,7 @@ fn has_two_sum(i) {
   false
 };
 
-part1 = [nums[i] for i in preamble..nums.len() if not (has_two_sum(i))][0];
+part1 = [nums[i] for i in preamble..nums.len() if not has_two_sum(i)][0];
 
 left, right, sum = 0, 1, sum(nums[0..=1]);
 while sum != part1 and right < nums.len() {
