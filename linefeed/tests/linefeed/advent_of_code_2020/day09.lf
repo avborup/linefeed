@@ -1,0 +1,23 @@
+nums = [int(line) for line in input().lines()];
+delta = if nums.len() > 25 { 25 } else { 5 };
+
+fn validate(i) {
+  for j in i-delta..i {
+    for k in j+1..i {
+      if nums[j] + nums[k] == nums[i] {
+        return true;
+      };
+    };
+  };
+  false
+};
+
+for i in delta..nums.len() {
+  if not (validate(i)) {
+    part1 = nums[i];
+    break;
+  };
+};
+
+print("Part 1:", part1);
+print("Part 2:", "??");
