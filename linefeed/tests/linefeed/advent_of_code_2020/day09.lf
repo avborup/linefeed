@@ -19,5 +19,19 @@ for i in delta..nums.len() {
   };
 };
 
+left, right, sum = 0, 1, sum(nums[0..=1]);
+while sum != part1 and right < nums.len() {
+  if sum < part1 {
+    right += 1;
+    sum += nums[right];
+  } else {
+    sum -= nums[left];
+    left += 1;
+  };
+};
+
+contiguous = nums[left..=right];
+part2 = min(contiguous) + max(contiguous);
+
 print("Part 1:", part1);
-print("Part 2:", "??");
+print("Part 2:", part2);
