@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 use linefeed::chumsky::Parser as _;
 use linefeed::grammar::ast::{AstValue, Expr, Func, Pattern, Span, Spanned};
@@ -9,11 +10,11 @@ use crate::capabilities::*;
 
 /// Information about an identifier discovered from AST analysis
 #[derive(Debug, Clone)]
-struct IdentifierInfo {
+pub struct IdentifierInfo {
     /// The semantic token type for this identifier
-    token_type: u32,
+    pub token_type: u32,
     /// Bitset of modifiers for this identifier
-    modifiers: u32,
+    pub modifiers: u32,
 }
 
 impl IdentifierInfo {
@@ -43,6 +44,54 @@ pub fn byte_offset_to_position(source: &str, offset: usize) -> (u32, u32) {
     }
 
     (line, col)
+}
+
+/// Convert a byte span to an LSP Range
+pub fn span_to_range(source: &str, span: Span) -> Range {
+    let (start_line, start_col) = byte_offset_to_position(source, span.start);
+    let (end_line, end_col) = byte_offset_to_position(source, span.end);
+
+    Range {
+        start: Position {
+            line: start_line,
+            character: start_col,
+        },
+        end: Position {
+            line: end_line,
+            character: end_col,
+        },
+    }
+}
+
+/// Convert Chumsky Rich error to LSP Diagnostic
+pub fn rich_error_to_diagnostic(source: &str, error: linefeed::chumsky::error::Rich<String>) -> Diagnostic {
+    let span = error.span();
+    let range = span_to_range(source, *span);
+
+    // Format the error message
+    let message = match error.reason() {
+        linefeed::chumsky::error::RichReason::ExpectedFound { expected, found } => {
+            let expected_str = if expected.is_empty() {
+                "end of input".to_string()
+            } else {
+                expected
+                    .iter()
+                    .map(|e| format!("{:?}", e))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            };
+            format!("Expected {}, found {:?}", expected_str, found)
+        }
+        linefeed::chumsky::error::RichReason::Custom(msg) => msg.to_string(),
+    };
+
+    Diagnostic {
+        range,
+        severity: Some(DiagnosticSeverity::ERROR),
+        message,
+        source: Some("linefeed".to_string()),
+        ..Default::default()
+    }
 }
 
 /// Extract comments from source code
@@ -336,6 +385,55 @@ struct TokenInfo {
     modifiers: u32,
 }
 
+/// Safely parse source code with panic protection
+/// Returns (symbol_table, diagnostics)
+pub fn safe_parse(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnostic>) {
+    // Lex tokens
+    let tokens = match linefeed::grammar::lexer::lexer()
+        .parse(source)
+        .into_output_errors()
+    {
+        (Some(tokens), _) => tokens,
+        (None, _) => return (HashMap::new(), vec![]),
+    };
+
+    // Parse with panic protection
+    match catch_unwind(AssertUnwindSafe(|| linefeed::parse_tokens(source, &tokens))) {
+        Ok(Ok(ast)) => {
+            // Successful parse
+            (analyze_ast(&ast), vec![])
+        }
+        Ok(Err(errors)) => {
+            // Parse errors - convert to diagnostics
+            let diagnostics = errors
+                .into_iter()
+                .map(|err| rich_error_to_diagnostic(source, err))
+                .collect();
+            (HashMap::new(), diagnostics)
+        }
+        Err(_) => {
+            // Panic occurred - create a generic error diagnostic
+            let diagnostic = Diagnostic {
+                range: Range {
+                    start: Position {
+                        line: 0,
+                        character: 0,
+                    },
+                    end: Position {
+                        line: 0,
+                        character: 0,
+                    },
+                },
+                severity: Some(DiagnosticSeverity::ERROR),
+                message: "Internal parser error (parser panicked)".to_string(),
+                source: Some("linefeed".to_string()),
+                ..Default::default()
+            };
+            (HashMap::new(), vec![diagnostic])
+        }
+    }
+}
+
 /// Generate semantic tokens from source code
 pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     // Parse source with lexer
@@ -348,11 +446,8 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
         (None, _) => return None,    // Failed to parse
     };
 
-    // Try to parse AST for enhanced semantic analysis
-    let symbol_table = match linefeed::parse_tokens(source, &tokens) {
-        Ok(ast) => analyze_ast(&ast),
-        Err(_) => HashMap::new(), // Fall back to lexer-only if parsing fails
-    };
+    // Try to parse AST for enhanced semantic analysis (with panic protection)
+    let (symbol_table, _diagnostics) = safe_parse(source);
 
     // Collect all tokens (without delta encoding yet)
     let mut all_tokens: Vec<TokenInfo> = vec![];

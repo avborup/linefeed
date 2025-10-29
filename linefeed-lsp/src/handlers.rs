@@ -28,14 +28,33 @@ impl LanguageServer for Backend {
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         let uri = params.text_document.uri.to_string();
         let text = params.text_document.text;
-        self.sources.lock().await.insert(uri, text);
+
+        // Cache the source
+        self.sources.lock().await.insert(uri.clone(), text.clone());
+
+        // Validate syntax and publish diagnostics
+        let (_symbol_table, diagnostics) = semantic_tokens::safe_parse(&text);
+        self.client
+            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+            .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.to_string();
+        let uri = params.text_document.uri.clone();
+        let uri_string = uri.to_string();
+
         // FULL sync mode means we get the entire document
         if let Some(change) = params.content_changes.into_iter().next() {
-            self.sources.lock().await.insert(uri, change.text);
+            let text = change.text;
+
+            // Cache the updated source
+            self.sources.lock().await.insert(uri_string, text.clone());
+
+            // Revalidate syntax and publish diagnostics
+            let (_symbol_table, diagnostics) = semantic_tokens::safe_parse(&text);
+            self.client
+                .publish_diagnostics(uri, diagnostics, None)
+                .await;
         }
     }
 
