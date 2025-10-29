@@ -22,6 +22,8 @@ pub mod compiler;
 pub mod grammar;
 pub mod vm;
 
+pub use chumsky;
+
 pub fn run(src: impl AsRef<str>) {
     let mut stdin = io::stdin();
     let mut stdout = io::stdout();
