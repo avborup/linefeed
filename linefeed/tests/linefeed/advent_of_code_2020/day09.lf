@@ -1,23 +1,16 @@
 nums = [int(line) for line in input().lines()];
-delta = if nums.len() > 25 { 25 } else { 5 };
+preamble = if nums.len() > 25 { 25 } else { 5 };
 
-fn validate(i) {
-  for j in i-delta..i {
+fn has_two_sum(i) {
+  for j in i-preamble..i {
     for k in j+1..i {
-      if nums[j] + nums[k] == nums[i] {
-        return true;
-      };
+      return true if nums[j] + nums[k] == nums[i];
     };
   };
   false
 };
 
-for i in delta..nums.len() {
-  if not (validate(i)) {
-    part1 = nums[i];
-    break;
-  };
-};
+part1 = [nums[i] for i in preamble..nums.len() if not (has_two_sum(i))][0];
 
 left, right, sum = 0, 1, sum(nums[0..=1]);
 while sum != part1 and right < nums.len() {
@@ -30,8 +23,7 @@ while sum != part1 and right < nums.len() {
   };
 };
 
-contiguous = nums[left..=right];
-part2 = min(contiguous) + max(contiguous);
+part2 = min(nums[left..=right]) + max(nums[left..=right]);
 
 print("Part 1:", part1);
 print("Part 2:", part2);
