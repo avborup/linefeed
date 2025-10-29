@@ -80,7 +80,8 @@ pub fn rich_error_to_diagnostic(source: &str, error: linefeed::chumsky::error::R
                     .collect::<Vec<_>>()
                     .join(", ")
             };
-            format!("Expected {}, found {:?}", expected_str, found)
+            let found_str = found.as_ref().map(|f| f.to_string()).unwrap_or_default();
+            format!("Expected {expected_str}, found {found_str:?}")
         }
         linefeed::chumsky::error::RichReason::Custom(msg) => msg.to_string(),
     };
