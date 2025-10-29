@@ -45,6 +45,31 @@ pub fn byte_offset_to_position(source: &str, offset: usize) -> (u32, u32) {
     (line, col)
 }
 
+/// Extract comments from source code
+/// Returns a list of (byte_offset, length) pairs for each comment
+fn extract_comments(source: &str) -> Vec<(usize, usize)> {
+    let mut comments = Vec::new();
+    let bytes = source.as_bytes();
+    let mut i = 0;
+
+    while i < bytes.len() {
+        // Look for '#' character
+        if bytes[i] == b'#' {
+            let start = i;
+            // Continue until newline or end of string
+            while i < bytes.len() && bytes[i] != b'\n' {
+                i += 1;
+            }
+            let length = i - start;
+            comments.push((start, length));
+        } else {
+            i += 1;
+        }
+    }
+
+    comments
+}
+
 /// Map lexer token to LSP semantic token type index
 pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
     match token {
@@ -301,6 +326,16 @@ enum TokenContext {
     AfterDot,
 }
 
+/// Temporary structure to hold token information before delta encoding
+#[derive(Debug, Clone)]
+struct TokenInfo {
+    line: u32,
+    col: u32,
+    length: u32,
+    token_type: u32,
+    modifiers: u32,
+}
+
 /// Generate semantic tokens from source code
 pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     // Parse source with lexer
@@ -319,11 +354,11 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
         Err(_) => HashMap::new(), // Fall back to lexer-only if parsing fails
     };
 
-    let mut semantic_tokens: Vec<SemanticToken> = vec![];
-    let mut prev_line = 0;
-    let mut prev_col = 0;
+    // Collect all tokens (without delta encoding yet)
+    let mut all_tokens: Vec<TokenInfo> = vec![];
     let mut context = TokenContext::Normal;
 
+    // Process lexer tokens
     for spanned_token in tokens {
         let token = &spanned_token.0;
         let span = spanned_token.1;
@@ -372,21 +407,59 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
         let (line, col) = byte_offset_to_position(source, start);
         let length = (end - start) as u32;
 
-        // Calculate deltas
-        let delta_line = line - prev_line;
-        let delta_start = if delta_line == 0 { col - prev_col } else { col };
+        all_tokens.push(TokenInfo {
+            line,
+            col,
+            length,
+            token_type,
+            modifiers,
+        });
+    }
+
+    // Extract and add comments
+    let comments = extract_comments(source);
+    for (start, length) in comments {
+        let (line, col) = byte_offset_to_position(source, start);
+        all_tokens.push(TokenInfo {
+            line,
+            col,
+            length: length as u32,
+            token_type: TOKEN_TYPE_COMMENT,
+            modifiers: 0,
+        });
+    }
+
+    // Sort tokens by (line, col) for proper delta encoding
+    all_tokens.sort_by(|a, b| {
+        match a.line.cmp(&b.line) {
+            std::cmp::Ordering::Equal => a.col.cmp(&b.col),
+            other => other,
+        }
+    });
+
+    // Apply delta encoding
+    let mut semantic_tokens: Vec<SemanticToken> = vec![];
+    let mut prev_line = 0;
+    let mut prev_col = 0;
+
+    for token_info in all_tokens {
+        let delta_line = token_info.line - prev_line;
+        let delta_start = if delta_line == 0 {
+            token_info.col - prev_col
+        } else {
+            token_info.col
+        };
 
         semantic_tokens.push(SemanticToken {
             delta_line,
             delta_start,
-            length,
-            token_type,
-            token_modifiers_bitset: modifiers,
+            length: token_info.length,
+            token_type: token_info.token_type,
+            token_modifiers_bitset: token_info.modifiers,
         });
 
-        // Update previous position
-        prev_line = line;
-        prev_col = col;
+        prev_line = token_info.line;
+        prev_col = token_info.col;
     }
 
     Some(semantic_tokens)
