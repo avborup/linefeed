@@ -290,6 +290,17 @@ fn visit_func(func: &Func, symbols: &mut HashMap<Span, IdentifierInfo>) {
     visit_expr(&func.body, symbols);
 }
 
+/// State machine for pattern-based token detection
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum TokenContext {
+    /// Normal state
+    Normal,
+    /// Just saw a 'fn' keyword - next identifier is a function definition
+    AfterFn,
+    /// Just saw a '.' - next identifier is a method call
+    AfterDot,
+}
+
 /// Generate semantic tokens from source code
 pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     // Parse source with lexer
@@ -311,16 +322,44 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     let mut semantic_tokens: Vec<SemanticToken> = vec![];
     let mut prev_line = 0;
     let mut prev_col = 0;
+    let mut context = TokenContext::Normal;
 
     for spanned_token in tokens {
         let token = &spanned_token.0;
         let span = spanned_token.1;
 
-        // Check if this identifier has AST-based classification
+        // Pattern-based detection for function definitions and method calls
+        let pattern_based_info = match (context, token) {
+            // Function definition: 'fn' followed by identifier
+            (TokenContext::AfterFn, Token::Ident(_)) => {
+                Some(IdentifierInfo::new(
+                    TOKEN_TYPE_FUNCTION,
+                    MODIFIER_DECLARATION | MODIFIER_DEFINITION,
+                ))
+            }
+            // Method call: '.' followed by identifier
+            (TokenContext::AfterDot, Token::Ident(_)) => {
+                Some(IdentifierInfo::new(TOKEN_TYPE_METHOD, 0))
+            }
+            _ => None,
+        };
+
+        // Update state machine for next iteration
+        context = match token {
+            Token::Fn => TokenContext::AfterFn,
+            Token::Ctrl('.') => TokenContext::AfterDot,
+            _ => TokenContext::Normal,
+        };
+
+        // Determine token type and modifiers (priority: AST > Pattern > Lexer)
         let (token_type, modifiers) = if let Some(info) = symbol_table.get(&span) {
+            // AST-based classification (highest priority)
+            (info.token_type, info.modifiers)
+        } else if let Some(info) = pattern_based_info {
+            // Pattern-based classification (medium priority)
             (info.token_type, info.modifiers)
         } else {
-            // Fall back to lexer-based classification
+            // Fall back to lexer-based classification (lowest priority)
             match token_to_semantic_type(token) {
                 Some(t) => (t, 0),
                 None => continue, // Skip tokens that don't map to semantic types
