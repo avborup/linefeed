@@ -2,6 +2,8 @@ use linefeed::chumsky::Parser as _;
 use linefeed::grammar::lexer::Token;
 use tower_lsp::lsp_types::*;
 
+use crate::capabilities::*;
+
 /// Convert byte offset to (line, column) position
 pub fn byte_offset_to_position(source: &str, offset: usize) -> (u32, u32) {
     let mut line = 0;
@@ -25,7 +27,7 @@ pub fn byte_offset_to_position(source: &str, offset: usize) -> (u32, u32) {
 /// Map lexer token to LSP semantic token type index
 pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
     match token {
-        // Keywords -> KEYWORD (index 15)
+        // Keywords
         Token::If
         | Token::Else
         | Token::Or
@@ -42,22 +44,22 @@ pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
         | Token::Continue
         | Token::Match
         | Token::Null
-        | Token::Bool(_) => Some(15),
+        | Token::Bool(_) => Some(TOKEN_TYPE_KEYWORD),
 
-        // Numbers -> NUMBER (index 19)
-        Token::Int(_) | Token::Float(_) => Some(19),
+        // Numbers
+        Token::Int(_) | Token::Float(_) => Some(TOKEN_TYPE_NUMBER),
 
-        // Strings -> STRING (index 18)
-        Token::Str(_) => Some(18),
+        // Strings
+        Token::Str(_) => Some(TOKEN_TYPE_STRING),
 
-        // Regex -> REGEXP (index 20)
-        Token::Regex(_) => Some(20),
+        // Regex
+        Token::Regex(_) => Some(TOKEN_TYPE_REGEXP),
 
-        // Operators -> OPERATOR (index 21)
-        Token::Op(_) | Token::RangeExclusive | Token::RangeInclusive => Some(21),
+        // Operators
+        Token::Op(_) | Token::RangeExclusive | Token::RangeInclusive => Some(TOKEN_TYPE_OPERATOR),
 
-        // Identifiers -> VARIABLE (index 8)
-        Token::Ident(_) => Some(8),
+        // Identifiers
+        Token::Ident(_) => Some(TOKEN_TYPE_VARIABLE),
 
         // Control characters - skip (punctuation)
         Token::Ctrl(_) => None,
