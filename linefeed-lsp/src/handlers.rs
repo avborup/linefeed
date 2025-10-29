@@ -1,6 +1,6 @@
+use tower_lsp::LanguageServer;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::*;
-use tower_lsp::LanguageServer;
 
 use crate::backend::Backend;
 use crate::capabilities;

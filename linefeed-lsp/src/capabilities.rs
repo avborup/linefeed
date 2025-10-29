@@ -43,8 +43,8 @@ pub const LEGEND_MODIFIERS: &[SemanticTokenModifier] = &[
     SemanticTokenModifier::DEFAULT_LIBRARY,
 ];
 
-pub use token_consts::*;
 pub use modifier_consts::*;
+pub use token_consts::*;
 
 /// Token type indices corresponding to positions in LEGEND_TYPE
 /// These constants should be used instead of magic numbers

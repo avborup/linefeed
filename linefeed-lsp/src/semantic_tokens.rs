@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::panic::{AssertUnwindSafe, catch_unwind};
 
 use linefeed::chumsky::Parser as _;
 use linefeed::grammar::ast::{AstValue, Expr, Func, Pattern, Span, Spanned};
@@ -64,7 +64,10 @@ pub fn span_to_range(source: &str, span: Span) -> Range {
 }
 
 /// Convert Chumsky Rich error to LSP Diagnostic
-pub fn rich_error_to_diagnostic(source: &str, error: linefeed::chumsky::error::Rich<String>) -> Diagnostic {
+pub fn rich_error_to_diagnostic(
+    source: &str,
+    error: linefeed::chumsky::error::Rich<String>,
+) -> Diagnostic {
     let span = error.span();
     let range = span_to_range(source, *span);
 
@@ -170,7 +173,11 @@ fn analyze_ast(ast: &Spanned<Expr>) -> HashMap<Span, IdentifierInfo> {
 }
 
 /// Visit a pattern and extract identifier information
-fn visit_pattern(pattern: &Spanned<Pattern>, symbols: &mut HashMap<Span, IdentifierInfo>, is_declaration: bool) {
+fn visit_pattern(
+    pattern: &Spanned<Pattern>,
+    symbols: &mut HashMap<Span, IdentifierInfo>,
+    is_declaration: bool,
+) {
     match &pattern.0 {
         Pattern::Ident(_) => {
             if is_declaration {
@@ -225,10 +232,7 @@ fn visit_expr(expr: &Spanned<Expr>, symbols: &mut HashMap<Span, IdentifierInfo>)
         Expr::Call(func_expr, args) => {
             // If the function expression is a simple identifier, mark it as a function call
             if let Expr::Local(_) = &func_expr.0 {
-                symbols.insert(
-                    func_expr.1,
-                    IdentifierInfo::new(TOKEN_TYPE_FUNCTION, 0),
-                );
+                symbols.insert(func_expr.1, IdentifierInfo::new(TOKEN_TYPE_FUNCTION, 0));
             } else {
                 visit_expr(func_expr, symbols);
             }
@@ -462,12 +466,10 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
         // Pattern-based detection for function definitions and method calls
         let pattern_based_info = match (context, token) {
             // Function definition: 'fn' followed by identifier
-            (TokenContext::AfterFn, Token::Ident(_)) => {
-                Some(IdentifierInfo::new(
-                    TOKEN_TYPE_FUNCTION,
-                    MODIFIER_DECLARATION | MODIFIER_DEFINITION,
-                ))
-            }
+            (TokenContext::AfterFn, Token::Ident(_)) => Some(IdentifierInfo::new(
+                TOKEN_TYPE_FUNCTION,
+                MODIFIER_DECLARATION | MODIFIER_DEFINITION,
+            )),
             // Method call: '.' followed by identifier
             (TokenContext::AfterDot, Token::Ident(_)) => {
                 Some(IdentifierInfo::new(TOKEN_TYPE_METHOD, 0))
@@ -526,11 +528,9 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     }
 
     // Sort tokens by (line, col) for proper delta encoding
-    all_tokens.sort_by(|a, b| {
-        match a.line.cmp(&b.line) {
-            std::cmp::Ordering::Equal => a.col.cmp(&b.col),
-            other => other,
-        }
+    all_tokens.sort_by(|a, b| match a.line.cmp(&b.line) {
+        std::cmp::Ordering::Equal => a.col.cmp(&b.col),
+        other => other,
     });
 
     // Apply delta encoding
