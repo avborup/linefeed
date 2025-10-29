@@ -39,10 +39,23 @@ impl Backend {
 
         match token {
             // Keywords -> KEYWORD (index 5)
-            Token::If | Token::Else | Token::Or | Token::And | Token::Not
-            | Token::Xor | Token::Fn | Token::Return | Token::Unless
-            | Token::While | Token::For | Token::In | Token::Break
-            | Token::Continue | Token::Match | Token::Null | Token::Bool(_) => Some(5),
+            Token::If
+            | Token::Else
+            | Token::Or
+            | Token::And
+            | Token::Not
+            | Token::Xor
+            | Token::Fn
+            | Token::Return
+            | Token::Unless
+            | Token::While
+            | Token::For
+            | Token::In
+            | Token::Break
+            | Token::Continue
+            | Token::Match
+            | Token::Null
+            | Token::Bool(_) => Some(5),
 
             // Numbers -> NUMBER (index 4)
             Token::Int(_) | Token::Float(_) => Some(4),
@@ -90,10 +103,7 @@ impl LanguageServer for Backend {
                     all_commit_characters: None,
                     completion_item: None,
                 }),
-                execute_command_provider: Some(ExecuteCommandOptions {
-                    commands: vec!["olalal.orale".to_string()],
-                    work_done_progress_options: Default::default(),
-                }),
+                execute_command_provider: None,
                 workspace: Some(WorkspaceServerCapabilities {
                     workspace_folders: Some(WorkspaceFoldersServerCapabilities {
                         supported: Some(true),
@@ -224,11 +234,7 @@ impl LanguageServer for Backend {
 
             // Calculate deltas
             let delta_line = line - prev_line;
-            let delta_start = if delta_line == 0 {
-                col - prev_col
-            } else {
-                col
-            };
+            let delta_start = if delta_line == 0 { col - prev_col } else { col };
 
             semantic_tokens.push(SemanticToken {
                 delta_line,
