@@ -44,6 +44,7 @@ pub const LEGEND_MODIFIERS: &[SemanticTokenModifier] = &[
 ];
 
 pub use token_consts::*;
+pub use modifier_consts::*;
 
 /// Token type indices corresponding to positions in LEGEND_TYPE
 /// These constants should be used instead of magic numbers
@@ -72,6 +73,32 @@ mod token_consts {
     pub const TOKEN_TYPE_REGEXP: u32 = 20;
     pub const TOKEN_TYPE_OPERATOR: u32 = 21;
     pub const TOKEN_TYPE_DECORATOR: u32 = 22;
+}
+
+/// Semantic token modifier bitset values
+/// These correspond to positions in LEGEND_MODIFIERS and should be combined using bitwise OR
+#[allow(dead_code)]
+mod modifier_consts {
+    /// Declaration modifier (index 0) - e.g., variable/function declaration
+    pub const MODIFIER_DECLARATION: u32 = 1 << 0;
+    /// Definition modifier (index 1) - e.g., function body definition
+    pub const MODIFIER_DEFINITION: u32 = 1 << 1;
+    /// Readonly modifier (index 2) - e.g., constants, loop variables
+    pub const MODIFIER_READONLY: u32 = 1 << 2;
+    /// Static modifier (index 3)
+    pub const MODIFIER_STATIC: u32 = 1 << 3;
+    /// Deprecated modifier (index 4)
+    pub const MODIFIER_DEPRECATED: u32 = 1 << 4;
+    /// Abstract modifier (index 5)
+    pub const MODIFIER_ABSTRACT: u32 = 1 << 5;
+    /// Async modifier (index 6)
+    pub const MODIFIER_ASYNC: u32 = 1 << 6;
+    /// Modification modifier (index 7) - e.g., variable being modified
+    pub const MODIFIER_MODIFICATION: u32 = 1 << 7;
+    /// Documentation modifier (index 8)
+    pub const MODIFIER_DOCUMENTATION: u32 = 1 << 8;
+    /// Default library modifier (index 9)
+    pub const MODIFIER_DEFAULT_LIBRARY: u32 = 1 << 9;
 }
 
 /// Build the server capabilities for initialization
