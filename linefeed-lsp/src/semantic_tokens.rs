@@ -25,7 +25,7 @@ pub fn byte_offset_to_position(source: &str, offset: usize) -> (u32, u32) {
 /// Map lexer token to LSP semantic token type index
 pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
     match token {
-        // Keywords -> KEYWORD (index 5)
+        // Keywords -> KEYWORD (index 15)
         Token::If
         | Token::Else
         | Token::Or
@@ -42,19 +42,22 @@ pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
         | Token::Continue
         | Token::Match
         | Token::Null
-        | Token::Bool(_) => Some(5),
+        | Token::Bool(_) => Some(15),
 
-        // Numbers -> NUMBER (index 4)
-        Token::Int(_) | Token::Float(_) => Some(4),
+        // Numbers -> NUMBER (index 19)
+        Token::Int(_) | Token::Float(_) => Some(19),
 
-        // Strings/Regex -> STRING (index 2)
-        Token::Str(_) | Token::Regex(_) => Some(2),
+        // Strings -> STRING (index 18)
+        Token::Str(_) => Some(18),
 
-        // Operators -> OPERATOR (index 6)
-        Token::Op(_) | Token::RangeExclusive | Token::RangeInclusive => Some(6),
+        // Regex -> REGEXP (index 20)
+        Token::Regex(_) => Some(20),
 
-        // Identifiers -> VARIABLE (index 1)
-        Token::Ident(_) => Some(1),
+        // Operators -> OPERATOR (index 21)
+        Token::Op(_) | Token::RangeExclusive | Token::RangeInclusive => Some(21),
+
+        // Identifiers -> VARIABLE (index 8)
+        Token::Ident(_) => Some(8),
 
         // Control characters - skip (punctuation)
         Token::Ctrl(_) => None,
