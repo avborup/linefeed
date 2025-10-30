@@ -437,40 +437,41 @@ pub fn safe_parse_and_compile(source: &str) -> (HashMap<Span, IdentifierInfo>, V
     };
 
     // Parse with panic protection
-    let (symbol_table, ast) = match catch_unwind(AssertUnwindSafe(|| linefeed::parse_tokens(source, &tokens))) {
-        Ok(Ok(ast)) => {
-            // Successful parse - analyze AST for symbol table
-            (analyze_ast(&ast), Some(ast))
-        }
-        Ok(Err(errors)) => {
-            // Parse errors - convert to diagnostics and stop here
-            let diagnostics = errors
-                .into_iter()
-                .map(|err| rich_error_to_diagnostic(source, err))
-                .collect();
-            return (HashMap::new(), diagnostics);
-        }
-        Err(_) => {
-            // Parser panic - create error diagnostic and stop
-            let diagnostic = Diagnostic {
-                range: Range {
-                    start: Position {
-                        line: 0,
-                        character: 0,
+    let (symbol_table, ast) =
+        match catch_unwind(AssertUnwindSafe(|| linefeed::parse_tokens(source, &tokens))) {
+            Ok(Ok(ast)) => {
+                // Successful parse - analyze AST for symbol table
+                (analyze_ast(&ast), Some(ast))
+            }
+            Ok(Err(errors)) => {
+                // Parse errors - convert to diagnostics and stop here
+                let diagnostics = errors
+                    .into_iter()
+                    .map(|err| rich_error_to_diagnostic(source, err))
+                    .collect();
+                return (HashMap::new(), diagnostics);
+            }
+            Err(_) => {
+                // Parser panic - create error diagnostic and stop
+                let diagnostic = Diagnostic {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
                     },
-                    end: Position {
-                        line: 0,
-                        character: 0,
-                    },
-                },
-                severity: Some(DiagnosticSeverity::ERROR),
-                message: "Internal parser error (parser panicked)".to_string(),
-                source: Some("linefeed".to_string()),
-                ..Default::default()
-            };
-            return (HashMap::new(), vec![diagnostic]);
-        }
-    };
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    message: "Internal parser error (parser panicked)".to_string(),
+                    source: Some("linefeed".to_string()),
+                    ..Default::default()
+                };
+                return (HashMap::new(), vec![diagnostic]);
+            }
+        };
 
     // If we have a valid AST, try to compile it
     let compile_diagnostics = if let Some(ast) = ast {
