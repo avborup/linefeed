@@ -17,6 +17,7 @@ mod map;
 mod map_with_default;
 mod match_;
 mod math;
+mod memoized;
 mod method;
 mod postfix_control_flow;
 mod print;
