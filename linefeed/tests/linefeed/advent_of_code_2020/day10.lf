@@ -3,11 +3,31 @@ adapters = [0] + adapters.sort() + [adapters[-1] + 3];
 
 diffs = [adapters[i] - adapters[i-1] for i in 1..adapters.len()];
 
+# TODO: Add counter type
 counter = defaultmap(0);
 for d in diffs {
+  # TODO: Enable += syntax for indexed assignment
   counter[d] = counter[d] + 1;
 };
 
 part1 = counter[1] * counter[3];
 
+graph = defaultmap([]);
+for a in adapters {
+  for diff in 1..=3 {
+    graph[a].append(a + diff) if a + diff in adapters;
+  };
+};
+
+# TODO: Add memoized decorator
+memo = {};
+fn dfs(node) {
+  return memo[node] if node in memo;
+  return 1 if node == adapters[-1];
+  memo[node] = sum([dfs(neighbor) for neighbor in graph[node]])
+};
+
+part2 = dfs(0);
+
 print("Part 1:", part1);
+print("Part 1:", part2);
