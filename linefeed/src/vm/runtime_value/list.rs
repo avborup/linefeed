@@ -84,6 +84,12 @@ impl RuntimeList {
             .borrow_mut()
             .sort_by(|a, b| a.partial_cmp(b).expect("unhandled uncomparable value"));
     }
+
+    pub fn concat(&self, other: &Self) -> Self {
+        let mut new_vec = self.0.borrow().clone();
+        new_vec.extend_from_slice(&other.0.borrow());
+        Self::from_vec(new_vec)
+    }
 }
 
 impl Default for RuntimeList {

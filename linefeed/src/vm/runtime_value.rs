@@ -85,6 +85,7 @@ impl RuntimeValue {
             (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
                 a.concat(&RuntimeString::new(b.to_string())),
             )),
+            (RuntimeValue::List(a), RuntimeValue::List(b)) => Ok(RuntimeValue::List(a.concat(b))),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
