@@ -1,9 +1,9 @@
 fn binary_search(part) {
   lo, hi = 0, 2 ** part.len() - 1;
   for c in part {
-      mid = (lo + hi) // 2;
-      if c in "FL" { hi = mid } else
-      if c in "BR" { lo = mid + 1 };
+    mid = (lo + hi) // 2;
+    if c in "FL" { hi = mid } else
+    if c in "BR" { lo = mid + 1 };
   };
 };
 

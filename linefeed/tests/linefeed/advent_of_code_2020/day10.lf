@@ -5,7 +5,7 @@ diffs = [adapters[i] - adapters[i-1] for i in 1..adapters.len()];
 
 counter = defaultmap(0);
 for d in diffs {
-    counter[d] = counter[d] + 1;
+  counter[d] = counter[d] + 1;
 };
 
 part1 = counter[1] * counter[3];
