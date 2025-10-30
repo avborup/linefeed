@@ -423,9 +423,10 @@ struct TokenInfo {
     modifiers: u32,
 }
 
-/// Safely parse source code with panic protection
+/// Safely parse and compile source code with panic protection
 /// Returns (symbol_table, diagnostics)
-pub fn safe_parse(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnostic>) {
+/// Diagnostics include both parse errors and compilation errors
+pub fn safe_parse_and_compile(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnostic>) {
     // Lex tokens
     let tokens = match linefeed::grammar::lexer::lexer()
         .parse(source)
@@ -436,21 +437,21 @@ pub fn safe_parse(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnosti
     };
 
     // Parse with panic protection
-    match catch_unwind(AssertUnwindSafe(|| linefeed::parse_tokens(source, &tokens))) {
+    let (symbol_table, ast) = match catch_unwind(AssertUnwindSafe(|| linefeed::parse_tokens(source, &tokens))) {
         Ok(Ok(ast)) => {
-            // Successful parse
-            (analyze_ast(&ast), vec![])
+            // Successful parse - analyze AST for symbol table
+            (analyze_ast(&ast), Some(ast))
         }
         Ok(Err(errors)) => {
-            // Parse errors - convert to diagnostics
+            // Parse errors - convert to diagnostics and stop here
             let diagnostics = errors
                 .into_iter()
                 .map(|err| rich_error_to_diagnostic(source, err))
                 .collect();
-            (HashMap::new(), diagnostics)
+            return (HashMap::new(), diagnostics);
         }
         Err(_) => {
-            // Panic occurred - create a generic error diagnostic
+            // Parser panic - create error diagnostic and stop
             let diagnostic = Diagnostic {
                 range: Range {
                     start: Position {
@@ -467,63 +468,49 @@ pub fn safe_parse(source: &str) -> (HashMap<Span, IdentifierInfo>, Vec<Diagnosti
                 source: Some("linefeed".to_string()),
                 ..Default::default()
             };
-            (HashMap::new(), vec![diagnostic])
+            return (HashMap::new(), vec![diagnostic]);
         }
-    }
-}
-
-/// Safely compile source code with panic protection
-/// Returns diagnostics (empty if compilation succeeds)
-pub fn safe_compile(source: &str) -> Vec<Diagnostic> {
-    // Lex tokens
-    let tokens = match linefeed::grammar::lexer::lexer()
-        .parse(source)
-        .into_output_errors()
-    {
-        (Some(tokens), _) => tokens,
-        (None, _) => return vec![], // Lex failed - already reported by safe_parse
     };
 
-    // Parse tokens
-    let ast = match linefeed::parse_tokens(source, &tokens) {
-        Ok(ast) => ast,
-        Err(_) => return vec![], // Parse failed - already reported by safe_parse
+    // If we have a valid AST, try to compile it
+    let compile_diagnostics = if let Some(ast) = ast {
+        match catch_unwind(AssertUnwindSafe(|| {
+            let mut compiler = Compiler::default();
+            compiler.compile(&ast)
+        })) {
+            Ok(Ok(_program)) => {
+                // Successful compilation
+                vec![]
+            }
+            Ok(Err(err)) => {
+                // Compilation error - convert to diagnostic
+                vec![compile_error_to_diagnostic(source, err)]
+            }
+            Err(_) => {
+                // Compiler panic - create error diagnostic
+                vec![Diagnostic {
+                    range: Range {
+                        start: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                        end: Position {
+                            line: 0,
+                            character: 0,
+                        },
+                    },
+                    severity: Some(DiagnosticSeverity::ERROR),
+                    message: "Internal compiler error (compiler panicked)".to_string(),
+                    source: Some("linefeed".to_string()),
+                    ..Default::default()
+                }]
+            }
+        }
+    } else {
+        vec![]
     };
 
-    // Compile with panic protection
-    match catch_unwind(AssertUnwindSafe(|| {
-        let mut compiler = Compiler::default();
-        compiler.compile(&ast)
-    })) {
-        Ok(Ok(_program)) => {
-            // Successful compilation
-            vec![]
-        }
-        Ok(Err(err)) => {
-            // Compilation error - convert to diagnostic
-            vec![compile_error_to_diagnostic(source, err)]
-        }
-        Err(_) => {
-            // Panic occurred - create a generic error diagnostic
-            let diagnostic = Diagnostic {
-                range: Range {
-                    start: Position {
-                        line: 0,
-                        character: 0,
-                    },
-                    end: Position {
-                        line: 0,
-                        character: 0,
-                    },
-                },
-                severity: Some(DiagnosticSeverity::ERROR),
-                message: "Internal compiler error (compiler panicked)".to_string(),
-                source: Some("linefeed".to_string()),
-                ..Default::default()
-            };
-            vec![diagnostic]
-        }
-    }
+    (symbol_table, compile_diagnostics)
 }
 
 /// Generate semantic tokens from source code
@@ -539,7 +526,7 @@ pub fn generate_semantic_tokens(source: &str) -> Option<Vec<SemanticToken>> {
     };
 
     // Try to parse AST for enhanced semantic analysis (with panic protection)
-    let (symbol_table, _diagnostics) = safe_parse(source);
+    let (symbol_table, _diagnostics) = safe_parse_and_compile(source);
 
     // Collect all tokens (without delta encoding yet)
     let mut all_tokens: Vec<TokenInfo> = vec![];
