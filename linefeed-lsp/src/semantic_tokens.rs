@@ -175,6 +175,7 @@ pub fn token_to_semantic_type(token: &Token) -> Option<u32> {
         | Token::Break
         | Token::Continue
         | Token::Match
+        | Token::Memoized
         | Token::Null
         | Token::Bool(_) => Some(TOKEN_TYPE_KEYWORD),
 

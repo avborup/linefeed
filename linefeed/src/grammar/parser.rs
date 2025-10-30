@@ -107,8 +107,10 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 .memoized()
                 .boxed();
 
-            let func = just(Token::Fn)
-                .ignore_then(ident.or_not().labelled("function name"))
+            let func = just(Token::Memoized)
+                .or_not()
+                .then_ignore(just(Token::Fn))
+                .then(ident.or_not().labelled("function name"))
                 .then(args)
                 .then(
                     block_expr
@@ -117,10 +119,11 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                         .recover_with(via_parser(nested_braces_delim.clone()))
                         .or(inline_expr.clone()),
                 )
-                .map_with(|((name, args), body), e| {
+                .map_with(|(((is_memoized, name), args), body), e| {
                     let val = Expr::Value(AstValue::Func(Func {
                         args,
                         body: Rc::new(body),
+                        is_memoized: is_memoized.is_some(),
                     }));
 
                     match name {

@@ -1,4 +1,7 @@
-use crate::helpers::{eval_and_assert, output::{empty, equals}};
+use crate::helpers::{
+    eval_and_assert,
+    output::{empty, equals},
+};
 use indoc::indoc;
 
 // Basic memoization - side effects only happen once
