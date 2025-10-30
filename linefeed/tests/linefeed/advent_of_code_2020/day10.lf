@@ -1,0 +1,13 @@
+adapters = [int(a) for a in input().lines()];
+adapters = [0] + adapters.sort() + [adapters[-1] + 3];
+
+diffs = [adapters[i] - adapters[i-1] for i in 1..adapters.len()];
+
+counter = defaultmap(0);
+for d in diffs {
+    counter[d] = counter[d] + 1;
+};
+
+part1 = counter[1] * counter[3];
+
+print("Part 1:", part1);
