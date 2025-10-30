@@ -26,42 +26,15 @@ impl LanguageServer for Backend {
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
-        let uri = params.text_document.uri.to_string();
-        let text = params.text_document.text;
-
-        // Cache the source
-        self.sources.lock().await.insert(uri.clone(), text.clone());
-
-        // Validate syntax and compilation, publish diagnostics
-        let (_symbol_table, diagnostics) = semantic_tokens::safe_parse_and_compile(&text);
-        self.client
-            .publish_diagnostics(params.text_document.uri, diagnostics, None)
+        self.on_change(params.text_document.uri, params.text_document.text)
             .await;
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
-        let uri = params.text_document.uri.clone();
-        let uri_string = uri.to_string();
-
         // FULL sync mode means we get the entire document
         if let Some(change) = params.content_changes.into_iter().next() {
-            let text = change.text;
-
-            // Cache the updated source
-            self.sources.lock().await.insert(uri_string, text.clone());
-
-            // Revalidate syntax and compilation, publish diagnostics
-            let (_symbol_table, diagnostics) = semantic_tokens::safe_parse_and_compile(&text);
-            self.client
-                .publish_diagnostics(uri, diagnostics, None)
-                .await;
+            self.on_change(params.text_document.uri, change.text).await;
         }
-    }
-
-    async fn did_save(&self, _: DidSaveTextDocumentParams) {
-        self.client
-            .log_message(MessageType::INFO, "Linefeed file saved!")
-            .await;
     }
 
     async fn semantic_tokens_full(
@@ -93,5 +66,21 @@ impl LanguageServer for Backend {
             result_id: None,
             data: tokens,
         })))
+    }
+}
+
+impl Backend {
+    /// Process document changes: cache source, parse, compile, and publish diagnostics
+    async fn on_change(&self, uri: Url, text: String) {
+        let uri_string = uri.to_string();
+
+        // Cache the source
+        self.sources.lock().await.insert(uri_string, text.clone());
+
+        // Validate syntax and compilation, publish diagnostics
+        let (_symbol_table, diagnostics) = semantic_tokens::safe_parse_and_compile(&text);
+        self.client
+            .publish_diagnostics(uri, diagnostics, None)
+            .await;
     }
 }
