@@ -118,7 +118,7 @@ impl PartialEq for RuntimeMap {
         let a = self.borrow();
         let b = other.borrow();
 
-        a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
+        a.len() == b.len() && a.iter().all(|(key, val)| b.get(key) == Some(val))
     }
 }
 

@@ -29,6 +29,7 @@ pub enum Token<'src> {
     Break,
     Continue,
     Match,
+    Memoized,
     RangeExclusive,
     RangeInclusive,
 }
@@ -60,6 +61,7 @@ impl fmt::Display for Token<'_> {
             Token::Break => write!(f, "break"),
             Token::Continue => write!(f, "continue"),
             Token::Match => write!(f, "match"),
+            Token::Memoized => write!(f, "memoized"),
             Token::RangeExclusive => write!(f, ".."),
             Token::RangeInclusive => write!(f, "..="),
         }
@@ -136,6 +138,7 @@ pub fn lexer<'src>(
         "break" => Token::Break,
         "continue" => Token::Continue,
         "match" => Token::Match,
+        "memoized" => Token::Memoized,
         _ => Token::Ident(ident),
     });
 

@@ -98,6 +98,7 @@ pub enum UnaryOp {
 pub struct Func<'src> {
     pub args: Vec<&'src str>,
     pub body: Rc<Spanned<Expr<'src>>>,
+    pub is_memoized: bool,
 }
 
 impl PartialEq for Func<'_> {

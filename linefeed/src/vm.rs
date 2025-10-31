@@ -1,4 +1,7 @@
-use std::io::{Read, Write};
+use std::{
+    collections::HashMap,
+    io::{Read, Write},
+};
 
 use yansi::Paint;
 
@@ -7,7 +10,7 @@ use crate::{
     grammar::ast::Span,
     vm::{
         bytecode::Bytecode,
-        runtime_value::{string::RuntimeString, RuntimeValue},
+        runtime_value::{function::MemoizationKey, string::RuntimeString, RuntimeValue},
     },
 };
 
@@ -29,6 +32,8 @@ pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
     pub stdout: O,
     pub stderr: E,
     pub instructions_executed: usize,
+    memoized_functions: HashMap<MemoizationKey, RuntimeValue>,
+    ongoing_memoizations: HashMap<usize, MemoizationKey>,
 }
 
 impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
@@ -43,6 +48,8 @@ impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
             pc: 0,
             bp: 0,
             instructions_executed: 0,
+            memoized_functions: HashMap::new(),
+            ongoing_memoizations: HashMap::new(),
         }
     }
 }
@@ -121,6 +128,8 @@ where
             pc: self.pc,
             bp: self.bp,
             instructions_executed: self.instructions_executed,
+            memoized_functions: self.memoized_functions,
+            ongoing_memoizations: self.ongoing_memoizations,
         }
     }
 
@@ -279,6 +288,26 @@ where
 
                     let func_location = func.location;
 
+                    if func.is_memoized {
+                        let args = self.stack[self.stack.len() - num_args..].to_vec();
+
+                        let memo_key = MemoizationKey {
+                            func_location,
+                            args,
+                        };
+
+                        match self.memoized_functions.get(&memo_key) {
+                            Some(cached_result) => {
+                                self.stack.truncate(func_index);
+                                self.push_stack(cached_result.clone());
+                                continue;
+                            }
+                            None => {
+                                self.ongoing_memoizations.insert(func_index, memo_key);
+                            }
+                        }
+                    }
+
                     // Store pc and bp (2 slots), then start new stack frame after that
                     let new_bp = func_index + 2;
 
@@ -300,6 +329,10 @@ where
                     let return_addr = self.stack[self.bp - 2].address()?;
                     self.bp = self.stack[self.bp - 1].address()?;
                     self.pc = return_addr;
+
+                    if let Some(memo_key) = self.ongoing_memoizations.remove(&frame_index) {
+                        self.memoized_functions.insert(memo_key, return_val.clone());
+                    }
 
                     self.stack.truncate(frame_index);
                     self.push_stack(return_val);

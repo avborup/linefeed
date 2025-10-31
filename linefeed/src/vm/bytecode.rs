@@ -245,6 +245,7 @@ impl Bytecode {
             IrValue::Function(func) => RuntimeValue::Function(Rc::new(RuntimeFunction {
                 location: label_mapper.get(func.location)?,
                 arity: func.arity,
+                is_memoized: func.is_memoized,
             })),
             IrValue::Regex(s, modifiers) => {
                 let regex = RuntimeRegex::compile(&s, modifiers)
