@@ -534,6 +534,7 @@ impl std::cmp::PartialOrd for RuntimeValue {
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => a.partial_cmp(b),
             (RuntimeValue::Str(a), RuntimeValue::Str(b)) => a.partial_cmp(b),
             (RuntimeValue::List(a), RuntimeValue::List(b)) => a.partial_cmp(b),
+            (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => a.partial_cmp(b),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => a.partial_cmp(b),
             _ => None,
         }

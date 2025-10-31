@@ -25,4 +25,5 @@ mod regex;
 mod return_;
 mod scope;
 mod string;
+mod tuple;
 mod while_loops;

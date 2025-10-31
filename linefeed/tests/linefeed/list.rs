@@ -67,3 +67,22 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    list_order_comparison_works,
+    indoc! {r#"
+        foo = [1, 2, 3];
+        bar = [1, 2, 4];
+        print(foo < bar);
+        print(foo > bar);
+        print(foo < foo);
+        print(foo <= foo);
+    "#},
+    equals(indoc! {r#"
+        true
+        false
+        false
+        true
+    "#}),
+    empty()
+);
