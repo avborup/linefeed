@@ -19,12 +19,9 @@ for a in adapters {
   };
 };
 
-# TODO: Add memoized decorator
-memo = {};
-fn dfs(node) {
-  return memo[node] if node in memo;
+memoized fn dfs(node) {
   return 1 if node == adapters[-1];
-  memo[node] = sum([dfs(neighbor) for neighbor in graph[node]])
+  sum([dfs(neighbor) for neighbor in graph[node]])
 };
 
 part2 = dfs(0);
