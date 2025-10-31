@@ -62,7 +62,7 @@ impl PartialEq for RuntimeSet {
         let a = self.0.borrow();
         let b = other.0.borrow();
 
-        a.len() == b.len() && a.iter().zip(b.iter()).all(|(a, b)| a == b)
+        a.len() == b.len() && a.iter().all(|item| b.contains(item))
     }
 }
 
