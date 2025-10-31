@@ -5,6 +5,7 @@ mod all_any;
 mod big_ints;
 mod comparison;
 mod count;
+mod counter;
 mod destructure;
 mod enumerate;
 mod for_loops;

@@ -1,6 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
 use crate::vm::runtime_value::{
+    counter::RuntimeCounter,
     list::RuntimeList,
     map::{MapIterator, RuntimeMap},
     number::RuntimeNumber,
@@ -112,6 +113,12 @@ impl From<()> for RuntimeIterator {
 
 impl From<RuntimeMap> for RuntimeIterator {
     fn from(map: RuntimeMap) -> Self {
+        Self(Rc::new(RefCell::new(MapIterator::from(map))))
+    }
+}
+
+impl From<RuntimeCounter> for RuntimeIterator {
+    fn from(map: RuntimeCounter) -> Self {
         Self(Rc::new(RefCell::new(MapIterator::from(map))))
     }
 }

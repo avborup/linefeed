@@ -87,6 +87,7 @@ pub enum Bytecode {
     AnyTrue(usize),
     Max(usize),
     Min(usize),
+    ToCounter(usize),
 
     // Methods
     Append,
@@ -165,6 +166,7 @@ impl Bytecode {
                 StdlibFn::ToMap => Bytecode::ToMap,
                 StdlibFn::MapWithDefault => Bytecode::MapWithDefault,
                 StdlibFn::ToSet => Bytecode::ToSet(num_args),
+                StdlibFn::Counter => Bytecode::ToCounter(num_args),
                 StdlibFn::Repr => Bytecode::ReprString,
                 StdlibFn::Product => Bytecode::Product,
                 StdlibFn::Sum => Bytecode::Sum,

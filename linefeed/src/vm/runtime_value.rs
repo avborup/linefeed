@@ -4,6 +4,7 @@ use crate::{
     compiler::method::Method,
     vm::{
         runtime_value::{
+            counter::RuntimeCounter,
             function::RuntimeFunction,
             iterator::{EnumeratedListIterator, RuntimeIterator},
             list::RuntimeList,
@@ -20,6 +21,7 @@ use crate::{
     },
 };
 
+pub mod counter;
 pub mod function;
 pub mod iterator;
 pub mod list;
@@ -46,6 +48,7 @@ pub enum RuntimeValue {
     Tuple(RuntimeTuple),
     Set(RuntimeSet),
     Map(RuntimeMap),
+    Counter(RuntimeCounter),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
     Iterator(Box<RuntimeIterator>),
@@ -74,6 +77,7 @@ impl RuntimeValue {
             RuntimeValue::Range(_) => "range",
             RuntimeValue::Iterator(_) => "iterator",
             RuntimeValue::Map(_) => "map",
+            RuntimeValue::Counter(_) => "counter",
         }
     }
 
@@ -196,6 +200,7 @@ impl RuntimeValue {
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
             (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
             (RuntimeValue::Map(map), index) => map.get(index),
+            (RuntimeValue::Counter(counter), index) => counter.get(index),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot index into '{}' with type '{}'",
@@ -397,6 +402,7 @@ impl RuntimeValue {
             RuntimeValue::Range(_) => true,
             RuntimeValue::Iterator(_) => true,
             RuntimeValue::Regex(_) => true,
+            RuntimeValue::Counter(c) => !c.borrow().is_empty(),
         }
     }
 
@@ -411,6 +417,7 @@ impl RuntimeValue {
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.deep_clone()),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
+            RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
@@ -481,6 +488,9 @@ impl std::fmt::Display for RuntimeValue {
                 })?;
                 write!(f, "}}")
             }
+            RuntimeValue::Counter(c) => {
+                std::fmt::Display::fmt(&RuntimeValue::Map(c.into_runtime_map()), f)
+            }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
             RuntimeValue::Range(range) => write!(f, "{range}"),
             RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
@@ -547,6 +557,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::List(list) => list.append(val)?,
             RuntimeValue::Set(set) => set.append(val)?,
+            RuntimeValue::Counter(counter) => counter.add(val, 1),
             _ => return Err(RuntimeError::invalid_method_for_type(Method::Append, self)),
         };
 

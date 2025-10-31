@@ -19,6 +19,7 @@ pub enum StdlibFn {
     Any,
     Max,
     Min,
+    Counter,
 }
 
 impl StdlibFn {
@@ -38,6 +39,7 @@ impl StdlibFn {
         Any => "any",
         Max => "max",
         Min => "min",
+        Counter => "counter",
     }
 
     /// Returns the number of arguments this function expects.
@@ -58,6 +60,7 @@ impl StdlibFn {
             Self::Any => 1..=usize::MAX,
             Self::Max => 1..=usize::MAX,
             Self::Min => 1..=usize::MAX,
+            Self::Counter => 0..=1,
         }
     }
 }
