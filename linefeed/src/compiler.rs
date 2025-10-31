@@ -162,6 +162,7 @@ impl Compiler {
                 let val = IrValue::Function(RuntimeFunction {
                     location: func_label,
                     arity: func.args.len(),
+                    is_memoized: func.is_memoized,
                 });
 
                 let program = Program::new()
