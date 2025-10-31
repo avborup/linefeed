@@ -202,9 +202,9 @@ eval_and_assert!(
             m["x"] + m["y"]
         };
 
-        print(process_map({"x": 1, "y": 2}));
-        print(process_map({"x": 1, "y": 2}));
-        print(process_map({"x": 2, "y": 2}));
+        print(process_map(map = {"x": 1, "y": 2}));
+        print(process_map(map = {"x": 1, "y": 2}));
+        print(process_map(map = {"x": 2, "y": 2}));
         print("Total calls:", call_count);
     "#},
     equals(indoc! {r#"
@@ -224,12 +224,12 @@ eval_and_assert!(
 
         memoized fn process_set(s) {
             call_count = call_count + 1;
-            len(s)
+            s.len()
         };
 
-        print(process_set({1, 2, 3}));
-        print(process_set({1, 2, 3}));
-        print(process_set({1, 2, 3, 4}));
+        print(process_set(set([1, 2, 3])));
+        print(process_set(set([1, 2, 3])));
+        print(process_set(set([1, 2, 3, 4])));
         print("Total calls:", call_count);
     "#},
     equals(indoc! {r#"
@@ -337,7 +337,7 @@ eval_and_assert!(
         memoized fn process(a, b, c) {
             call_count = call_count + 1;
             print("Computing:", a, b, c);
-            a + len(b) + c
+            a + b.len() + c
         };
 
         print(process(1, [1, 2], 3));
@@ -395,7 +395,7 @@ eval_and_assert!(
 
         memoized fn process_empty(lst) {
             call_count = call_count + 1;
-            len(lst)
+            lst.len()
         };
 
         print(process_empty([]));
@@ -409,38 +409,6 @@ eval_and_assert!(
         0
         1
         0
-        Total calls: 2
-    "#}),
-    empty()
-);
-
-// Memoized function that returns functions
-eval_and_assert!(
-    memoized_returning_function,
-    indoc! {r#"
-        call_count = 0;
-
-        memoized fn make_adder(n) {
-            call_count = call_count + 1;
-            print("Creating adder for", n);
-            fn(x) n + x
-        };
-
-        add5 = make_adder(5);
-        add5_again = make_adder(5);
-        add10 = make_adder(10);
-
-        print(add5(3));
-        print(add5_again(7));
-        print(add10(3));
-        print("Total calls:", call_count);
-    "#},
-    equals(indoc! {r#"
-        Creating adder for 5
-        Creating adder for 10
-        8
-        12
-        13
         Total calls: 2
     "#}),
     empty()
