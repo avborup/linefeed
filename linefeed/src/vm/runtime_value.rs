@@ -456,12 +456,19 @@ impl std::fmt::Display for RuntimeValue {
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
-                write_items(f, xs.borrow().iter(), |f, x| x.repr_fmt(f))?;
+                let xs = xs.borrow();
+                let mut items = xs.iter().collect::<Vec<_>>();
+                items.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
+                write_items(f, items.iter(), |f, x| x.repr_fmt(f))?;
                 write!(f, "}}")
             }
             RuntimeValue::Map(m) => {
+                let mut kv_pairs = MapIterator::from(m.clone()).collect::<Vec<_>>();
+                kv_pairs
+                    .sort_by(|a, b| dbg!(dbg!(a).partial_cmp(dbg!(b))).unwrap_or(Ordering::Equal));
+
                 write!(f, "{{")?;
-                write_items(f, MapIterator::from(m.clone()), |f, kv| {
+                write_items(f, kv_pairs.iter(), |f, kv| {
                     let write_item = |f: &mut std::fmt::Formatter, idx: isize| {
                         kv.index(&RuntimeValue::Num(RuntimeNumber::from(idx)))
                             .unwrap()
