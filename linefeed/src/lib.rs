@@ -72,7 +72,8 @@ pub fn run_with_handles(
     );
 
     if let Err((span, err)) = bytecode_interpreter.run() {
-        return pretty_print_errors(io::stderr(), src, vec![Rich::<RuntimeError>::custom(span, err)]);
+        let stderr = std::mem::replace(&mut bytecode_interpreter.stderr, Box::new(io::sink()));
+        return pretty_print_errors(stderr, src, vec![Rich::<RuntimeError>::custom(span, err)]);
     }
 
     let run_time = Instant::now().duration_since(run_start);
