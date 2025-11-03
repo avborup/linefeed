@@ -6,19 +6,6 @@ use std::{
 
 pub mod output;
 
-/// A wrapper around Rc<RefCell<Vec<u8>>> that implements Write
-struct SharedBuffer(Rc<RefCell<Vec<u8>>>);
-
-impl Write for SharedBuffer {
-    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.0.borrow_mut().write(buf)
-    }
-
-    fn flush(&mut self) -> std::io::Result<()> {
-        self.0.borrow_mut().flush()
-    }
-}
-
 macro_rules! eval_and_assert {
     ($name:ident, $src:expr, $stdout_assertion:expr, $stderr_assertion:expr) => {
         eval_and_assert!($name, $src, "", $stdout_assertion, $stderr_assertion);
@@ -51,19 +38,34 @@ macro_rules! eval_and_assert {
 pub(crate) use eval_and_assert;
 
 pub fn run_program(src: &str, input: impl Read + 'static) -> (String, String) {
-    let stdout_buf = Rc::new(RefCell::new(Vec::new()));
-    let stderr_buf = Rc::new(RefCell::new(Vec::new()));
+    let stdout = SharedBuffer::new();
+    let stderr = SharedBuffer::new();
 
-    let stdout_clone = stdout_buf.clone();
-    let stderr_clone = stderr_buf.clone();
+    linefeed::run_with_handles(src, input, stdout.clone(), stderr.clone());
 
-    let stdout = SharedBuffer(stdout_buf);
-    let stderr = SharedBuffer(stderr_buf);
-
-    linefeed::run_with_handles(src, input, stdout, stderr);
-
-    let stdout_str = std::str::from_utf8(&stdout_clone.borrow()).unwrap().to_string();
-    let stderr_str = std::str::from_utf8(&stderr_clone.borrow()).unwrap().to_string();
+    let stdout_str = std::str::from_utf8(&stdout.0.borrow()).unwrap().to_string();
+    let stderr_str = std::str::from_utf8(&stderr.0.borrow()).unwrap().to_string();
 
     (stdout_str, stderr_str)
+}
+
+/// A wrapper around Rc<RefCell<Vec<u8>>> that implements Write, so we can use the buffer after it
+/// has been passed to the VM (as an owned value).
+#[derive(Clone)]
+struct SharedBuffer(Rc<RefCell<Vec<u8>>>);
+
+impl SharedBuffer {
+    fn new() -> Self {
+        SharedBuffer(Rc::new(RefCell::new(Vec::new())))
+    }
+}
+
+impl Write for SharedBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.borrow_mut().write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.borrow_mut().flush()
+    }
 }
