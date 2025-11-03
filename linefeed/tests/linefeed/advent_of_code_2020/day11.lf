@@ -1,0 +1,44 @@
+seats = {};
+for r, l in input().lines().enumerate() {
+  for c, kind in list(l).enumerate() {
+    seats[(r, c)] = kind if kind != ".";
+  };
+};
+
+changed = true;
+while changed {
+  changed = false;
+  new_seats = {};
+
+  for (r, c), kind in seats {
+    num_occupied = 0;
+    for dr, dc in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)] {
+      if seats[(r + dr, c + dc)] == "#" {
+        num_occupied += 1;
+      };
+    };
+
+    new_seats[(r, c)] = kind;
+
+    match kind {
+      "L" => {
+        if num_occupied == 0 {
+          new_seats[(r, c)] = "#";
+          changed = true;
+        };
+      },
+      "#" => {
+        if num_occupied >= 4 {
+          new_seats[(r, c)] = "L";
+          changed = true;
+        };
+      },
+    };
+  };
+
+  seats = new_seats;
+};
+
+part1 = sum([1 for _, kind in seats if kind == "#"]);
+
+print("Part 1:", part1);
