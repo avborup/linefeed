@@ -10,7 +10,6 @@ use crate::vm::{
         number::RuntimeNumber,
         operations::LfAppend,
         range::RuntimeRange,
-        string::RuntimeString,
         utils::{resolve_index, resolve_slice_indices},
         RuntimeValue,
     },
@@ -88,16 +87,11 @@ impl RuntimeList {
             .sort_by(|a, b| a.partial_cmp(b).expect("unhandled uncomparable value"));
     }
 
-    pub fn sort_by_key<I, O, E>(
+    pub fn sort_by_key(
         &self,
-        vm: &mut BytecodeInterpreter<I, O, E>,
+        vm: &mut BytecodeInterpreter,
         key_fn: &RuntimeFunction,
-    ) -> Result<(), RuntimeError>
-    where
-        I: std::io::Read,
-        O: std::io::Write,
-        E: std::io::Write,
-    {
+    ) -> Result<(), RuntimeError> {
         let keys = self
             .0
             .borrow()

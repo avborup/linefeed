@@ -333,16 +333,11 @@ impl RuntimeValue {
         })
     }
 
-    pub fn sort<I, O, E>(
+    pub fn sort(
         &self,
-        vm: &mut BytecodeInterpreter<I, O, E>,
+        vm: &mut BytecodeInterpreter,
         key_fn: Option<RuntimeValue>,
-    ) -> Result<Self, RuntimeError>
-    where
-        I: std::io::Read,
-        O: std::io::Write,
-        E: std::io::Write,
-    {
+    ) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::List(list) => {
                 match key_fn {

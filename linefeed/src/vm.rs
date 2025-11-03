@@ -25,30 +25,30 @@ pub mod runtime_error;
 pub mod runtime_value;
 pub mod stdlib;
 
-pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
+pub struct BytecodeInterpreter {
     program: Program<Bytecode>,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
     registers: [isize; DEFAULT_MAX_REGISTERS],
     pc: usize,
     bp: usize,
-    pub stdin: I,
-    pub stdout: O,
-    pub stderr: E,
+    pub stdin: Box<dyn Read>,
+    pub stdout: Box<dyn Write>,
+    pub stderr: Box<dyn Write>,
     pub instructions_executed: usize,
     memoized_functions: HashMap<MemoizationKey, RuntimeValue>,
     ongoing_memoizations: HashMap<usize, MemoizationKey>,
 }
 
-impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
+impl BytecodeInterpreter {
     pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
             stack: vec![],
             registers: [-1; DEFAULT_MAX_REGISTERS],
-            stdin: std::io::stdin(),
-            stdout: std::io::stdout(),
-            stderr: std::io::stderr(),
+            stdin: Box::new(std::io::stdin()),
+            stdout: Box::new(std::io::stdout()),
+            stderr: Box::new(std::io::stderr()),
             pc: 0,
             bp: 0,
             instructions_executed: 0,
@@ -110,18 +110,13 @@ macro_rules! stdlib_fn_with_optional_arg {
     }};
 }
 
-impl<I, O, E> BytecodeInterpreter<I, O, E>
-where
-    I: Read,
-    O: Write,
-    E: Write,
-{
-    pub fn with_handles<II: Read, OO: Write, EE: Write>(
+impl BytecodeInterpreter {
+    pub fn with_handles(
         self,
-        stdin: II,
-        stdout: OO,
-        stderr: EE,
-    ) -> BytecodeInterpreter<II, OO, EE> {
+        stdin: Box<dyn Read>,
+        stdout: Box<dyn Write>,
+        stderr: Box<dyn Write>,
+    ) -> BytecodeInterpreter {
         BytecodeInterpreter {
             program: self.program,
             stack: self.stack,
@@ -381,6 +376,14 @@ where
                 self.push_stack(has_value);
             }
 
+            Bytecode::Sort(num_args) => {
+                let mut args = self.pop_args(*num_args)?;
+                let arg = args.pop();
+                let target = self.pop_stack()?;
+                let res = target.sort(self, arg)?;
+                self.push_stack(res);
+            }
+
             Bytecode::ToIter => unary_mapper_method!(self, to_iter),
             Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
             Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
@@ -394,15 +397,6 @@ where
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
-
-            Bytecode::Sort(num_args) => {
-                let mut args = self.pop_args((*num_args))?;
-                let arg = args.pop();
-                let target = self.pop_stack()?;
-                let res = target.sort(self, arg)?;
-                self.push_stack(res);
-            }
-
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
@@ -571,7 +565,7 @@ where
             self.dbg_print();
             eprintln!(
                 "{}\n",
-                format!("Ending user function call",).yellow().italic()
+                format!("Ending user function call").yellow().italic()
             );
         }
 
