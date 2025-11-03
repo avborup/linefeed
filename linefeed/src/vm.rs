@@ -25,30 +25,30 @@ pub mod runtime_error;
 pub mod runtime_value;
 pub mod stdlib;
 
-pub struct BytecodeInterpreter {
+pub struct BytecodeInterpreter<I, O, E> {
     program: Program<Bytecode>,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
     registers: [isize; DEFAULT_MAX_REGISTERS],
     pc: usize,
     bp: usize,
-    pub stdin: Box<dyn Read>,
-    pub stdout: Box<dyn Write>,
-    pub stderr: Box<dyn Write>,
+    pub stdin: I,
+    pub stdout: O,
+    pub stderr: E,
     pub instructions_executed: usize,
     memoized_functions: HashMap<MemoizationKey, RuntimeValue>,
     ongoing_memoizations: HashMap<usize, MemoizationKey>,
 }
 
-impl BytecodeInterpreter {
+impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
     pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
             stack: vec![],
             registers: [-1; DEFAULT_MAX_REGISTERS],
-            stdin: Box::new(std::io::stdin()),
-            stdout: Box::new(std::io::stdout()),
-            stderr: Box::new(std::io::stderr()),
+            stdin: std::io::stdin(),
+            stdout: std::io::stdout(),
+            stderr: std::io::stderr(),
             pc: 0,
             bp: 0,
             instructions_executed: 0,
@@ -110,13 +110,18 @@ macro_rules! stdlib_fn_with_optional_arg {
     }};
 }
 
-impl BytecodeInterpreter {
-    pub fn with_handles(
+impl<I, O, E> BytecodeInterpreter<I, O, E>
+where
+    I: Read,
+    O: Write,
+    E: Write,
+{
+    pub fn with_handles<II: Read, OO: Write, EE: Write>(
         self,
-        stdin: Box<dyn Read>,
-        stdout: Box<dyn Write>,
-        stderr: Box<dyn Write>,
-    ) -> BytecodeInterpreter {
+        stdin: II,
+        stdout: OO,
+        stderr: EE,
+    ) -> BytecodeInterpreter<II, OO, EE> {
         BytecodeInterpreter {
             program: self.program,
             stack: self.stack,
