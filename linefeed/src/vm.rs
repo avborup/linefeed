@@ -152,9 +152,6 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
-            #[cfg(feature = "debug-vm")]
-            self.dbg_print();
-
             match self.execute_cur_instruction()? {
                 ControlFlow::Continue => {}
                 ControlFlow::Stop => break Ok(()),
@@ -163,6 +160,9 @@ where
     }
 
     fn execute_cur_instruction(&mut self) -> Result<ControlFlow, RuntimeError> {
+        #[cfg(feature = "debug-vm")]
+        self.dbg_print();
+
         let instr = &self.program.instructions[self.pc];
         self.pc += 1;
         self.instructions_executed += 1;
@@ -518,6 +518,18 @@ where
         func: &RuntimeFunction,
         args: Vec<RuntimeValue>,
     ) -> Result<RuntimeValue, RuntimeError> {
+        #[cfg(feature = "debug-vm")]
+        eprintln!(
+            "{}\n",
+            format!(
+                "Calling user function <function@{}> with {} args",
+                func.location,
+                args.len()
+            )
+            .yellow()
+            .italic()
+        );
+
         if func.arity != args.len() {
             return Err(RuntimeError::TypeMismatch(format!(
                 "Expected {} arguments, got {}",
@@ -544,6 +556,15 @@ where
             }
 
             self.execute_cur_instruction()?;
+        }
+
+        #[cfg(feature = "debug-vm")]
+        {
+            self.dbg_print();
+            eprintln!(
+                "{}\n",
+                format!("Ending user function call",).yellow().italic()
+            );
         }
 
         let result = self.pop_stack()?;
