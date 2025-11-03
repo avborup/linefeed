@@ -530,7 +530,7 @@ where
         let saved_bp = self.bp;
         let stack_base = self.stack.len();
 
-        self.bp = stack_base - 1;
+        self.bp = stack_base;
         self.pc = func.location;
         self.stack.extend(args);
 
