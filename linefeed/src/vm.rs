@@ -383,10 +383,9 @@ where
 
             Bytecode::Sort(num_args) => {
                 let mut args = self.pop_args(*num_args)?;
-                let arg = args.pop();
                 let target = self.pop_stack()?;
 
-                let key_func = match arg {
+                let key_func = match args.pop() {
                     Some(RuntimeValue::Function(func)) => Some(func.clone()),
                     None => None,
                     Some(other) => {
