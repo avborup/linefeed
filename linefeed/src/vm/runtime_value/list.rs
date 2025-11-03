@@ -10,7 +10,6 @@ use crate::vm::{
         number::RuntimeNumber,
         operations::LfAppend,
         range::RuntimeRange,
-        string::RuntimeString,
         utils::{resolve_index, resolve_slice_indices},
         RuntimeValue,
     },
