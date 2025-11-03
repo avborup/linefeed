@@ -478,8 +478,7 @@ impl std::fmt::Display for RuntimeValue {
             }
             RuntimeValue::Map(m) => {
                 let mut kv_pairs = MapIterator::from(m.clone()).collect::<Vec<_>>();
-                kv_pairs
-                    .sort_by(|a, b| dbg!(dbg!(a).partial_cmp(dbg!(b))).unwrap_or(Ordering::Equal));
+                kv_pairs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
                 write!(f, "{{")?;
                 write_items(f, kv_pairs.iter(), |f, kv| {
