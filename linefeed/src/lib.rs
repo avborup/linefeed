@@ -61,12 +61,15 @@ pub fn run_with_handles(
     };
     let compile_time = Instant::now().duration_since(compile_start);
 
-    program.disassemble(src.as_ref());
+    // program.disassemble(src.as_ref());
 
     let run_start = Instant::now();
 
-    let mut bytecode_interpreter =
-        BytecodeInterpreter::new(program).with_handles(&mut stdin, &mut stdout, &mut stderr);
+    let mut bytecode_interpreter = BytecodeInterpreter::new(program).with_handles(
+        Box::new(&mut stdin),
+        Box::new(&mut stdout),
+        Box::new(&mut stderr),
+    );
 
     if let Err((span, err)) = bytecode_interpreter.run() {
         return pretty_print_errors(stderr, src, vec![Rich::<RuntimeError>::custom(span, err)]);
