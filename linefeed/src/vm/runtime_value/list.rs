@@ -6,14 +6,13 @@ use std::{
 
 use crate::vm::{
     runtime_value::{
-        function::RuntimeFunction,
         number::RuntimeNumber,
         operations::LfAppend,
         range::RuntimeRange,
         utils::{resolve_index, resolve_slice_indices},
         RuntimeValue,
     },
-    BytecodeInterpreter, RuntimeError,
+    RuntimeError,
 };
 
 #[derive(Debug, Clone)]
@@ -89,16 +88,15 @@ impl RuntimeList {
 
     pub fn sort_by_key(
         &self,
-        vm: &mut BytecodeInterpreter,
-        key_fn: &RuntimeFunction,
+        mut key_fn: impl FnMut(&RuntimeValue) -> Result<RuntimeValue, RuntimeError>,
     ) -> Result<(), RuntimeError> {
         let keys = self
             .0
             .borrow()
             .iter()
             .map(|item| {
-                vm.call_user_function(key_fn, vec![item.clone()])
-                    .map(|res| (item.clone(), res))
+                let key = key_fn(item)?;
+                Ok((item.clone(), key))
             })
             .collect::<Result<HashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
 

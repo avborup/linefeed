@@ -380,7 +380,23 @@ impl BytecodeInterpreter {
                 let mut args = self.pop_args(*num_args)?;
                 let arg = args.pop();
                 let target = self.pop_stack()?;
-                let res = target.sort(self, arg)?;
+
+                let key_func = match arg {
+                    Some(RuntimeValue::Function(func)) => Some(func.clone()),
+                    None => None,
+                    Some(other) => {
+                        return Err(RuntimeError::TypeMismatch(format!(
+                            "Expected function as sort key, got {}",
+                            other.kind_str()
+                        )));
+                    }
+                };
+
+                let key_fn = key_func.as_ref().map(|func| {
+                    |item: &RuntimeValue| self.call_user_function(func, vec![item.clone()])
+                });
+
+                let res = target.sort(key_fn)?;
                 self.push_stack(res);
             }
 

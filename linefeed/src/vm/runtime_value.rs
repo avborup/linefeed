@@ -17,7 +17,7 @@ use crate::{
             string::RuntimeString,
             tuple::RuntimeTuple,
         },
-        BytecodeInterpreter, RuntimeError,
+        RuntimeError,
     },
 };
 
@@ -335,19 +335,13 @@ impl RuntimeValue {
 
     pub fn sort(
         &self,
-        vm: &mut BytecodeInterpreter,
-        key_fn: Option<RuntimeValue>,
+        key_fn: Option<impl FnMut(&RuntimeValue) -> Result<RuntimeValue, RuntimeError>>,
     ) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::List(list) => {
                 match key_fn {
-                    Some(RuntimeValue::Function(func)) => list.sort_by_key(vm, func.as_ref())?,
+                    Some(key_fn) => list.sort_by_key(key_fn)?,
                     None => list.sort(),
-                    Some(_) => {
-                        return Err(RuntimeError::TypeMismatch(
-                            "Sort key must be a function".to_string(),
-                        ))
-                    }
                 };
 
                 Ok(RuntimeValue::List(list.clone()))
