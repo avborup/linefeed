@@ -1,17 +1,19 @@
 use std::{
     cell::{Ref, RefCell},
+    collections::HashMap,
     rc::Rc,
 };
 
 use crate::vm::{
     runtime_value::{
+        function::RuntimeFunction,
         number::RuntimeNumber,
         operations::LfAppend,
         range::RuntimeRange,
         utils::{resolve_index, resolve_slice_indices},
         RuntimeValue,
     },
-    RuntimeError,
+    BytecodeInterpreter, RuntimeError,
 };
 
 #[derive(Debug, Clone)]
@@ -83,6 +85,32 @@ impl RuntimeList {
         self.0
             .borrow_mut()
             .sort_by(|a, b| a.partial_cmp(b).expect("unhandled uncomparable value"));
+    }
+
+    pub fn sort_by_key(
+        &self,
+        vm: &mut BytecodeInterpreter,
+        key_fn: &RuntimeFunction,
+    ) -> Result<(), RuntimeError> {
+        let keys = self
+            .0
+            .borrow()
+            .iter()
+            .map(|item| {
+                vm.call_user_function(key_fn, vec![item.clone()])
+                    .map(|res| (item.clone(), res))
+            })
+            .collect::<Result<HashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
+
+        self.0.borrow_mut().sort_by(|a, b| {
+            let key_a = keys.get(a).expect("key not found for item a");
+            let key_b = keys.get(b).expect("key not found for item b");
+            key_a
+                .partial_cmp(key_b)
+                .expect("unhandled uncomparable key value")
+        });
+
+        Ok(())
     }
 
     pub fn concat(&self, other: &Self) -> Self {

@@ -25,6 +25,7 @@ mod print;
 mod regex;
 mod return_;
 mod scope;
+mod sort;
 mod string;
 mod tuple;
 mod while_loops;

@@ -1,4 +1,8 @@
-use std::io::Read;
+use std::{
+    cell::RefCell,
+    io::{Read, Write},
+    rc::Rc,
+};
 
 pub mod output;
 
@@ -33,13 +37,35 @@ macro_rules! eval_and_assert {
 
 pub(crate) use eval_and_assert;
 
-pub fn run_program(src: &str, mut input: impl Read) -> (String, String) {
-    let mut stdout = Vec::new();
-    let mut stderr = Vec::new();
+pub fn run_program(src: &str, input: impl Read + 'static) -> (String, String) {
+    let stdout = SharedBuffer::new();
+    let stderr = SharedBuffer::new();
 
-    linefeed::run_with_handles(src, &mut input, &mut stdout, &mut stderr);
-    let stdout_str = std::str::from_utf8(&stdout).unwrap().to_string();
-    let stderr_str = std::str::from_utf8(&stderr).unwrap().to_string();
+    linefeed::run_with_handles(src, input, stdout.clone(), stderr.clone());
+
+    let stdout_str = std::str::from_utf8(&stdout.0.borrow()).unwrap().to_string();
+    let stderr_str = std::str::from_utf8(&stderr.0.borrow()).unwrap().to_string();
 
     (stdout_str, stderr_str)
+}
+
+/// A wrapper around Rc<RefCell<Vec<u8>>> that implements Write, so we can use the buffer after it
+/// has been passed to the VM (as an owned value).
+#[derive(Clone)]
+struct SharedBuffer(Rc<RefCell<Vec<u8>>>);
+
+impl SharedBuffer {
+    fn new() -> Self {
+        SharedBuffer(Rc::new(RefCell::new(Vec::new())))
+    }
+}
+
+impl Write for SharedBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0.borrow_mut().write(buf)
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        self.0.borrow_mut().flush()
+    }
 }

@@ -25,17 +25,17 @@ pub mod vm;
 pub use chumsky;
 
 pub fn run(src: impl AsRef<str>) {
-    let mut stdin = io::stdin();
-    let mut stdout = io::stdout();
-    let mut stderr = io::stderr();
-    run_with_handles(src, &mut stdin, &mut stdout, &mut stderr);
+    let stdin = io::stdin();
+    let stdout = io::stdout();
+    let stderr = io::stderr();
+    run_with_handles(src, stdin, stdout, stderr);
 }
 
 pub fn run_with_handles(
     src: impl AsRef<str>,
-    mut stdin: impl Read,
-    mut stdout: impl Write,
-    mut stderr: impl Write,
+    stdin: impl Read + 'static,
+    stdout: impl Write + 'static,
+    stderr: impl Write + 'static,
 ) {
     let src = src.as_ref();
     let mut compiler = Compiler::default();
@@ -61,14 +61,18 @@ pub fn run_with_handles(
     };
     let compile_time = Instant::now().duration_since(compile_start);
 
-    program.disassemble(src.as_ref());
+    // program.disassemble(src.as_ref());
 
     let run_start = Instant::now();
 
-    let mut bytecode_interpreter =
-        BytecodeInterpreter::new(program).with_handles(&mut stdin, &mut stdout, &mut stderr);
+    let mut bytecode_interpreter = BytecodeInterpreter::new(program).with_handles(
+        Box::new(stdin),
+        Box::new(stdout),
+        Box::new(stderr),
+    );
 
     if let Err((span, err)) = bytecode_interpreter.run() {
+        let stderr = std::mem::replace(&mut bytecode_interpreter.stderr, Box::new(io::sink()));
         return pretty_print_errors(stderr, src, vec![Rich::<RuntimeError>::custom(span, err)]);
     }
 

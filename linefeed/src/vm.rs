@@ -10,7 +10,11 @@ use crate::{
     grammar::ast::Span,
     vm::{
         bytecode::Bytecode,
-        runtime_value::{function::MemoizationKey, string::RuntimeString, RuntimeValue},
+        runtime_value::{
+            function::{MemoizationKey, RuntimeFunction},
+            string::RuntimeString,
+            RuntimeValue,
+        },
     },
 };
 
@@ -21,30 +25,30 @@ pub mod runtime_error;
 pub mod runtime_value;
 pub mod stdlib;
 
-pub struct BytecodeInterpreter<I: Read, O: Write, E: Write> {
+pub struct BytecodeInterpreter {
     program: Program<Bytecode>,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
     stack: Vec<RuntimeValue>,
     registers: [isize; DEFAULT_MAX_REGISTERS],
     pc: usize,
     bp: usize,
-    pub stdin: I,
-    pub stdout: O,
-    pub stderr: E,
+    pub stdin: Box<dyn Read>,
+    pub stdout: Box<dyn Write>,
+    pub stderr: Box<dyn Write>,
     pub instructions_executed: usize,
     memoized_functions: HashMap<MemoizationKey, RuntimeValue>,
     ongoing_memoizations: HashMap<usize, MemoizationKey>,
 }
 
-impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
+impl BytecodeInterpreter {
     pub fn new(program: Program<Bytecode>) -> Self {
         Self {
             program,
             stack: vec![],
             registers: [-1; DEFAULT_MAX_REGISTERS],
-            stdin: std::io::stdin(),
-            stdout: std::io::stdout(),
-            stderr: std::io::stderr(),
+            stdin: Box::new(std::io::stdin()),
+            stdout: Box::new(std::io::stdout()),
+            stderr: Box::new(std::io::stderr()),
             pc: 0,
             bp: 0,
             instructions_executed: 0,
@@ -106,18 +110,13 @@ macro_rules! stdlib_fn_with_optional_arg {
     }};
 }
 
-impl<I, O, E> BytecodeInterpreter<I, O, E>
-where
-    I: Read,
-    O: Write,
-    E: Write,
-{
-    pub fn with_handles<II: Read, OO: Write, EE: Write>(
+impl BytecodeInterpreter {
+    pub fn with_handles(
         self,
-        stdin: II,
-        stdout: OO,
-        stderr: EE,
-    ) -> BytecodeInterpreter<II, OO, EE> {
+        stdin: Box<dyn Read>,
+        stdout: Box<dyn Write>,
+        stderr: Box<dyn Write>,
+    ) -> BytecodeInterpreter {
         BytecodeInterpreter {
             program: self.program,
             stack: self.stack,
@@ -148,299 +147,315 @@ where
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
         loop {
-            #[cfg(feature = "debug-vm")]
-            self.dbg_print();
-
-            let instr = &self.program.instructions[self.pc];
-            self.pc += 1;
-            self.instructions_executed += 1;
-
-            match instr {
-                Bytecode::Stop => break Ok(()),
-
-                Bytecode::ConstantInt(i) => {
-                    self.push_stack(RuntimeValue::Int(*i));
-                }
-
-                Bytecode::Value(val) => {
-                    // Perform a "deep" clone here. Otherwise, the same, shared value is inserted onto the
-                    // stack. For things with mutable access, this is BAD. Assign list repeatedly to a
-                    // variable? Same list is shared, it's not a new list. Value is no longer referenced on
-                    // the stack? Too bad, it's still in the program instructions, so it'll keep living.
-                    self.push_stack(val.deep_clone());
-                }
-
-                Bytecode::Add => binary_op!(self, add),
-                Bytecode::Sub => binary_op!(self, sub),
-                Bytecode::Mul => binary_op!(self, mul),
-                Bytecode::Div => binary_op!(self, div),
-                Bytecode::DivFloor => binary_op!(self, div_floor),
-                Bytecode::Mod => binary_op!(self, modulo),
-                Bytecode::Pow => binary_op!(self, pow),
-                Bytecode::Eq => binary_op!(self, eq_bool),
-                Bytecode::NotEq => binary_op!(self, not_eq_bool),
-                Bytecode::Less => binary_op!(self, less_than),
-                Bytecode::LessEq => binary_op!(self, less_than_or_eq),
-                Bytecode::Greater => binary_op!(self, greater_than),
-                Bytecode::GreaterEq => binary_op!(self, greater_than_or_eq),
-                Bytecode::Range => binary_op!(self, range),
-                Bytecode::Xor => binary_op!(self, xor),
-                Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
-
-                Bytecode::Not => {
-                    let val = self.pop_stack()?;
-                    self.push_stack(RuntimeValue::Bool(!val.bool()));
-                }
-
-                Bytecode::Load => {
-                    let addr = self.pop_stack()?.address()?;
-                    self.push_stack(self.get(addr)?.clone());
-                }
-
-                Bytecode::Store => {
-                    let addr = self.pop_stack()?.address()?;
-                    let val = self.peek_stack()?.clone();
-                    self.set(addr, val)?;
-                }
-
-                Bytecode::Pop => {
-                    self.pop_stack()?;
-                }
-
-                Bytecode::RemoveIndex => {
-                    let index = self.pop_stack()?.address()?;
-                    debug_assert!(index < self.stack.len());
-                    self.stack.remove(index);
-                }
-
-                Bytecode::Swap => {
-                    self.swap();
-                }
-
-                Bytecode::Dup => {
-                    let val = self.peek_stack()?.clone();
-                    self.push_stack(val);
-                }
-
-                Bytecode::GetStackPtr => {
-                    self.push_stack(RuntimeValue::Int((self.stack.len() - 1) as isize));
-                }
-
-                Bytecode::SetStackPtr => {
-                    let new_ptr = self.pop_stack()?.address()?;
-                    self.stack.truncate(new_ptr + 1);
-                }
-
-                Bytecode::SetRegister(reg) => {
-                    let reg = *reg;
-                    self.registers[reg] = self.pop_stack()?.int()?;
-                }
-
-                Bytecode::GetRegister(reg) => {
-                    let reg = *reg;
-                    self.push_stack(RuntimeValue::Int(self.registers[reg]));
-                }
-
-                Bytecode::IfFalse(idx) => {
-                    let idx = *idx;
-                    let val = self.pop_stack()?;
-                    if !val.bool() {
-                        self.pc = idx;
-                    }
-                }
-
-                Bytecode::IfTrue(idx) => {
-                    let idx = *idx;
-                    let val = self.pop_stack()?;
-                    if val.bool() {
-                        self.pc = idx;
-                    }
-                }
-
-                Bytecode::Goto(idx) => {
-                    self.pc = *idx;
-                }
-
-                Bytecode::GetBasePtr => {
-                    self.push_stack(RuntimeValue::Int(self.bp as isize));
-                }
-
-                Bytecode::Call(num_args) => {
-                    let num_args = *num_args;
-
-                    let func_index = self.stack.len() - 1 - num_args;
-                    let func = match &self.stack[func_index] {
-                        RuntimeValue::Function(func) => func,
-                        val => {
-                            break Err(RuntimeError::TypeMismatch(format!(
-                                "Cannot call type {} as a function",
-                                val.kind_str()
-                            )));
-                        }
-                    };
-
-                    if func.arity != num_args {
-                        break Err(RuntimeError::TypeMismatch(format!(
-                            "Expected {} arguments, got {}",
-                            func.arity, num_args
-                        )));
-                    }
-
-                    let func_location = func.location;
-
-                    if func.is_memoized {
-                        let args = self.stack[self.stack.len() - num_args..].to_vec();
-
-                        let memo_key = MemoizationKey {
-                            func_location,
-                            args,
-                        };
-
-                        match self.memoized_functions.get(&memo_key) {
-                            Some(cached_result) => {
-                                self.stack.truncate(func_index);
-                                self.push_stack(cached_result.clone());
-                                continue;
-                            }
-                            None => {
-                                self.ongoing_memoizations.insert(func_index, memo_key);
-                            }
-                        }
-                    }
-
-                    // Store pc and bp (2 slots), then start new stack frame after that
-                    let new_bp = func_index + 2;
-
-                    // First slot is the return address; pop function instance and insert return address
-                    self.stack[new_bp - 2] = RuntimeValue::Int(self.pc as isize);
-                    // Second slot is the old base pointer
-                    self.stack
-                        .insert(new_bp - 1, RuntimeValue::Int(self.bp as isize));
-
-                    // And then set the new base pointer and jump to the function
-                    self.bp = new_bp;
-                    self.pc = func_location;
-                }
-
-                Bytecode::Return => {
-                    let return_val = self.pop_stack()?;
-                    let frame_index = self.bp - 2;
-
-                    let return_addr = self.stack[self.bp - 2].address()?;
-                    self.bp = self.stack[self.bp - 1].address()?;
-                    self.pc = return_addr;
-
-                    if let Some(memo_key) = self.ongoing_memoizations.remove(&frame_index) {
-                        self.memoized_functions.insert(memo_key, return_val.clone());
-                    }
-
-                    self.stack.truncate(frame_index);
-                    self.push_stack(return_val);
-                }
-
-                Bytecode::Append => {
-                    let val = self.pop_stack()?;
-                    let into = self.peek_stack_mut()?;
-                    into.append(val)?;
-                }
-
-                Bytecode::Index => {
-                    let index = self.pop_stack()?;
-                    let into = self.peek_stack_mut()?;
-                    let value = into.index(&index)?;
-                    *into = value;
-                }
-
-                Bytecode::SetIndex => {
-                    let value = self.pop_stack()?;
-                    let index = self.pop_stack()?;
-                    let into = self.peek_stack_mut()?;
-                    into.set_index(&index, value)?;
-                }
-
-                Bytecode::NextIter => {
-                    let iter = self.pop_stack()?;
-                    let value = iter.next()?;
-                    let has_value = RuntimeValue::Bool(value.is_some());
-
-                    if let Some(value) = value {
-                        self.push_stack(value);
-                    }
-                    self.push_stack(has_value);
-                }
-
-                Bytecode::ToIter => unary_mapper_method!(self, to_iter),
-                Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
-                Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
-                Bytecode::Split => binary_op!(self, split),
-                Bytecode::SplitLines => unary_mapper_method!(self, lines),
-                Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
-                Bytecode::Length => unary_mapper_method!(self, length),
-                Bytecode::Count => binary_op!(self, count),
-                Bytecode::FindAll => binary_op!(self, find_all),
-                Bytecode::Find => binary_op!(self, find),
-                Bytecode::IsMatch => binary_op!(self, is_match),
-                Bytecode::Contains => binary_op!(self, contains),
-                Bytecode::IsIn => binary_op_swapped!(self, contains),
-                Bytecode::Sort => unary_mapper_method!(self, sort),
-                Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
-
-                Bytecode::ParseInt => stdlib_fn!(self, parse_int),
-                Bytecode::ToList => stdlib_fn!(self, to_list),
-                Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
-                Bytecode::ToMap => stdlib_fn!(self, to_map),
-                Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
-                Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
-                Bytecode::ToCounter(num_args) => {
-                    stdlib_fn_with_optional_arg!(self, to_counter, *num_args)
-                }
-                Bytecode::Product => stdlib_fn!(self, mul),
-                Bytecode::Sum => stdlib_fn!(self, sum),
-                Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
-                Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
-                Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
-                Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
-
-                Bytecode::PrintValue(num_args) => {
-                    let vals = self.pop_args(*num_args)?;
-
-                    let mut last_val = None;
-                    for val in vals {
-                        if last_val.is_some() {
-                            write!(self.stdout, " ").unwrap();
-                        }
-                        write!(self.stdout, "{val}").unwrap();
-
-                        last_val = Some(val);
-                    }
-                    writeln!(self.stdout).unwrap();
-
-                    self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
-                }
-
-                Bytecode::ReprString => {
-                    let val = self.pop_stack()?;
-                    let repr = val.repr_string();
-                    self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
-                }
-
-                Bytecode::ReadInput => {
-                    let mut input = String::new();
-                    self.stdin.read_to_string(&mut input).map_err(|e| {
-                        RuntimeError::InternalBug(format!("Failed to read stdin: {e}"))
-                    })?;
-
-                    self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
-                }
-
-                Bytecode::RuntimeError(err) => break Err(RuntimeError::Plain(err.clone())),
-
-                #[allow(unreachable_patterns)]
-                to_implement => {
-                    break Err(RuntimeError::NotImplemented(to_implement.clone()));
-                }
+            match self.execute_cur_instruction()? {
+                ControlFlow::Continue => {}
+                ControlFlow::Stop => break Ok(()),
             }
         }
+    }
+
+    fn execute_cur_instruction(&mut self) -> Result<ControlFlow, RuntimeError> {
+        #[cfg(feature = "debug-vm")]
+        self.dbg_print();
+
+        let instr = &self.program.instructions[self.pc];
+        self.pc += 1;
+        self.instructions_executed += 1;
+
+        match instr {
+            Bytecode::Stop => return Ok(ControlFlow::Stop),
+
+            Bytecode::ConstantInt(i) => {
+                self.push_stack(RuntimeValue::Int(*i));
+            }
+
+            Bytecode::Value(val) => {
+                // Perform a "deep" clone here. Otherwise, the same, shared value is inserted onto the
+                // stack. For things with mutable access, this is BAD. Assign list repeatedly to a
+                // variable? Same list is shared, it's not a new list. Value is no longer referenced on
+                // the stack? Too bad, it's still in the program instructions, so it'll keep living.
+                self.push_stack(val.deep_clone());
+            }
+
+            Bytecode::Add => binary_op!(self, add),
+            Bytecode::Sub => binary_op!(self, sub),
+            Bytecode::Mul => binary_op!(self, mul),
+            Bytecode::Div => binary_op!(self, div),
+            Bytecode::DivFloor => binary_op!(self, div_floor),
+            Bytecode::Mod => binary_op!(self, modulo),
+            Bytecode::Pow => binary_op!(self, pow),
+            Bytecode::Eq => binary_op!(self, eq_bool),
+            Bytecode::NotEq => binary_op!(self, not_eq_bool),
+            Bytecode::Less => binary_op!(self, less_than),
+            Bytecode::LessEq => binary_op!(self, less_than_or_eq),
+            Bytecode::Greater => binary_op!(self, greater_than),
+            Bytecode::GreaterEq => binary_op!(self, greater_than_or_eq),
+            Bytecode::Range => binary_op!(self, range),
+            Bytecode::Xor => binary_op!(self, xor),
+            Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
+
+            Bytecode::Not => {
+                let val = self.pop_stack()?;
+                self.push_stack(RuntimeValue::Bool(!val.bool()));
+            }
+
+            Bytecode::Load => {
+                let addr = self.pop_stack()?.address()?;
+                self.push_stack(self.get(addr)?.clone());
+            }
+
+            Bytecode::Store => {
+                let addr = self.pop_stack()?.address()?;
+                let val = self.peek_stack()?.clone();
+                self.set(addr, val)?;
+            }
+
+            Bytecode::Pop => {
+                self.pop_stack()?;
+            }
+
+            Bytecode::RemoveIndex => {
+                let index = self.pop_stack()?.address()?;
+                debug_assert!(index < self.stack.len());
+                self.stack.remove(index);
+            }
+
+            Bytecode::Swap => {
+                self.swap();
+            }
+
+            Bytecode::Dup => {
+                let val = self.peek_stack()?.clone();
+                self.push_stack(val);
+            }
+
+            Bytecode::GetStackPtr => {
+                self.push_stack(RuntimeValue::Int((self.stack.len() - 1) as isize));
+            }
+
+            Bytecode::SetStackPtr => {
+                let new_ptr = self.pop_stack()?.address()?;
+                self.stack.truncate(new_ptr + 1);
+            }
+
+            Bytecode::SetRegister(reg) => {
+                let reg = *reg;
+                self.registers[reg] = self.pop_stack()?.int()?;
+            }
+
+            Bytecode::GetRegister(reg) => {
+                let reg = *reg;
+                self.push_stack(RuntimeValue::Int(self.registers[reg]));
+            }
+
+            Bytecode::IfFalse(idx) => {
+                let idx = *idx;
+                let val = self.pop_stack()?;
+                if !val.bool() {
+                    self.pc = idx;
+                }
+            }
+
+            Bytecode::IfTrue(idx) => {
+                let idx = *idx;
+                let val = self.pop_stack()?;
+                if val.bool() {
+                    self.pc = idx;
+                }
+            }
+
+            Bytecode::Goto(idx) => {
+                self.pc = *idx;
+            }
+
+            Bytecode::GetBasePtr => {
+                self.push_stack(RuntimeValue::Int(self.bp as isize));
+            }
+
+            Bytecode::Call(num_args) => {
+                let num_args = *num_args;
+
+                let func_index = self.stack.len() - 1 - num_args;
+                let func = match &self.stack[func_index] {
+                    RuntimeValue::Function(func) => func,
+                    val => {
+                        return Err(RuntimeError::TypeMismatch(format!(
+                            "Cannot call type {} as a function",
+                            val.kind_str()
+                        )));
+                    }
+                };
+
+                if func.arity != num_args {
+                    return Err(RuntimeError::TypeMismatch(format!(
+                        "Expected {} arguments, got {}",
+                        func.arity, num_args
+                    )));
+                }
+
+                let func_location = func.location;
+
+                if func.is_memoized {
+                    let args = self.stack[self.stack.len() - num_args..].to_vec();
+
+                    let memo_key = MemoizationKey {
+                        func_location,
+                        args,
+                    };
+
+                    match self.memoized_functions.get(&memo_key) {
+                        Some(cached_result) => {
+                            self.stack.truncate(func_index);
+                            self.push_stack(cached_result.clone());
+                            return Ok(ControlFlow::Continue);
+                        }
+                        None => {
+                            self.ongoing_memoizations.insert(func_index, memo_key);
+                        }
+                    }
+                }
+
+                // Store pc and bp (2 slots), then start new stack frame after that
+                let new_bp = func_index + 2;
+
+                // First slot is the return address; pop function instance and insert return address
+                self.stack[new_bp - 2] = RuntimeValue::Int(self.pc as isize);
+                // Second slot is the old base pointer
+                self.stack
+                    .insert(new_bp - 1, RuntimeValue::Int(self.bp as isize));
+
+                // And then set the new base pointer and jump to the function
+                self.bp = new_bp;
+                self.pc = func_location;
+            }
+
+            Bytecode::Return => {
+                let return_val = self.pop_stack()?;
+                let frame_index = self.bp - 2;
+
+                let return_addr = self.stack[self.bp - 2].address()?;
+                self.bp = self.stack[self.bp - 1].address()?;
+                self.pc = return_addr;
+
+                if let Some(memo_key) = self.ongoing_memoizations.remove(&frame_index) {
+                    self.memoized_functions.insert(memo_key, return_val.clone());
+                }
+
+                self.stack.truncate(frame_index);
+                self.push_stack(return_val);
+            }
+
+            Bytecode::Append => {
+                let val = self.pop_stack()?;
+                let into = self.peek_stack_mut()?;
+                into.append(val)?;
+            }
+
+            Bytecode::Index => {
+                let index = self.pop_stack()?;
+                let into = self.peek_stack_mut()?;
+                let value = into.index(&index)?;
+                *into = value;
+            }
+
+            Bytecode::SetIndex => {
+                let value = self.pop_stack()?;
+                let index = self.pop_stack()?;
+                let into = self.peek_stack_mut()?;
+                into.set_index(&index, value)?;
+            }
+
+            Bytecode::NextIter => {
+                let iter = self.pop_stack()?;
+                let value = iter.next()?;
+                let has_value = RuntimeValue::Bool(value.is_some());
+
+                if let Some(value) = value {
+                    self.push_stack(value);
+                }
+                self.push_stack(has_value);
+            }
+
+            Bytecode::Sort(num_args) => {
+                let mut args = self.pop_args(*num_args)?;
+                let arg = args.pop();
+                let target = self.pop_stack()?;
+                let res = target.sort(self, arg)?;
+                self.push_stack(res);
+            }
+
+            Bytecode::ToIter => unary_mapper_method!(self, to_iter),
+            Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
+            Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
+            Bytecode::Split => binary_op!(self, split),
+            Bytecode::SplitLines => unary_mapper_method!(self, lines),
+            Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
+            Bytecode::Length => unary_mapper_method!(self, length),
+            Bytecode::Count => binary_op!(self, count),
+            Bytecode::FindAll => binary_op!(self, find_all),
+            Bytecode::Find => binary_op!(self, find),
+            Bytecode::IsMatch => binary_op!(self, is_match),
+            Bytecode::Contains => binary_op!(self, contains),
+            Bytecode::IsIn => binary_op_swapped!(self, contains),
+            Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
+
+            Bytecode::ParseInt => stdlib_fn!(self, parse_int),
+            Bytecode::ToList => stdlib_fn!(self, to_list),
+            Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
+            Bytecode::ToMap => stdlib_fn!(self, to_map),
+            Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
+            Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
+            Bytecode::ToCounter(num_args) => {
+                stdlib_fn_with_optional_arg!(self, to_counter, *num_args)
+            }
+            Bytecode::Product => stdlib_fn!(self, mul),
+            Bytecode::Sum => stdlib_fn!(self, sum),
+            Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
+            Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
+            Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
+            Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
+
+            Bytecode::PrintValue(num_args) => {
+                let vals = self.pop_args(*num_args)?;
+
+                let mut last_val = None;
+                for val in vals {
+                    if last_val.is_some() {
+                        write!(self.stdout, " ").unwrap();
+                    }
+                    write!(self.stdout, "{val}").unwrap();
+
+                    last_val = Some(val);
+                }
+                writeln!(self.stdout).unwrap();
+
+                self.push_stack(last_val.unwrap_or(RuntimeValue::Null));
+            }
+
+            Bytecode::ReprString => {
+                let val = self.pop_stack()?;
+                let repr = val.repr_string();
+                self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
+            }
+
+            Bytecode::ReadInput => {
+                let mut input = String::new();
+                self.stdin
+                    .read_to_string(&mut input)
+                    .map_err(|e| RuntimeError::InternalBug(format!("Failed to read stdin: {e}")))?;
+
+                self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
+            }
+
+            Bytecode::RuntimeError(err) => return Err(RuntimeError::Plain(err.clone())),
+
+            #[allow(unreachable_patterns)]
+            to_implement => {
+                return Err(RuntimeError::NotImplemented(to_implement.clone()));
+            }
+        }
+
+        Ok(ControlFlow::Continue)
     }
 
     pub fn pop_stack(&mut self) -> Result<RuntimeValue, RuntimeError> {
@@ -498,6 +513,69 @@ where
         debug_assert!(self.stack.len() >= 2);
         let len = self.stack.len();
         self.stack.swap(len - 1, len - 2);
+    }
+
+    pub fn call_user_function(
+        &mut self,
+        func: &RuntimeFunction,
+        args: Vec<RuntimeValue>,
+    ) -> Result<RuntimeValue, RuntimeError> {
+        #[cfg(feature = "debug-vm")]
+        eprintln!(
+            "{}\n",
+            format!(
+                "Calling user function <function@{}> with {} args",
+                func.location,
+                args.len()
+            )
+            .yellow()
+            .italic()
+        );
+
+        if func.arity != args.len() {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Expected {} arguments, got {}",
+                func.arity,
+                args.len()
+            )));
+        }
+
+        let saved_pc = self.pc;
+        let saved_bp = self.bp;
+        let stack_base = self.stack.len();
+
+        self.bp = stack_base;
+        self.pc = func.location;
+        self.stack.extend(args);
+
+        let mut depth = 1;
+        loop {
+            match &self.program.instructions[self.pc] {
+                Bytecode::Call(_) => depth += 1,
+                Bytecode::Return if depth == 1 => break,
+                Bytecode::Return => depth -= 1,
+                _ => {}
+            }
+
+            self.execute_cur_instruction()?;
+        }
+
+        #[cfg(feature = "debug-vm")]
+        {
+            self.dbg_print();
+            eprintln!(
+                "{}\n",
+                format!("Ending user function call").yellow().italic()
+            );
+        }
+
+        let result = self.pop_stack()?;
+
+        self.stack.truncate(stack_base);
+        self.pc = saved_pc;
+        self.bp = saved_bp;
+
+        Ok(result)
     }
 
     pub fn dbg_print(&self) {
@@ -563,4 +641,9 @@ where
         }
         eprintln!();
     }
+}
+
+enum ControlFlow {
+    Continue,
+    Stop,
 }
