@@ -54,7 +54,7 @@ impl Method {
             Self::IsMatch => 1..=1,
             Self::Join => 0..=1,
             Self::Contains => 1..=1,
-            Self::Sort => 0..=0,
+            Self::Sort => 0..=1,
             Self::Enumerate => 0..=0,
         }
     }

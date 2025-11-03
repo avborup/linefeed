@@ -17,7 +17,7 @@ use crate::{
             string::RuntimeString,
             tuple::RuntimeTuple,
         },
-        RuntimeError,
+        BytecodeInterpreter, RuntimeError,
     },
 };
 
@@ -333,10 +333,28 @@ impl RuntimeValue {
         })
     }
 
-    pub fn sort(&self) -> Result<Self, RuntimeError> {
+    pub fn sort<I, O, E>(
+        &self,
+        vm: &mut BytecodeInterpreter<I, O, E>,
+        key_fn: Option<RuntimeValue>,
+    ) -> Result<Self, RuntimeError>
+    where
+        I: std::io::Read,
+        O: std::io::Write,
+        E: std::io::Write,
+    {
         match self {
             RuntimeValue::List(list) => {
-                list.sort();
+                match key_fn {
+                    Some(RuntimeValue::Function(func)) => list.sort_by_key(vm, func.as_ref())?,
+                    None => list.sort(),
+                    Some(_) => {
+                        return Err(RuntimeError::TypeMismatch(
+                            "Sort key must be a function".to_string(),
+                        ))
+                    }
+                };
+
                 Ok(RuntimeValue::List(list.clone()))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Sort, self)),

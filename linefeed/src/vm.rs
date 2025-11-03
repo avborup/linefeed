@@ -394,7 +394,15 @@ where
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
-            Bytecode::Sort => unary_mapper_method!(self, sort),
+
+            Bytecode::Sort(num_args) => {
+                let mut args = self.pop_args((*num_args))?;
+                let arg = args.pop();
+                let target = self.pop_stack()?;
+                let res = target.sort(self, arg)?;
+                self.push_stack(res);
+            }
+
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
