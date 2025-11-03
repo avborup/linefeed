@@ -10,7 +10,11 @@ use crate::{
     grammar::ast::Span,
     vm::{
         bytecode::Bytecode,
-        runtime_value::{function::MemoizationKey, string::RuntimeString, RuntimeValue},
+        runtime_value::{
+            function::{MemoizationKey, RuntimeFunction},
+            string::RuntimeString,
+            RuntimeValue,
+        },
     },
 };
 
@@ -507,6 +511,48 @@ where
         debug_assert!(self.stack.len() >= 2);
         let len = self.stack.len();
         self.stack.swap(len - 1, len - 2);
+    }
+
+    pub fn call_user_function(
+        &mut self,
+        func: &RuntimeFunction,
+        args: Vec<RuntimeValue>,
+    ) -> Result<RuntimeValue, RuntimeError> {
+        if func.arity != args.len() {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Expected {} arguments, got {}",
+                func.arity,
+                args.len()
+            )));
+        }
+
+        let saved_pc = self.pc;
+        let saved_bp = self.bp;
+        let stack_base = self.stack.len();
+
+        self.bp = stack_base - 1;
+        self.pc = func.location;
+        self.stack.extend(args);
+
+        let mut depth = 1;
+        loop {
+            match &self.program.instructions[self.pc] {
+                Bytecode::Call(_) => depth += 1,
+                Bytecode::Return if depth == 1 => break,
+                Bytecode::Return => depth -= 1,
+                _ => {}
+            }
+
+            self.execute_cur_instruction()?;
+        }
+
+        let result = self.pop_stack()?;
+
+        self.stack.truncate(stack_base);
+        self.pc = saved_pc;
+        self.bp = saved_bp;
+
+        Ok(result)
     }
 
     pub fn dbg_print(&self) {
