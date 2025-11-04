@@ -1,66 +1,40 @@
 fn solve(seats, adj, threshold) {
-  changed = true;
-  while changed {
-    changed = false;
+  while true {
     new_seats = {};
 
     for seat, kind in seats {
-      num_occupied = 0;
-      for neighbor in adj[seat] {
-        if seats[neighbor] == "#" {
-          num_occupied += 1;
-        };
-      };
-
-      new_seats[seat] = kind;
-
-      match kind {
-        "L" => {
-          if num_occupied == 0 {
-            new_seats[seat] = "#";
-            changed = true;
-          };
-        },
-        "#" => {
-          if num_occupied >= threshold {
-            new_seats[seat] = "L";
-            changed = true;
-          };
-        },
-      };
+      num_occupied = [seats[a] for a in adj[seat]].count("#");
+      new_seats[seat] =
+        if kind == "L" and num_occupied == 0 { "#" }
+        else if kind == "#" and num_occupied >= threshold { "L" }
+        else { kind };
     };
 
+    break if new_seats == seats;
     seats = new_seats;
   };
 
-  sum([1 for _, kind in seats if kind == "#"])
+  [kind for _, kind in seats].count("#")
 };
 
-seats = {};
-R, C = 0, 0;
+seats, R, C = {}, 0, 0;
 for r, l in input().lines().enumerate() {
   for c, kind in list(l).enumerate() {
     seats[(r, c)] = kind if kind != ".";
-    R, C = max(R, r + 1), max(C, c + 1);
+    R, C = max(R, r), max(C, c);
   };
 };
 
-dirs = ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1));
-
 adj, visible = defaultmap([]), defaultmap([]);
 for seat, kind in seats {
-  for dir in dirs {
-    if seat + dir in seats {
-      adj[seat].append(seat + dir);
-    };
+  for dir in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
+    adj[seat].append(seat + dir) if seat + dir in seats;
 
-    pos = seat + dir;
-    while pos[0] < R and pos[0] >= 0 and pos[1] < C and pos[1] >= 0 {
-      if pos in seats {
-        visible[seat].append(pos);
-        break;
-      };
-      pos += dir;
+    pos = seat;
+    while (pr, pc = pos += dir) and pr in (0..=R) and pc in (0..=C) {
+      continue unless pos in seats;
+      visible[seat].append(pos);
+      break;
     };
   };
 };
