@@ -344,12 +344,10 @@ impl Compiler {
             )?,
 
             Expr::Tuple(items) => {
-                // Compile each tuple element onto the stack
                 let program = items.iter().try_fold(Program::new(), |acc, item| {
                     Ok(acc.then_program(self.compile_expr(item)?))
                 })?;
 
-                // Emit CreateTuple instruction to consume N values from stack
                 program.then_instruction(CreateTuple(items.len()), expr.span())
             }
 
