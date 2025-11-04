@@ -496,9 +496,7 @@ where
     }
 
     pub fn pop_args(&mut self, num_args: usize) -> Vec<RuntimeValue> {
-        let mut args = (0..num_args).map(|_| self.pop_stack()).collect::<Vec<_>>();
-        args.reverse();
-        args
+        self.stack.split_off(self.stack.len() - num_args)
     }
 
     // TODO: It's probably very slow to check this every time, but it provides good diagnostics.
