@@ -3,7 +3,7 @@ fn solve(seats, adj, threshold) {
     new_seats = {};
 
     for seat, kind in seats {
-      num_occupied = [seats[a] for a in adj[seat]].count("#");
+      num_occupied = seats.get_all(adj[seat]).count("#");
       new_seats[seat] =
         if kind == "L" and num_occupied == 0 { "#" }
         else if kind == "#" and num_occupied >= threshold { "L" }

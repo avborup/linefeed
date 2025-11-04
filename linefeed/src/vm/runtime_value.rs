@@ -706,4 +706,20 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::Bool(contains))
     }
+
+    pub fn get_all(&self, iterable: &Self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Map(map) => {
+                let iterator = iterable.to_iter_inner()?;
+                let mut results = Vec::new();
+
+                while let Some(key) = iterator.next() {
+                    results.push(map.get(&key));
+                }
+
+                Ok(RuntimeValue::List(RuntimeList::from_vec(results)))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(Method::GetAll, self)),
+        }
+    }
 }

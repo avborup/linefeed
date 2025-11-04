@@ -17,6 +17,7 @@ pub enum Method {
     Contains,
     Sort,
     Enumerate,
+    GetAll,
 }
 
 impl Method {
@@ -36,6 +37,7 @@ impl Method {
         Contains => "contains",
         Sort => "sort",
         Enumerate => "enumerate",
+        GetAll => "get_all",
     }
 
     /// Returns the number of arguments this method expects.
@@ -56,6 +58,7 @@ impl Method {
             Self::Contains => 1..=1,
             Self::Sort => 0..=1,
             Self::Enumerate => 0..=0,
+            Self::GetAll => 1..=1,
         }
     }
 }

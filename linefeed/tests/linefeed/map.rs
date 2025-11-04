@@ -113,3 +113,85 @@ eval_and_assert!(
     equals("(1, 2)"),
     empty()
 );
+
+eval_and_assert!(
+    map_get_all_with_existing_keys,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        };
+
+        keys = ["a", "b", "c"];
+        values = map.get_all(keys);
+        print(values);
+    "#},
+    equals("[1, 2, 3]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_get_all_with_missing_keys,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+        };
+
+        keys = ["a", "c", "b"];
+        values = map.get_all(keys);
+        print(values);
+    "#},
+    equals("[1, null, 2]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_get_all_with_empty_iterable,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+        };
+
+        keys = [];
+        values = map.get_all(keys);
+        print(values);
+    "#},
+    equals("[]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_get_all_with_range,
+    indoc! {r#"
+        map = {
+            0: "zero",
+            1: "one",
+            2: "two",
+            3: "three",
+        };
+
+        values = map.get_all(0..3);
+        print(values);
+    "#},
+    equals(r#"["zero", "one", "two"]"#),
+    empty()
+);
+
+eval_and_assert!(
+    map_get_all_with_tuple,
+    indoc! {r#"
+        map = {
+            "x": 10,
+            "y": 20,
+            "z": 30,
+        };
+
+        values = map.get_all(("x", "z"));
+        print(values);
+    "#},
+    equals("[10, 30]"),
+    empty()
+);

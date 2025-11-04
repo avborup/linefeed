@@ -110,6 +110,7 @@ pub enum Bytecode {
     Contains,
     Sort(usize),
     Enumerate,
+    GetAll,
 }
 
 impl Bytecode {
@@ -202,6 +203,7 @@ impl Bytecode {
                 Method::Contains => Bytecode::Contains,
                 Method::Sort => Bytecode::Sort(num_args),
                 Method::Enumerate => Bytecode::Enumerate,
+                Method::GetAll => Bytecode::GetAll,
             },
         };
 
