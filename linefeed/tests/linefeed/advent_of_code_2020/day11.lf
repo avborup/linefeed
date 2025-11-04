@@ -14,7 +14,7 @@ fn solve(seats, adj, threshold) {
     seats = new_seats;
   };
 
-  [kind for _, kind in seats].count("#")
+  seats.values().count("#")
 };
 
 seats, R, C = {}, 0, 0;

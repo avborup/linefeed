@@ -18,6 +18,7 @@ pub enum Method {
     Sort,
     Enumerate,
     GetAll,
+    Values,
 }
 
 impl Method {
@@ -38,6 +39,7 @@ impl Method {
         Sort => "sort",
         Enumerate => "enumerate",
         GetAll => "get_all",
+        Values => "values",
     }
 
     /// Returns the number of arguments this method expects.
@@ -59,6 +61,7 @@ impl Method {
             Self::Sort => 0..=1,
             Self::Enumerate => 0..=0,
             Self::GetAll => 1..=1,
+            Self::Values => 0..=0,
         }
     }
 }

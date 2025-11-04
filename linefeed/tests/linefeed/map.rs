@@ -195,3 +195,48 @@ eval_and_assert!(
     equals("[10, 30]"),
     empty()
 );
+
+eval_and_assert!(
+    map_values_basic,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        };
+
+        values = map.values();
+        sorted_values = values.sort();
+        print(sorted_values);
+    "#},
+    equals("[1, 2, 3]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_values_empty,
+    indoc! {r#"
+        map = {};
+        values = map.values();
+        print(values);
+    "#},
+    equals("[]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_values_with_duplicates,
+    indoc! {r#"
+        map = {
+            "x": 10,
+            "y": 10,
+            "z": 20,
+        };
+
+        values = map.values();
+        sorted_values = values.sort();
+        print(sorted_values);
+    "#},
+    equals("[10, 10, 20]"),
+    empty()
+);

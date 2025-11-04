@@ -445,6 +445,7 @@ where
             Bytecode::IsIn => binary_op_swapped!(self, contains),
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
             Bytecode::GetAll => binary_op!(self, get_all),
+            Bytecode::Values => unary_mapper_method!(self, values),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),

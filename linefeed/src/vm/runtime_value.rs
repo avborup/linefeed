@@ -722,4 +722,14 @@ impl RuntimeValue {
             _ => Err(RuntimeError::invalid_method_for_type(Method::GetAll, self)),
         }
     }
+
+    pub fn values(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Map(map) => {
+                let values: Vec<RuntimeValue> = map.borrow().values().cloned().collect();
+                Ok(RuntimeValue::List(RuntimeList::from_vec(values)))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(Method::Values, self)),
+        }
+    }
 }

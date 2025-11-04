@@ -111,6 +111,7 @@ pub enum Bytecode {
     Sort(usize),
     Enumerate,
     GetAll,
+    Values,
 }
 
 impl Bytecode {
@@ -204,6 +205,7 @@ impl Bytecode {
                 Method::Sort => Bytecode::Sort(num_args),
                 Method::Enumerate => Bytecode::Enumerate,
                 Method::GetAll => Bytecode::GetAll,
+                Method::Values => Bytecode::Values,
             },
         };
 
