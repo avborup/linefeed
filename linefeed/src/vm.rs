@@ -216,6 +216,26 @@ where
                 self.set(addr, val)?;
             }
 
+            Bytecode::LoadLocal(offset) => {
+                let addr = self.bp + offset;
+                self.push_stack(self.get(addr)?.clone());
+            }
+
+            Bytecode::StoreLocal(offset) => {
+                let addr = self.bp + offset;
+                let val = self.peek_stack()?.clone();
+                self.set(addr, val)?;
+            }
+
+            Bytecode::LoadGlobal(addr) => {
+                self.push_stack(self.get(*addr)?.clone());
+            }
+
+            Bytecode::StoreGlobal(addr) => {
+                let val = self.peek_stack()?.clone();
+                self.set(*addr, val)?;
+            }
+
             Bytecode::Pop => {
                 self.pop_stack();
             }

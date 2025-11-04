@@ -28,6 +28,10 @@ pub enum Instruction {
     // Variables
     Load,
     Store,
+    LoadLocal(usize),
+    StoreLocal(usize),
+    LoadGlobal(usize),
+    StoreGlobal(usize),
 
     // Values
     Value(IrValue),
@@ -658,29 +662,26 @@ impl Compiler {
         Ok(instructions)
     }
 
-    // FIXME: The addresses here are completely nonsensical for outer scopes due to
-    // base-pointer-relative addressing
-    fn compile_var_address(
+    fn compile_var_store(
         &mut self,
         name: &str,
         expr: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
-        // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
-        // variables are allowed.
-        let key = name.to_string();
-        let var = self.vars.get(&key).ok_or_else(|| CompileError::Spanned {
-            span: expr.span(),
-            msg: format!("No such variable '{name}' in scope"),
+        let var = self.vars.get(&name.to_string()).ok_or_else(|| {
+            CompileError::Spanned {
+                msg: format!(
+                    "Internal compiler bug: allocation for variable {name:?} should have been done before assignment"
+                ),
+                span: expr.span(),
+            }
         })?;
 
-        let addr_instrs = match var {
-            VarType::Local(offset) => {
-                vec![GetBasePtr, ConstantInt(*offset as isize), Add]
-            }
-            VarType::Global(addr) => vec![ConstantInt(*addr as isize)],
+        let instruction = match var {
+            VarType::Local(offset) => StoreLocal(*offset),
+            VarType::Global(addr) => StoreGlobal(*addr),
         };
 
-        Ok(Program::from_instructions(addr_instrs, expr.span()))
+        Ok(Program::from_instruction(instruction, expr.span()))
     }
 
     fn compile_var_load(
@@ -688,9 +689,20 @@ impl Compiler {
         expr: &Spanned<Expr>,
         name: &str,
     ) -> Result<Program<Instruction>, CompileError> {
-        Ok(self
-            .compile_var_address(name, expr)?
-            .then_instruction(Load, expr.span()))
+        let var = self
+            .vars
+            .get(&name.to_string())
+            .ok_or_else(|| CompileError::Spanned {
+                msg: format!("No such variable '{name}' in scope"),
+                span: expr.span(),
+            })?;
+
+        let instruction = match var {
+            VarType::Local(offset) => LoadLocal(*offset),
+            VarType::Global(addr) => LoadGlobal(*addr),
+        };
+
+        Ok(Program::from_instruction(instruction, expr.span()))
     }
 
     fn compile_var_assign(
@@ -699,19 +711,7 @@ impl Compiler {
         name: &str,
         value_program: Program<Instruction>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let key = name.to_string();
-        if self.vars.get(&key).is_none() {
-            return Err(CompileError::Spanned {
-                msg: format!(
-                    "Internal compiler bug: allocation for variable {name:?} should have been done before assignment"
-                ),
-                span: expr.span(),
-            });
-        };
-
-        Ok(value_program
-            .then_program(self.compile_var_address(name, expr)?)
-            .then_instruction(Store, expr.span()))
+        Ok(value_program.then_program(self.compile_var_store(name, expr)?))
     }
 
     fn compile_allocation_for_all_vars_in_scope(
@@ -739,9 +739,7 @@ impl Compiler {
         pattern: &Spanned<Pattern>,
     ) -> Result<Program<Instruction>, CompileError> {
         let prog = match &pattern.0 {
-            Pattern::Ident(name) => self
-                .compile_var_address(name, expr)?
-                .then_instruction(Store, pattern.span()),
+            Pattern::Ident(name) => self.compile_var_store(name, expr)?,
 
             Pattern::Sequence(patterns) => patterns
                 .iter()

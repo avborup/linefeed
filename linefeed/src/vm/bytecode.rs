@@ -16,6 +16,10 @@ pub enum Bytecode {
     // Variables
     Load,
     Store,
+    LoadLocal(usize),
+    StoreLocal(usize),
+    LoadGlobal(usize),
+    StoreGlobal(usize),
 
     // Values
     Value(RuntimeValue),
@@ -116,6 +120,10 @@ impl Bytecode {
             Instruction::Label(_) => return Ok(None),
             Instruction::Load => Bytecode::Load,
             Instruction::Store => Bytecode::Store,
+            Instruction::LoadLocal(offset) => Bytecode::LoadLocal(offset),
+            Instruction::StoreLocal(offset) => Bytecode::StoreLocal(offset),
+            Instruction::LoadGlobal(addr) => Bytecode::LoadGlobal(addr),
+            Instruction::StoreGlobal(addr) => Bytecode::StoreGlobal(addr),
             Instruction::GetBasePtr => Bytecode::GetBasePtr,
             Instruction::Value(value) => {
                 Bytecode::Value(Self::into_runtime_value_with_mapper(value, label_mapper)?)
