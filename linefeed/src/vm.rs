@@ -250,11 +250,6 @@ where
                 self.swap();
             }
 
-            Bytecode::SwapPop => {
-                self.swap();
-                self.pop_stack();
-            }
-
             Bytecode::Dup => {
                 let val = self.peek_stack()?.clone();
                 self.push_stack(val);
@@ -428,6 +423,11 @@ where
 
                 let res = target.sort(key_fn)?;
                 self.push_stack(res);
+            }
+
+            Bytecode::SwapPop => {
+                self.swap();
+                self.pop_stack();
             }
 
             Bytecode::ToIter => unary_mapper_method!(self, to_iter),
