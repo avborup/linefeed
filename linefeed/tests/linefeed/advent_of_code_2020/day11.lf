@@ -10,26 +10,26 @@ while changed {
   changed = false;
   new_seats = {};
 
-  for (r, c), kind in seats {
+  for pos, kind in seats {
     num_occupied = 0;
-    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
-      if seats[(r + dr, c + dc)] == "#" {
+    for dir in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
+      if seats[pos + dir] == "#" {
         num_occupied += 1;
       };
     };
 
-    new_seats[(r, c)] = kind;
+    new_seats[pos] = kind;
 
     match kind {
       "L" => {
         if num_occupied == 0 {
-          new_seats[(r, c)] = "#";
+          new_seats[pos] = "#";
           changed = true;
         };
       },
       "#" => {
         if num_occupied >= 4 {
-          new_seats[(r, c)] = "L";
+          new_seats[pos] = "L";
           changed = true;
         };
       },

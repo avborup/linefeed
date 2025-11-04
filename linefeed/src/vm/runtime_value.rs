@@ -91,6 +91,9 @@ impl RuntimeValue {
             )),
             (RuntimeValue::List(a), RuntimeValue::List(b)) => Ok(RuntimeValue::List(a.concat(b))),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
+            (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
+                Ok(RuntimeValue::Tuple(a.element_wise_add(b)?))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
