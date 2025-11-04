@@ -13,6 +13,7 @@ use crate::{
         runtime_value::{
             function::{MemoizationKey, RuntimeFunction},
             string::RuntimeString,
+            tuple::RuntimeTuple,
             RuntimeValue,
         },
     },
@@ -422,6 +423,10 @@ where
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
+            Bytecode::CreateTuple(size) => {
+                let items = self.pop_args(*size)?;
+                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+            }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),

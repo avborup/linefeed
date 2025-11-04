@@ -76,6 +76,7 @@ pub enum Bytecode {
     ParseInt,
     ToList,
     ToTuple,
+    CreateTuple(usize),
     ToMap,
     MapWithDefault,
     ToSet(usize),
@@ -157,6 +158,7 @@ impl Bytecode {
             Instruction::NextIter => Bytecode::NextIter,
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::IsIn => Bytecode::IsIn,
+            Instruction::CreateTuple(size) => Bytecode::CreateTuple(size),
             Instruction::StdlibCall(func, num_args) => match func {
                 StdlibFn::Print => Bytecode::PrintValue(num_args),
                 StdlibFn::Input => Bytecode::ReadInput,

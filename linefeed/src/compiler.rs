@@ -87,6 +87,7 @@ pub enum Instruction {
     SetIndex,
     NextIter,
     ToIter,
+    CreateTuple(usize),
 }
 
 use chumsky::span::Span as _;
@@ -338,10 +339,14 @@ impl Compiler {
             )?,
 
             Expr::Tuple(items) => {
-                let list = Spanned(Expr::List(items.clone()), expr.span());
+                // Compile each tuple element onto the stack
+                let program = items.iter().try_fold(
+                    Program::new(),
+                    |acc, item| Ok(acc.then_program(self.compile_expr(item)?)),
+                )?;
 
-                self.compile_expr(&list)?
-                    .then_instruction(StdlibCall(StdlibFn::ToTuple, 1), expr.span())
+                // Emit CreateTuple instruction to consume N values from stack
+                program.then_instruction(CreateTuple(items.len()), expr.span())
             }
 
             Expr::Map(items) => items.iter().try_fold(
