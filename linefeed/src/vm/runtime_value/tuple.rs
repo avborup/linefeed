@@ -56,4 +56,11 @@ impl RuntimeTuple {
 
         Ok(RuntimeTuple::from_vec(result?))
     }
+
+    pub fn scalar_multiply(&self, scalar: &RuntimeValue) -> Result<Self, RuntimeError> {
+        let result: Result<Vec<RuntimeValue>, RuntimeError> =
+            self.0.iter().map(|elem| elem.mul(scalar)).collect();
+
+        Ok(RuntimeTuple::from_vec(result?))
+    }
 }
