@@ -114,6 +114,12 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
+            (RuntimeValue::Tuple(t), RuntimeValue::Num(_)) => {
+                Ok(RuntimeValue::Tuple(t.scalar_multiply(other)?))
+            }
+            (RuntimeValue::Num(_), RuntimeValue::Tuple(t)) => {
+                Ok(RuntimeValue::Tuple(t.scalar_multiply(self)?))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "multiply", self, other,
             )),

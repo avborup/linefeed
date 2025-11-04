@@ -78,3 +78,43 @@ eval_and_assert!(
     empty(),
     contains("Cannot add tuples of different lengths")
 );
+
+eval_and_assert!(
+    tuple_scalar_multiplication_basic,
+    indoc! {r#"
+        a = (1, 2, 3);
+        print(a * 5);
+    "#},
+    equals("(5, 10, 15)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_scalar_multiplication_commutative,
+    indoc! {r#"
+        a = (2, 4, 6);
+        print(3 * a);
+    "#},
+    equals("(6, 12, 18)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_scalar_multiplication_float,
+    indoc! {r#"
+        a = (1.0, 2.0, 3.0);
+        print(a * 2.5);
+    "#},
+    equals("(2.5, 5, 7.5)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_scalar_multiplication_nested,
+    indoc! {r#"
+        a = ((1, 2), (3, 4));
+        print(a * 10);
+    "#},
+    equals("((10, 20), (30, 40))\n"),
+    empty()
+);

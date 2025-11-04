@@ -1,44 +1,46 @@
-seats = {};
+fn solve(seats, adj, threshold) {
+  while true {
+    new_seats = {};
+
+    for seat, kind in seats {
+      num_occupied = [seats[a] for a in adj[seat]].count("#");
+      new_seats[seat] =
+        if kind == "L" and num_occupied == 0 { "#" }
+        else if kind == "#" and num_occupied >= threshold { "L" }
+        else { kind };
+    };
+
+    break if new_seats == seats;
+    seats = new_seats;
+  };
+
+  [kind for _, kind in seats].count("#")
+};
+
+seats, R, C = {}, 0, 0;
 for r, l in input().lines().enumerate() {
   for c, kind in list(l).enumerate() {
     seats[(r, c)] = kind if kind != ".";
+    R, C = max(R, r), max(C, c);
   };
 };
 
-changed = true;
-while changed {
-  changed = false;
-  new_seats = {};
+adj, visible = defaultmap([]), defaultmap([]);
+for seat, kind in seats {
+  for dir in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
+    adj[seat].append(seat + dir) if seat + dir in seats;
 
-  for pos, kind in seats {
-    num_occupied = 0;
-    for dir in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
-      if seats[pos + dir] == "#" {
-        num_occupied += 1;
-      };
-    };
-
-    new_seats[pos] = kind;
-
-    match kind {
-      "L" => {
-        if num_occupied == 0 {
-          new_seats[pos] = "#";
-          changed = true;
-        };
-      },
-      "#" => {
-        if num_occupied >= 4 {
-          new_seats[pos] = "L";
-          changed = true;
-        };
-      },
+    pos = seat;
+    while (pr, pc = pos += dir) and pr in (0..=R) and pc in (0..=C) {
+      continue unless pos in seats;
+      visible[seat].append(pos);
+      break;
     };
   };
-
-  seats = new_seats;
 };
 
-part1 = sum([1 for _, kind in seats if kind == "#"]);
+part1 = solve(seats, adj, 4);
+part2 = solve(seats, visible, 5);
 
 print("Part 1:", part1);
+print("Part 2:", part2);
