@@ -41,6 +41,7 @@ pub enum Instruction {
     Pop,
     RemoveIndex,
     Swap,
+    SwapPop,
     Dup,
     GetStackPtr,
     SetStackPtr,
@@ -417,7 +418,7 @@ impl Compiler {
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.span())
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
+                    .then_instructions(vec![SwapPop, Goto(cond_label)], expr.span())
                     .then_instructions(vec![Instruction::Label(end_label)], expr.span());
 
                 self.loop_stack.pop();
@@ -490,7 +491,7 @@ impl Compiler {
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
+                    .then_instructions(vec![SwapPop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span());
 
                 self.loop_stack.pop();

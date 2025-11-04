@@ -250,6 +250,11 @@ where
                 self.swap();
             }
 
+            Bytecode::SwapPop => {
+                self.swap();
+                self.pop_stack();
+            }
+
             Bytecode::Dup => {
                 let val = self.peek_stack()?.clone();
                 self.push_stack(val);
