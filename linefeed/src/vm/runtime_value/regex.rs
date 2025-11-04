@@ -45,10 +45,6 @@ impl RuntimeRegex {
         &self.0.regex
     }
 
-    pub fn deep_clone(&self) -> Self {
-        Self::new(self.0.deref().clone())
-    }
-
     pub fn as_str(&self) -> &str {
         self.0.regex.as_str()
     }

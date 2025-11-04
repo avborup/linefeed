@@ -420,13 +420,13 @@ impl RuntimeValue {
             RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
             RuntimeValue::Num(n) => RuntimeValue::Num(n.clone()),
-            RuntimeValue::Str(s) => RuntimeValue::Str(s.deep_clone()),
+            RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
-            RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.deep_clone()),
+            RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
-            RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
+            RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
         }
     }

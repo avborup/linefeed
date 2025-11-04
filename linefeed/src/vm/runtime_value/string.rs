@@ -31,10 +31,6 @@ impl RuntimeString {
         self.0.is_empty()
     }
 
-    pub fn deep_clone(&self) -> Self {
-        Self::new(self.0.deref().clone())
-    }
-
     fn map_str(&self, f: impl FnOnce(&str) -> String) -> Self {
         Self::new(f(self.as_str()))
     }

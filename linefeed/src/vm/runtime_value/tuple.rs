@@ -25,10 +25,6 @@ impl RuntimeTuple {
         self.0.is_empty()
     }
 
-    pub fn deep_clone(&self) -> Self {
-        Self::from_vec(self.0.iter().map(|v| v.deep_clone()).collect())
-    }
-
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
         let i = resolve_index(self.len(), index)?;
 
