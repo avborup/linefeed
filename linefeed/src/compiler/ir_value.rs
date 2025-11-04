@@ -18,6 +18,7 @@ pub enum IrValue {
     Set(Vec<IrValue>),
     Map(Vec<(IrValue, IrValue)>),
     Function(RuntimeFunction<Label>),
+    Vector(f64, f64),
 }
 
 impl IrValue {

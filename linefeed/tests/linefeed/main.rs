@@ -28,4 +28,5 @@ mod scope;
 mod sort;
 mod string;
 mod tuple;
+mod vector;
 mod while_loops;

@@ -1,7 +1,8 @@
 use crate::vm::{
     runtime_value::{
         counter::RuntimeCounter, iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap,
-        number::RuntimeNumber, set::RuntimeSet, tuple::RuntimeTuple, RuntimeValue,
+        number::RuntimeNumber, set::RuntimeSet, tuple::RuntimeTuple, vector::RuntimeVector,
+        RuntimeValue,
     },
     RuntimeError,
 };
@@ -201,4 +202,30 @@ pub fn min(args: Vec<RuntimeValue>) -> RuntimeResult {
     min.ok_or_else(|| {
         RuntimeError::Plain("Received empty iterator, cannot find minimum".to_string())
     })
+}
+
+pub fn vec(x: RuntimeValue, y: RuntimeValue) -> RuntimeResult {
+    let x_val = match x {
+        RuntimeValue::Int(i) => i as f64,
+        RuntimeValue::Num(n) => n.float(),
+        _ => {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot create vector with x coordinate of type '{}'",
+                x.kind_str()
+            )))
+        }
+    };
+
+    let y_val = match y {
+        RuntimeValue::Int(i) => i as f64,
+        RuntimeValue::Num(n) => n.float(),
+        _ => {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot create vector with y coordinate of type '{}'",
+                y.kind_str()
+            )))
+        }
+    };
+
+    Ok(RuntimeValue::Vector(RuntimeVector::new(x_val, y_val)))
 }

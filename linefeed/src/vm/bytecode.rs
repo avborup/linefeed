@@ -7,7 +7,8 @@ use crate::{
     },
     vm::runtime_value::{
         function::RuntimeFunction, list::RuntimeList, map::RuntimeMap, regex::RuntimeRegex,
-        set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple, RuntimeValue,
+        set::RuntimeSet, string::RuntimeString, tuple::RuntimeTuple, vector::RuntimeVector,
+        RuntimeValue,
     },
 };
 
@@ -88,6 +89,7 @@ pub enum Bytecode {
     Max(usize),
     Min(usize),
     ToCounter(usize),
+    Vec,
 
     // Methods
     Append,
@@ -174,6 +176,7 @@ impl Bytecode {
                 StdlibFn::Any => Bytecode::AnyTrue(num_args),
                 StdlibFn::Max => Bytecode::Max(num_args),
                 StdlibFn::Min => Bytecode::Min(num_args),
+                StdlibFn::Vec => Bytecode::Vec,
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append | Method::Add => Bytecode::Append,
@@ -255,6 +258,7 @@ impl Bytecode {
 
                 RuntimeValue::Regex(regex)
             }
+            IrValue::Vector(x, y) => RuntimeValue::Vector(RuntimeVector::new(x, y)),
         };
 
         Ok(res)

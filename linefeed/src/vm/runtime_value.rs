@@ -16,6 +16,7 @@ use crate::{
             set::RuntimeSet,
             string::RuntimeString,
             tuple::RuntimeTuple,
+            vector::RuntimeVector,
         },
         RuntimeError,
     },
@@ -33,6 +34,7 @@ pub mod regex;
 pub mod set;
 pub mod string;
 pub mod tuple;
+pub mod vector;
 mod utils;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -52,6 +54,7 @@ pub enum RuntimeValue {
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
     Iterator(Box<RuntimeIterator>),
+    Vector(RuntimeVector),
 }
 
 const _: () = {
@@ -78,6 +81,7 @@ impl RuntimeValue {
             RuntimeValue::Iterator(_) => "iterator",
             RuntimeValue::Map(_) => "map",
             RuntimeValue::Counter(_) => "counter",
+            RuntimeValue::Vector(_) => "vector",
         }
     }
 
@@ -91,6 +95,9 @@ impl RuntimeValue {
             )),
             (RuntimeValue::List(a), RuntimeValue::List(b)) => Ok(RuntimeValue::List(a.concat(b))),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
+            (RuntimeValue::Vector(a), RuntimeValue::Vector(b)) => {
+                Ok(RuntimeValue::Vector(a.add(b)))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
@@ -201,6 +208,7 @@ impl RuntimeValue {
             (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
             (RuntimeValue::Map(map), index) => map.get(index),
             (RuntimeValue::Counter(counter), index) => counter.get(index),
+            (RuntimeValue::Vector(vec), RuntimeValue::Num(i)) => vec.index(i)?,
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot index into '{}' with type '{}'",
@@ -410,6 +418,7 @@ impl RuntimeValue {
             RuntimeValue::Iterator(_) => true,
             RuntimeValue::Regex(_) => true,
             RuntimeValue::Counter(c) => !c.borrow().is_empty(),
+            RuntimeValue::Vector(_) => true,
         }
     }
 
@@ -427,6 +436,7 @@ impl RuntimeValue {
             RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.deep_clone()),
+            RuntimeValue::Vector(v) => RuntimeValue::Vector(v.clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
         }
     }
@@ -501,6 +511,7 @@ impl std::fmt::Display for RuntimeValue {
             RuntimeValue::Range(range) => write!(f, "{range}"),
             RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
             RuntimeValue::Regex(regex) => write!(f, "{regex}"),
+            RuntimeValue::Vector(vec) => write!(f, "{vec}"),
         }
     }
 }
@@ -552,6 +563,7 @@ impl std::cmp::PartialOrd for RuntimeValue {
             (RuntimeValue::List(a), RuntimeValue::List(b)) => a.partial_cmp(b),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => a.partial_cmp(b),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => a.partial_cmp(b),
+            (RuntimeValue::Vector(a), RuntimeValue::Vector(b)) => a.partial_cmp(b),
             _ => None,
         }
     }

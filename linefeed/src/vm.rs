@@ -434,6 +434,11 @@ where
             Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
             Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
             Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
+            Bytecode::Vec => {
+                let y = self.pop_stack()?;
+                let x = self.pop_stack()?;
+                self.push_stack(stdlib::vec(x, y)?);
+            }
 
             Bytecode::PrintValue(num_args) => {
                 let vals = self.pop_args(*num_args)?;

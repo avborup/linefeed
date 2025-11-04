@@ -1,35 +1,38 @@
 seats = {};
 for r, l in input().lines().enumerate() {
   for c, kind in list(l).enumerate() {
-    seats[(r, c)] = kind if kind != ".";
+    seats[v(r, c)] = kind if kind != ".";
   };
 };
 
 changed = true;
+# lists are not const-evaluated - do that! ~14s -> ~11s
+dirs = [v(-1, -1), v(-1, 0), v(-1, 1), v(0, -1), v(0, 1), v(1, -1), v(1, 0), v(1, 1)];
+iters = 0;
 while changed {
   changed = false;
   new_seats = {};
 
-  for (r, c), kind in seats {
+  for pos, kind in seats {
     num_occupied = 0;
-    for dr, dc in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)] {
-      if seats[(r + dr, c + dc)] == "#" {
+    for d in dirs {
+      if seats[pos + d] == "#" {
         num_occupied += 1;
       };
     };
 
-    new_seats[(r, c)] = kind;
+    new_seats[pos] = kind;
 
     match kind {
       "L" => {
         if num_occupied == 0 {
-          new_seats[(r, c)] = "#";
+          new_seats[pos] = "#";
           changed = true;
         };
       },
       "#" => {
         if num_occupied >= 4 {
-          new_seats[(r, c)] = "L";
+          new_seats[pos] = "L";
           changed = true;
         };
       },
@@ -37,8 +40,10 @@ while changed {
   };
 
   seats = new_seats;
+  iters += 1;
 };
 
 part1 = sum([1 for _, kind in seats if kind == "#"]);
 
 print("Part 1:", part1);
+print("Iterations:", iters);
