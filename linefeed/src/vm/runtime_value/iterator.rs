@@ -49,6 +49,27 @@ impl From<RuntimeList> for RuntimeIterator {
     }
 }
 
+struct TupleIterator {
+    tuple: RuntimeTuple,
+    index: usize,
+}
+
+impl Iterator for TupleIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let value = self.tuple.as_slice().get(self.index).cloned();
+        self.index += 1;
+        value
+    }
+}
+
+impl From<RuntimeTuple> for RuntimeIterator {
+    fn from(tuple: RuntimeTuple) -> Self {
+        Self(Rc::new(RefCell::new(TupleIterator { tuple, index: 0 })))
+    }
+}
+
 pub struct EnumeratedListIterator {
     list: RuntimeList,
     index: usize,

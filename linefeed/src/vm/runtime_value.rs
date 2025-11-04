@@ -234,6 +234,7 @@ impl RuntimeValue {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
             RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
             RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
+            RuntimeValue::Tuple(tuple) => RuntimeIterator::from(tuple.clone()),
             RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             _ => {
