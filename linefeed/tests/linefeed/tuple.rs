@@ -1,6 +1,6 @@
 use crate::helpers::{
     eval_and_assert,
-    output::{empty, equals},
+    output::{contains, empty, equals},
 };
 
 use indoc::indoc;
@@ -22,4 +22,59 @@ eval_and_assert!(
         true
     "#}),
     empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_addition_basic,
+    indoc! {r#"
+        a = (1, 2, 3);
+        b = (4, 5, 6);
+        print(a + b);
+    "#},
+    equals("(5, 7, 9)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_addition_floats,
+    indoc! {r#"
+        a = (1.5, 2.5);
+        b = (3.0, 4.0);
+        print(a + b);
+    "#},
+    equals("(4.5, 6.5)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_addition_strings,
+    indoc! {r#"
+        a = ("hello", "world");
+        b = (" ", "!");
+        print(a + b);
+    "#},
+    equals("(\"hello \", \"world!\")\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_addition_nested,
+    indoc! {r#"
+        a = ((1, 2), (3, 4));
+        b = ((5, 6), (7, 8));
+        print(a + b);
+    "#},
+    equals("((6, 8), (10, 12))\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_mismatched_length_error,
+    indoc! {r#"
+        a = (1, 2);
+        b = (3, 4, 5);
+        print(a + b);
+    "#},
+    empty(),
+    contains("Cannot add tuples of different lengths")
 );

@@ -37,4 +37,23 @@ impl RuntimeTuple {
     pub fn contains(&self, value: &RuntimeValue) -> bool {
         self.0.iter().any(|v| v == value)
     }
+
+    pub fn element_wise_add(&self, other: &Self) -> Result<Self, RuntimeError> {
+        if self.len() != other.len() {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot add tuples of different lengths: {} and {}",
+                self.len(),
+                other.len()
+            )));
+        }
+
+        let result: Result<Vec<RuntimeValue>, RuntimeError> = self
+            .0
+            .iter()
+            .zip(other.0.iter())
+            .map(|(a, b)| a.add(b))
+            .collect();
+
+        Ok(RuntimeTuple::from_vec(result?))
+    }
 }
