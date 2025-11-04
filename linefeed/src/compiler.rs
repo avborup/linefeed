@@ -1,6 +1,6 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{collections::HashMap, iter, ops::RangeInclusive};
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use crate::{
     compiler::{
@@ -28,6 +28,10 @@ pub enum Instruction {
     // Variables
     Load,
     Store,
+    LoadLocal(usize),
+    StoreLocal(usize),
+    LoadGlobal(usize),
+    StoreGlobal(usize),
 
     // Values
     Value(IrValue),
@@ -37,6 +41,7 @@ pub enum Instruction {
     Pop,
     RemoveIndex,
     Swap,
+    SwapPop,
     Dup,
     GetStackPtr,
     SetStackPtr,
@@ -87,6 +92,7 @@ pub enum Instruction {
     SetIndex,
     NextIter,
     ToIter,
+    CreateTuple(usize),
 }
 
 use chumsky::span::Span as _;
@@ -338,10 +344,11 @@ impl Compiler {
             )?,
 
             Expr::Tuple(items) => {
-                let list = Spanned(Expr::List(items.clone()), expr.span());
+                let program = items.iter().try_fold(Program::new(), |acc, item| {
+                    Ok(acc.then_program(self.compile_expr(item)?))
+                })?;
 
-                self.compile_expr(&list)?
-                    .then_instruction(StdlibCall(StdlibFn::ToTuple, 1), expr.span())
+                program.then_instruction(CreateTuple(items.len()), expr.span())
             }
 
             Expr::Map(items) => items.iter().try_fold(
@@ -409,7 +416,7 @@ impl Compiler {
                     .then_program(self.compile_expr(cond)?)
                     .then_instruction(IfFalse(end_label), cond.span())
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(cond_label)], expr.span())
+                    .then_instructions(vec![SwapPop, Goto(cond_label)], expr.span())
                     .then_instructions(vec![Instruction::Label(end_label)], expr.span());
 
                 self.loop_stack.pop();
@@ -482,7 +489,7 @@ impl Compiler {
                     .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
-                    .then_instructions(vec![Swap, Pop, Goto(iter_label)], expr.span())
+                    .then_instructions(vec![SwapPop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span());
 
                 self.loop_stack.pop();
@@ -654,29 +661,26 @@ impl Compiler {
         Ok(instructions)
     }
 
-    // FIXME: The addresses here are completely nonsensical for outer scopes due to
-    // base-pointer-relative addressing
-    fn compile_var_address(
+    fn compile_var_store(
         &mut self,
         name: &str,
         expr: &Spanned<Expr>,
     ) -> Result<Program<Instruction>, CompileError> {
-        // TODO: Upvalues / closures are not supported yet. Thus, only strictly local or global
-        // variables are allowed.
-        let key = name.to_string();
-        let var = self.vars.get(&key).ok_or_else(|| CompileError::Spanned {
-            span: expr.span(),
-            msg: format!("No such variable '{name}' in scope"),
+        let var = self.vars.get(&name.to_string()).ok_or_else(|| {
+            CompileError::Spanned {
+                msg: format!(
+                    "Internal compiler bug: allocation for variable {name:?} should have been done before assignment"
+                ),
+                span: expr.span(),
+            }
         })?;
 
-        let addr_instrs = match var {
-            VarType::Local(offset) => {
-                vec![GetBasePtr, ConstantInt(*offset as isize), Add]
-            }
-            VarType::Global(addr) => vec![ConstantInt(*addr as isize)],
+        let instruction = match var {
+            VarType::Local(offset) => StoreLocal(*offset),
+            VarType::Global(addr) => StoreGlobal(*addr),
         };
 
-        Ok(Program::from_instructions(addr_instrs, expr.span()))
+        Ok(Program::from_instruction(instruction, expr.span()))
     }
 
     fn compile_var_load(
@@ -684,9 +688,20 @@ impl Compiler {
         expr: &Spanned<Expr>,
         name: &str,
     ) -> Result<Program<Instruction>, CompileError> {
-        Ok(self
-            .compile_var_address(name, expr)?
-            .then_instruction(Load, expr.span()))
+        let var = self
+            .vars
+            .get(&name.to_string())
+            .ok_or_else(|| CompileError::Spanned {
+                msg: format!("No such variable '{name}' in scope"),
+                span: expr.span(),
+            })?;
+
+        let instruction = match var {
+            VarType::Local(offset) => LoadLocal(*offset),
+            VarType::Global(addr) => LoadGlobal(*addr),
+        };
+
+        Ok(Program::from_instruction(instruction, expr.span()))
     }
 
     fn compile_var_assign(
@@ -695,19 +710,7 @@ impl Compiler {
         name: &str,
         value_program: Program<Instruction>,
     ) -> Result<Program<Instruction>, CompileError> {
-        let key = name.to_string();
-        if self.vars.get(&key).is_none() {
-            return Err(CompileError::Spanned {
-                msg: format!(
-                    "Internal compiler bug: allocation for variable {name:?} should have been done before assignment"
-                ),
-                span: expr.span(),
-            });
-        };
-
-        Ok(value_program
-            .then_program(self.compile_var_address(name, expr)?)
-            .then_instruction(Store, expr.span()))
+        Ok(value_program.then_program(self.compile_var_store(name, expr)?))
     }
 
     fn compile_allocation_for_all_vars_in_scope(
@@ -735,9 +738,7 @@ impl Compiler {
         pattern: &Spanned<Pattern>,
     ) -> Result<Program<Instruction>, CompileError> {
         let prog = match &pattern.0 {
-            Pattern::Ident(name) => self
-                .compile_var_address(name, expr)?
-                .then_instruction(Store, pattern.span()),
+            Pattern::Ident(name) => self.compile_var_store(name, expr)?,
 
             Pattern::Sequence(patterns) => patterns
                 .iter()
@@ -926,7 +927,7 @@ fn validate_num_args(
 }
 
 fn repeat_span(span: Span, count: usize) -> Vec<Span> {
-    iter::repeat(span).take(count).collect()
+    std::iter::repeat_n(span, count).collect()
 }
 
 impl<T> Program<T>

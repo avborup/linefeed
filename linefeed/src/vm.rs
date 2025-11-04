@@ -13,6 +13,7 @@ use crate::{
         runtime_value::{
             function::{MemoizationKey, RuntimeFunction},
             string::RuntimeString,
+            tuple::RuntimeTuple,
             RuntimeValue,
         },
     },
@@ -60,51 +61,51 @@ impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
 
 macro_rules! binary_op {
     ($vm:expr, $op:ident) => {{
-        let rhs = $vm.pop_stack()?;
-        let lhs = $vm.pop_stack()?;
+        let rhs = $vm.pop_stack();
+        let lhs = $vm.pop_stack();
         $vm.push_stack(lhs.$op(&rhs)?);
     }};
 }
 
 macro_rules! binary_op_swapped {
     ($vm:expr, $op:ident) => {{
-        let rhs = $vm.pop_stack()?;
-        let lhs = $vm.pop_stack()?;
+        let rhs = $vm.pop_stack();
+        let lhs = $vm.pop_stack();
         $vm.push_stack(rhs.$op(&lhs)?);
     }};
 }
 
 macro_rules! unary_mapper_method {
     ($vm:expr, $method:ident) => {{
-        let val = $vm.pop_stack()?;
+        let val = $vm.pop_stack();
         $vm.push_stack(val.$method()?);
     }};
 }
 
 macro_rules! method_with_optional_arg {
     ($vm:expr, $method:ident, $num_args:expr) => {{
-        let mut args = $vm.pop_args($num_args)?;
+        let mut args = $vm.pop_args($num_args);
         let arg = args.pop();
-        let target = $vm.pop_stack()?;
+        let target = $vm.pop_stack();
         $vm.push_stack(target.$method(arg)?);
     }};
 }
 
 macro_rules! stdlib_fn {
     ($vm:expr, $fn:ident) => {{
-        let val = $vm.pop_stack()?;
+        let val = $vm.pop_stack();
         $vm.push_stack(stdlib::$fn(val)?);
     }};
 
     ($vm:expr, $fn:ident, $num_args:expr) => {{
-        let args = $vm.pop_args($num_args)?;
+        let args = $vm.pop_args($num_args);
         $vm.push_stack(stdlib::$fn(args)?);
     }};
 }
 
 macro_rules! stdlib_fn_with_optional_arg {
     ($vm:expr, $fn:ident, $num_args:expr) => {{
-        let mut args = $vm.pop_args($num_args)?;
+        let mut args = $vm.pop_args($num_args);
         let arg = args.pop();
         $vm.push_stack(stdlib::$fn(arg)?);
     }};
@@ -200,27 +201,47 @@ where
             Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
 
             Bytecode::Not => {
-                let val = self.pop_stack()?;
+                let val = self.pop_stack();
                 self.push_stack(RuntimeValue::Bool(!val.bool()));
             }
 
             Bytecode::Load => {
-                let addr = self.pop_stack()?.address()?;
+                let addr = self.pop_stack().address()?;
                 self.push_stack(self.get(addr)?.clone());
             }
 
             Bytecode::Store => {
-                let addr = self.pop_stack()?.address()?;
+                let addr = self.pop_stack().address()?;
                 let val = self.peek_stack()?.clone();
                 self.set(addr, val)?;
             }
 
+            Bytecode::LoadLocal(offset) => {
+                let addr = self.bp + offset;
+                self.push_stack(self.get(addr)?.clone());
+            }
+
+            Bytecode::StoreLocal(offset) => {
+                let addr = self.bp + offset;
+                let val = self.peek_stack()?.clone();
+                self.set(addr, val)?;
+            }
+
+            Bytecode::LoadGlobal(addr) => {
+                self.push_stack(self.get(*addr)?.clone());
+            }
+
+            Bytecode::StoreGlobal(addr) => {
+                let val = self.peek_stack()?.clone();
+                self.set(*addr, val)?;
+            }
+
             Bytecode::Pop => {
-                self.pop_stack()?;
+                self.pop_stack();
             }
 
             Bytecode::RemoveIndex => {
-                let index = self.pop_stack()?.address()?;
+                let index = self.pop_stack().address()?;
                 debug_assert!(index < self.stack.len());
                 self.stack.remove(index);
             }
@@ -239,13 +260,13 @@ where
             }
 
             Bytecode::SetStackPtr => {
-                let new_ptr = self.pop_stack()?.address()?;
+                let new_ptr = self.pop_stack().address()?;
                 self.stack.truncate(new_ptr + 1);
             }
 
             Bytecode::SetRegister(reg) => {
                 let reg = *reg;
-                self.registers[reg] = self.pop_stack()?.int()?;
+                self.registers[reg] = self.pop_stack().int()?;
             }
 
             Bytecode::GetRegister(reg) => {
@@ -255,7 +276,7 @@ where
 
             Bytecode::IfFalse(idx) => {
                 let idx = *idx;
-                let val = self.pop_stack()?;
+                let val = self.pop_stack();
                 if !val.bool() {
                     self.pc = idx;
                 }
@@ -263,7 +284,7 @@ where
 
             Bytecode::IfTrue(idx) => {
                 let idx = *idx;
-                let val = self.pop_stack()?;
+                let val = self.pop_stack();
                 if val.bool() {
                     self.pc = idx;
                 }
@@ -335,7 +356,7 @@ where
             }
 
             Bytecode::Return => {
-                let return_val = self.pop_stack()?;
+                let return_val = self.pop_stack();
                 let frame_index = self.bp - 2;
 
                 let return_addr = self.stack[self.bp - 2].address()?;
@@ -351,27 +372,27 @@ where
             }
 
             Bytecode::Append => {
-                let val = self.pop_stack()?;
+                let val = self.pop_stack();
                 let into = self.peek_stack_mut()?;
                 into.append(val)?;
             }
 
             Bytecode::Index => {
-                let index = self.pop_stack()?;
+                let index = self.pop_stack();
                 let into = self.peek_stack_mut()?;
                 let value = into.index(&index)?;
                 *into = value;
             }
 
             Bytecode::SetIndex => {
-                let value = self.pop_stack()?;
-                let index = self.pop_stack()?;
+                let value = self.pop_stack();
+                let index = self.pop_stack();
                 let into = self.peek_stack_mut()?;
                 into.set_index(&index, value)?;
             }
 
             Bytecode::NextIter => {
-                let iter = self.pop_stack()?;
+                let iter = self.pop_stack();
                 let value = iter.next()?;
                 let has_value = RuntimeValue::Bool(value.is_some());
 
@@ -382,8 +403,8 @@ where
             }
 
             Bytecode::Sort(num_args) => {
-                let mut args = self.pop_args(*num_args)?;
-                let target = self.pop_stack()?;
+                let mut args = self.pop_args(*num_args);
+                let target = self.pop_stack();
 
                 let key_func = match args.pop() {
                     Some(RuntimeValue::Function(func)) => Some(func.clone()),
@@ -404,6 +425,11 @@ where
                 self.push_stack(res);
             }
 
+            Bytecode::SwapPop => {
+                self.swap();
+                self.pop_stack();
+            }
+
             Bytecode::ToIter => unary_mapper_method!(self, to_iter),
             Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
             Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
@@ -422,6 +448,10 @@ where
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
+            Bytecode::CreateTuple(size) => {
+                let items = self.pop_args(*size);
+                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+            }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
@@ -436,7 +466,7 @@ where
             Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
 
             Bytecode::PrintValue(num_args) => {
-                let vals = self.pop_args(*num_args)?;
+                let vals = self.pop_args(*num_args);
 
                 let mut last_val = None;
                 for val in vals {
@@ -453,7 +483,7 @@ where
             }
 
             Bytecode::ReprString => {
-                let val = self.pop_stack()?;
+                let val = self.pop_stack();
                 let repr = val.repr_string();
                 self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
             }
@@ -478,8 +508,8 @@ where
         Ok(ControlFlow::Continue)
     }
 
-    pub fn pop_stack(&mut self) -> Result<RuntimeValue, RuntimeError> {
-        self.stack.pop().ok_or(RuntimeError::StackUnderflow)
+    pub fn pop_stack(&mut self) -> RuntimeValue {
+        self.stack.pop().unwrap()
     }
 
     pub fn push_stack(&mut self, value: RuntimeValue) {
@@ -490,12 +520,8 @@ where
         self.stack.last().ok_or(RuntimeError::StackUnderflow)
     }
 
-    pub fn pop_args(&mut self, num_args: usize) -> Result<Vec<RuntimeValue>, RuntimeError> {
-        let mut args = (0..num_args)
-            .map(|_| self.pop_stack())
-            .collect::<Result<Vec<_>, _>>()?;
-        args.reverse();
-        Ok(args)
+    pub fn pop_args(&mut self, num_args: usize) -> Vec<RuntimeValue> {
+        self.stack.split_off(self.stack.len() - num_args)
     }
 
     // TODO: It's probably very slow to check this every time, but it provides good diagnostics.
@@ -589,7 +615,7 @@ where
             );
         }
 
-        let result = self.pop_stack()?;
+        let result = self.pop_stack();
 
         self.stack.truncate(stack_base);
         self.pc = saved_pc;

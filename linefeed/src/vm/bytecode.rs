@@ -16,6 +16,10 @@ pub enum Bytecode {
     // Variables
     Load,
     Store,
+    LoadLocal(usize),
+    StoreLocal(usize),
+    LoadGlobal(usize),
+    StoreGlobal(usize),
 
     // Values
     Value(RuntimeValue),
@@ -25,6 +29,7 @@ pub enum Bytecode {
     Pop,
     RemoveIndex,
     Swap,
+    SwapPop,
     Dup,
     GetStackPtr,
     SetStackPtr,
@@ -76,6 +81,7 @@ pub enum Bytecode {
     ParseInt,
     ToList,
     ToTuple,
+    CreateTuple(usize),
     ToMap,
     MapWithDefault,
     ToSet(usize),
@@ -115,6 +121,10 @@ impl Bytecode {
             Instruction::Label(_) => return Ok(None),
             Instruction::Load => Bytecode::Load,
             Instruction::Store => Bytecode::Store,
+            Instruction::LoadLocal(offset) => Bytecode::LoadLocal(offset),
+            Instruction::StoreLocal(offset) => Bytecode::StoreLocal(offset),
+            Instruction::LoadGlobal(addr) => Bytecode::LoadGlobal(addr),
+            Instruction::StoreGlobal(addr) => Bytecode::StoreGlobal(addr),
             Instruction::GetBasePtr => Bytecode::GetBasePtr,
             Instruction::Value(value) => {
                 Bytecode::Value(Self::into_runtime_value_with_mapper(value, label_mapper)?)
@@ -145,6 +155,7 @@ impl Bytecode {
             Instruction::Pop => Bytecode::Pop,
             Instruction::RemoveIndex => Bytecode::RemoveIndex,
             Instruction::Swap => Bytecode::Swap,
+            Instruction::SwapPop => Bytecode::SwapPop,
             Instruction::Dup => Bytecode::Dup,
             Instruction::GetStackPtr => Bytecode::GetStackPtr,
             Instruction::SetStackPtr => Bytecode::SetStackPtr,
@@ -157,6 +168,7 @@ impl Bytecode {
             Instruction::NextIter => Bytecode::NextIter,
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::IsIn => Bytecode::IsIn,
+            Instruction::CreateTuple(size) => Bytecode::CreateTuple(size),
             Instruction::StdlibCall(func, num_args) => match func {
                 StdlibFn::Print => Bytecode::PrintValue(num_args),
                 StdlibFn::Input => Bytecode::ReadInput,

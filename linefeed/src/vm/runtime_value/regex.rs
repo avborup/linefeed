@@ -1,4 +1,4 @@
-use std::{ops::Deref, rc::Rc};
+use std::rc::Rc;
 
 use regex::{Regex, RegexBuilder};
 
@@ -43,10 +43,6 @@ impl RuntimeRegex {
 
     pub fn as_regex(&self) -> &Regex {
         &self.0.regex
-    }
-
-    pub fn deep_clone(&self) -> Self {
-        Self::new(self.0.deref().clone())
     }
 
     pub fn as_str(&self) -> &str {

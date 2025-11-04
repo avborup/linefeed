@@ -65,7 +65,7 @@ impl RuntimeCounter {
     }
 
     pub fn get(&self, key: &RuntimeValue) -> RuntimeValue {
-        let count = self.borrow().get(key).map(|c| *c).unwrap_or(0);
+        let count = self.borrow().get(key).copied().unwrap_or(0);
         RuntimeValue::Num(RuntimeNumber::from(count))
     }
 

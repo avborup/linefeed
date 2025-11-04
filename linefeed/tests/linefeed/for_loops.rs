@@ -146,3 +146,49 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    for_loop_works_on_tuple,
+    indoc::indoc! {r#"
+        for i in (1, 2, 3) {
+            print(i);
+        };
+    "#},
+    equals("1 \n 2 \n 3"),
+    empty()
+);
+
+eval_and_assert!(
+    for_loop_works_on_tuple_with_mixed_types,
+    indoc::indoc! {r#"
+        for i in (1, "hello", 3.5, true) {
+            print(i);
+        };
+    "#},
+    equals("1 \n hello \n 3.5 \n true"),
+    empty()
+);
+
+eval_and_assert!(
+    for_loop_break_works_on_tuple,
+    indoc::indoc! {r#"
+        for i in (1, 2, 3, 4, 5) {
+            break if i == 3;
+            print(i);
+        };
+    "#},
+    equals("1 \n 2"),
+    empty()
+);
+
+eval_and_assert!(
+    for_loop_continue_works_on_tuple,
+    indoc::indoc! {r#"
+        for i in (1, 2, 3, 4, 5) {
+            continue if i % 2 == 0;
+            print(i);
+        };
+    "#},
+    equals("1 \n 3 \n 5"),
+    empty()
+);

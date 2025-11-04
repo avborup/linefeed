@@ -1,19 +1,19 @@
-use std::cell::Ref;
+use std::rc::Rc;
 
 use crate::vm::{
-    runtime_value::{list::RuntimeList, number::RuntimeNumber, RuntimeValue},
+    runtime_value::{number::RuntimeNumber, utils::resolve_index, RuntimeValue},
     RuntimeError,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Hash)]
-pub struct RuntimeTuple(RuntimeList);
+pub struct RuntimeTuple(Rc<Vec<RuntimeValue>>);
 
 impl RuntimeTuple {
     pub fn from_vec(vec: Vec<RuntimeValue>) -> Self {
-        Self(RuntimeList::from_vec(vec))
+        Self(Rc::new(vec))
     }
 
-    pub fn as_slice(&self) -> Ref<'_, [RuntimeValue]> {
+    pub fn as_slice(&self) -> &[RuntimeValue] {
         self.0.as_slice()
     }
 
@@ -25,15 +25,16 @@ impl RuntimeTuple {
         self.0.is_empty()
     }
 
-    pub fn deep_clone(&self) -> Self {
-        Self(self.0.deep_clone())
-    }
-
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
-        self.0.index(index)
+        let i = resolve_index(self.len(), index)?;
+
+        self.0
+            .get(i)
+            .cloned()
+            .ok_or_else(|| RuntimeError::IndexOutOfBounds(i as isize, self.len()))
     }
 
     pub fn contains(&self, value: &RuntimeValue) -> bool {
-        self.0.contains(value)
+        self.0.iter().any(|v| v == value)
     }
 }

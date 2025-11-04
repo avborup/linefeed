@@ -12,7 +12,7 @@ while changed {
 
   for (r, c), kind in seats {
     num_occupied = 0;
-    for dr, dc in [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)] {
+    for dr, dc in ((-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)) {
       if seats[(r + dr, c + dc)] == "#" {
         num_occupied += 1;
       };
