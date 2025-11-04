@@ -1,6 +1,6 @@
 // TODO: Make all arguments generic/polymorphic, generate code for all possible types. Type inference.
 
-use std::{collections::HashMap, iter, ops::RangeInclusive};
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use crate::{
     compiler::{
@@ -340,10 +340,9 @@ impl Compiler {
 
             Expr::Tuple(items) => {
                 // Compile each tuple element onto the stack
-                let program = items.iter().try_fold(
-                    Program::new(),
-                    |acc, item| Ok(acc.then_program(self.compile_expr(item)?)),
-                )?;
+                let program = items.iter().try_fold(Program::new(), |acc, item| {
+                    Ok(acc.then_program(self.compile_expr(item)?))
+                })?;
 
                 // Emit CreateTuple instruction to consume N values from stack
                 program.then_instruction(CreateTuple(items.len()), expr.span())
@@ -931,7 +930,7 @@ fn validate_num_args(
 }
 
 fn repeat_span(span: Span, count: usize) -> Vec<Span> {
-    iter::repeat(span).take(count).collect()
+    std::iter::repeat_n(span, count).collect()
 }
 
 impl<T> Program<T>

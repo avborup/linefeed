@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Neg};
+use std::collections::HashSet;
 
 use crate::{
     compiler::{ir_value::IrValue, make_loop_vars},
