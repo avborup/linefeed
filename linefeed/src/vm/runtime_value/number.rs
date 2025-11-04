@@ -71,6 +71,10 @@ impl RuntimeNumber {
             ))),
         }
     }
+
+    pub fn neg(&self) -> Self {
+        self * &RuntimeNumber::from(-1)
+    }
 }
 
 macro_rules! impl_bigint_from {

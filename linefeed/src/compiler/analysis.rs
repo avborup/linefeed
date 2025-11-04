@@ -1,8 +1,8 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, ops::Neg};
 
 use crate::{
     compiler::{ir_value::IrValue, make_loop_vars},
-    grammar::ast::{Expr, Pattern, Spanned},
+    grammar::ast::{Expr, Pattern, Spanned, UnaryOp},
 };
 
 pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
@@ -183,6 +183,11 @@ pub fn eval_simple_constant(expr: &Spanned<Expr>) -> Result<Option<IrValue>, Str
                 None
             }
         }
+
+        Expr::Unary(UnaryOp::Neg, sub_expr) => match eval_simple_constant(sub_expr)? {
+            Some(IrValue::Num(i)) => Some(IrValue::Num(i.neg())),
+            _ => None,
+        },
 
         _ => None,
     };
