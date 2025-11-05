@@ -1,8 +1,9 @@
 use std::{
     cell::{Ref, RefCell},
-    collections::HashMap,
     rc::Rc,
 };
+
+use ahash::AHashMap;
 
 use crate::vm::{
     runtime_value::{
@@ -98,7 +99,7 @@ impl RuntimeList {
                 let key = key_fn(item)?;
                 Ok((item.clone(), key))
             })
-            .collect::<Result<HashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
+            .collect::<Result<AHashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
 
         self.0.borrow_mut().sort_by(|a, b| {
             let key_a = keys.get(a).expect("key not found for item a");
