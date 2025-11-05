@@ -43,9 +43,9 @@ impl RuntimeNumber {
     pub fn modulo(&self, other: &Self) -> Self {
         match (self, other) {
             (SmallInt(a), SmallInt(b)) => SmallInt(a % b),
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(*a) % b).into()),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a) % b),
             (SmallInt(a), Float(b)) => Float(*a as f64 % b),
-            (BigInt(a), SmallInt(b)) => BigInt((a % rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a % rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt((a % b).into()),
             (BigInt(a), Float(b)) => Float(a.to_f64() % b),
             (Float(a), SmallInt(b)) => Float(a % (*b as f64)),
@@ -67,10 +67,10 @@ impl RuntimeNumber {
                 if *b < 0 {
                     Float((*a as f64).powi(*b as i32))
                 } else {
-                    BigInt(rug::Integer::from(*a).pow(*b as u32).into())
+                    BigInt(rug::Integer::from(*a).pow(*b as u32))
                 }
             }
-            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a).pow(b.to_u32().unwrap()).into()),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a).pow(b.to_u32().unwrap())),
             (SmallInt(a), Float(b)) => Float((*a as f64).powf(*b)),
             (BigInt(a), SmallInt(b)) => {
                 if *b < 0 {
@@ -90,9 +90,9 @@ impl RuntimeNumber {
     pub fn div_floor(&self, other: &Self) -> Self {
         match (self, other) {
             (SmallInt(a), SmallInt(b)) => SmallInt(a / b),
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(*a) / b).into()),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a) / b),
             (SmallInt(a), Float(b)) => Float((*a as f64) / b).floor(),
-            (BigInt(a), SmallInt(b)) => BigInt((a / rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a / rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt((a / b).into()),
             (BigInt(a), Float(b)) => Float(a.to_f64() / b).floor(),
             (Float(a), SmallInt(b)) => Float(a / (*b as f64)).floor(),
@@ -213,14 +213,13 @@ impl Add for RuntimeNumber {
 
     fn add(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_add(b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(a) + rug::Integer::from(b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(a) + b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_add(b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(a) + rug::Integer::from(b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(a) + b),
             (SmallInt(a), Float(b)) => Float(a as f64 + b),
-            (BigInt(a), SmallInt(b)) => BigInt((a + rug::Integer::from(b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a + rug::Integer::from(b)),
             (BigInt(a), BigInt(b)) => BigInt(a + b),
             (BigInt(a), Float(b)) => Float(a.to_f64() + b),
             (Float(a), SmallInt(b)) => Float(a + b as f64),
@@ -235,14 +234,13 @@ impl Add<&Self> for RuntimeNumber {
 
     fn add(self, other: &Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_add(*b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(a) + rug::Integer::from(*b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(a) + b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_add(*b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(a) + rug::Integer::from(*b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(a) + b),
             (SmallInt(a), Float(b)) => Float(a as f64 + b),
-            (BigInt(a), SmallInt(b)) => BigInt((a + rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a + rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt(a + b),
             (BigInt(a), Float(b)) => Float(a.to_f64() + b),
             (Float(a), SmallInt(b)) => Float(a + *b as f64),
@@ -257,14 +255,13 @@ impl Add for &RuntimeNumber {
 
     fn add(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_add(*b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(*a) + rug::Integer::from(*b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(*a) + b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_add(*b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(*a) + rug::Integer::from(*b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a) + b),
             (SmallInt(a), Float(b)) => Float(*a as f64 + b),
-            (BigInt(a), SmallInt(b)) => BigInt((a + rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a + rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt((a + b).into()),
             (BigInt(a), Float(b)) => Float(a.to_f64() + b),
             (Float(a), SmallInt(b)) => Float(a + *b as f64),
@@ -279,14 +276,13 @@ impl Sub for RuntimeNumber {
 
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_sub(b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(a) - rug::Integer::from(b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(a) - b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_sub(b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(a) - rug::Integer::from(b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(a) - b),
             (SmallInt(a), Float(b)) => Float(a as f64 - b),
-            (BigInt(a), SmallInt(b)) => BigInt((a - rug::Integer::from(b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a - rug::Integer::from(b)),
             (BigInt(a), BigInt(b)) => BigInt(a - b),
             (BigInt(a), Float(b)) => Float(a.to_f64() - b),
             (Float(a), SmallInt(b)) => Float(a - b as f64),
@@ -301,14 +297,13 @@ impl Sub for &RuntimeNumber {
 
     fn sub(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_sub(*b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(*a) - rug::Integer::from(*b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(*a) - b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_sub(*b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(*a) - rug::Integer::from(*b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a) - b),
             (SmallInt(a), Float(b)) => Float(*a as f64 - b),
-            (BigInt(a), SmallInt(b)) => BigInt((a - rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a - rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt((a - b).into()),
             (BigInt(a), Float(b)) => Float(a.to_f64() - b),
             (Float(a), SmallInt(b)) => Float(a - *b as f64),
@@ -323,14 +318,13 @@ impl Mul for RuntimeNumber {
 
     fn mul(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_mul(b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(a) * rug::Integer::from(b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(a) * b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_mul(b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(a) * rug::Integer::from(b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(a) * b),
             (SmallInt(a), Float(b)) => Float(a as f64 * b),
-            (BigInt(a), SmallInt(b)) => BigInt((a * rug::Integer::from(b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a * rug::Integer::from(b)),
             (BigInt(a), BigInt(b)) => BigInt(a * b),
             (BigInt(a), Float(b)) => Float(a.to_f64() * b),
             (Float(a), SmallInt(b)) => Float(a * b as f64),
@@ -345,14 +339,13 @@ impl Mul for &RuntimeNumber {
 
     fn mul(self, other: Self) -> Self::Output {
         match (self, other) {
-            (SmallInt(a), SmallInt(b)) => {
-                a.checked_mul(*b)
-                    .map(SmallInt)
-                    .unwrap_or_else(|| BigInt((rug::Integer::from(*a) * rug::Integer::from(*b)).into()))
-            }
-            (SmallInt(a), BigInt(b)) => BigInt((rug::Integer::from(*a) * b).into()),
+            (SmallInt(a), SmallInt(b)) => a
+                .checked_mul(*b)
+                .map(SmallInt)
+                .unwrap_or_else(|| BigInt(rug::Integer::from(*a) * rug::Integer::from(*b))),
+            (SmallInt(a), BigInt(b)) => BigInt(rug::Integer::from(*a) * b),
             (SmallInt(a), Float(b)) => Float(*a as f64 * b),
-            (BigInt(a), SmallInt(b)) => BigInt((a * rug::Integer::from(*b)).into()),
+            (BigInt(a), SmallInt(b)) => BigInt(a * rug::Integer::from(*b)),
             (BigInt(a), BigInt(b)) => BigInt((a * b).into()),
             (BigInt(a), Float(b)) => Float(a.to_f64() * b),
             (Float(a), SmallInt(b)) => Float(a * *b as f64),
