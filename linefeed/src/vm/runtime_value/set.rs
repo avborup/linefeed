@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ahash::AHashSet;
+use rustc_hash::FxHashSet;
 
 use crate::vm::{
     runtime_value::{iterator::RuntimeIterator, operations::LfAppend, RuntimeValue},
@@ -8,18 +8,18 @@ use crate::vm::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeSet(Rc<RefCell<AHashSet<RuntimeValue>>>);
+pub struct RuntimeSet(Rc<RefCell<FxHashSet<RuntimeValue>>>);
 
 impl RuntimeSet {
     pub fn new() -> Self {
-        Self::from_set(AHashSet::new())
+        Self::from_set(FxHashSet::default())
     }
 
-    pub fn from_set(set: AHashSet<RuntimeValue>) -> Self {
+    pub fn from_set(set: FxHashSet<RuntimeValue>) -> Self {
         Self(Rc::new(RefCell::new(set)))
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<'_, AHashSet<RuntimeValue>> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, FxHashSet<RuntimeValue>> {
         self.0.borrow()
     }
 
@@ -72,7 +72,7 @@ impl TryFrom<RuntimeIterator> for RuntimeSet {
     type Error = RuntimeError;
 
     fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
-        let mut map = AHashSet::new();
+        let mut map = FxHashSet::default();
         while let Some(val) = iter.next() {
             map.insert(val);
         }

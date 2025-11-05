@@ -9,11 +9,11 @@ aoc-secret = []
 debug-vm = []
 
 [dependencies]
-ahash = "0.8.12"
 ariadne = "0.3.0"
 chumsky = { git = "https://github.com/zesterer/chumsky.git", rev = "282bf5e", features = ["memoization"] }
 regex = "1.11.1"
 rug = "1.27.0"
+rustc-hash = "2.1.1"
 yansi = "1.0.1"
 
 [dev-dependencies]

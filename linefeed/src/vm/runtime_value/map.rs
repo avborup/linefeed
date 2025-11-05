@@ -1,5 +1,6 @@
-use ahash::AHashMap;
 use std::{cell::RefCell, rc::Rc};
+
+use rustc_hash::FxHashMap;
 
 use crate::vm::{
     runtime_value::{
@@ -13,16 +14,16 @@ pub struct RuntimeMap(Rc<RefCell<InnerRuntimeMap>>);
 
 #[derive(Debug, Clone)]
 pub struct InnerRuntimeMap {
-    pub map: AHashMap<RuntimeValue, RuntimeValue>,
+    pub map: FxHashMap<RuntimeValue, RuntimeValue>,
     pub default_value: Option<RuntimeValue>,
 }
 
 impl RuntimeMap {
     pub fn new() -> Self {
-        Self::from_map(AHashMap::new())
+        Self::from_map(FxHashMap::default())
     }
 
-    pub fn from_map(map: AHashMap<RuntimeValue, RuntimeValue>) -> Self {
+    pub fn from_map(map: FxHashMap<RuntimeValue, RuntimeValue>) -> Self {
         Self(Rc::new(RefCell::new(InnerRuntimeMap {
             map,
             default_value: None,
@@ -95,7 +96,7 @@ impl RuntimeMap {
 }
 
 impl std::ops::Deref for InnerRuntimeMap {
-    type Target = AHashMap<RuntimeValue, RuntimeValue>;
+    type Target = FxHashMap<RuntimeValue, RuntimeValue>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
@@ -146,7 +147,7 @@ impl TryFrom<RuntimeIterator> for RuntimeMap {
     type Error = RuntimeError;
 
     fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
-        let mut map = AHashMap::new();
+        let mut map = FxHashMap::default();
         while let Some(item) = iter.next() {
             let key = item.index(&RuntimeValue::Num(RuntimeNumber::from(0)))?;
             let val = item.index(&RuntimeValue::Num(RuntimeNumber::from(1)))?;

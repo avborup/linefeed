@@ -3,7 +3,7 @@ use std::{
     rc::Rc,
 };
 
-use ahash::AHashMap;
+use rustc_hash::FxHashMap;
 
 use crate::vm::{
     runtime_value::{
@@ -99,7 +99,7 @@ impl RuntimeList {
                 let key = key_fn(item)?;
                 Ok((item.clone(), key))
             })
-            .collect::<Result<AHashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
+            .collect::<Result<FxHashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
 
         self.0.borrow_mut().sort_by(|a, b| {
             let key_a = keys.get(a).expect("key not found for item a");

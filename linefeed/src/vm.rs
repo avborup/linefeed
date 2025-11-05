@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use ahash::AHashMap;
+use rustc_hash::FxHashMap;
 use yansi::Paint;
 
 use crate::{
@@ -35,8 +35,8 @@ pub struct BytecodeInterpreter<I, O, E> {
     pub stdout: O,
     pub stderr: E,
     pub instructions_executed: usize,
-    memoized_functions: AHashMap<MemoizationKey, RuntimeValue>,
-    ongoing_memoizations: AHashMap<usize, MemoizationKey>,
+    memoized_functions: FxHashMap<MemoizationKey, RuntimeValue>,
+    ongoing_memoizations: FxHashMap<usize, MemoizationKey>,
 }
 
 impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
@@ -51,8 +51,8 @@ impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
             pc: 0,
             bp: 0,
             instructions_executed: 0,
-            memoized_functions: AHashMap::new(),
-            ongoing_memoizations: AHashMap::new(),
+            memoized_functions: FxHashMap::default(),
+            ongoing_memoizations: FxHashMap::default(),
         }
     }
 }

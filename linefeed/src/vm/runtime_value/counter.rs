@@ -1,6 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
-use ahash::AHashMap;
+use rustc_hash::FxHashMap;
 
 use crate::vm::{
     runtime_value::{
@@ -17,15 +17,15 @@ pub struct RuntimeCounter(Rc<RefCell<InnerRuntimeCounter>>);
 
 #[derive(Debug, Clone)]
 pub struct InnerRuntimeCounter {
-    pub map: AHashMap<RuntimeValue, isize>,
+    pub map: FxHashMap<RuntimeValue, isize>,
 }
 
 impl RuntimeCounter {
     pub fn new() -> Self {
-        Self::from_map(AHashMap::new())
+        Self::from_map(FxHashMap::default())
     }
 
-    pub fn from_map(map: AHashMap<RuntimeValue, isize>) -> Self {
+    pub fn from_map(map: FxHashMap<RuntimeValue, isize>) -> Self {
         Self(Rc::new(RefCell::new(InnerRuntimeCounter { map })))
     }
 
@@ -91,7 +91,7 @@ impl RuntimeCounter {
 }
 
 impl std::ops::Deref for InnerRuntimeCounter {
-    type Target = AHashMap<RuntimeValue, isize>;
+    type Target = FxHashMap<RuntimeValue, isize>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
