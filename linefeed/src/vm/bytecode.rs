@@ -64,7 +64,7 @@ pub enum Bytecode {
     Goto(usize),
     IfTrue(usize),
     IfFalse(usize),
-    RuntimeError(String),
+    RuntimeError(Box<String>),
 
     // Functions
     GetBasePtr,
@@ -114,6 +114,11 @@ pub enum Bytecode {
     Values,
 }
 
+const _: () = {
+    const SIZE: usize = std::mem::size_of::<Bytecode>();
+    assert!(SIZE == 16);
+};
+
 impl Bytecode {
     pub fn from_instruction(
         instruction: Instruction,
@@ -153,7 +158,7 @@ impl Bytecode {
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),
             Instruction::IfFalse(label) => Bytecode::IfFalse(label_mapper.get(label)?),
-            Instruction::RuntimeError(msg) => Bytecode::RuntimeError(msg),
+            Instruction::RuntimeError(msg) => Bytecode::RuntimeError(Box::new(msg)),
             Instruction::Pop => Bytecode::Pop,
             Instruction::RemoveIndex => Bytecode::RemoveIndex,
             Instruction::Swap => Bytecode::Swap,

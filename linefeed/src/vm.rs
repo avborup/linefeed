@@ -499,7 +499,7 @@ where
                 self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
             }
 
-            Bytecode::RuntimeError(err) => return Err(RuntimeError::Plain(err.clone())),
+            Bytecode::RuntimeError(err) => return Err(RuntimeError::Plain(*err.clone())),
 
             #[allow(unreachable_patterns)]
             to_implement => {

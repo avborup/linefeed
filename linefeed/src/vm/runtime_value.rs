@@ -57,7 +57,8 @@ pub enum RuntimeValue {
 const _: () = {
     // Just to make sure that we don't accidentally change the size of RuntimeValue and make
     // cloning super expensive.
-    assert!(std::mem::size_of::<RuntimeValue>() == 16);
+    const SIZE: usize = std::mem::size_of::<RuntimeValue>();
+    assert!(SIZE == 16);
 };
 
 impl RuntimeValue {
