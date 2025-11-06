@@ -168,9 +168,9 @@ impl PartialEq for RuntimeNumber {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             (SmallInt(a), SmallInt(b)) => a == b,
-            (SmallInt(a), BigInt(b)) => rug::Integer::from(*a) == **b,
+            (SmallInt(a), BigInt(b)) => rug::integer::MiniInteger::from(*a) == **b,
             (SmallInt(a), Float(b)) => (*a as f64) == *b,
-            (BigInt(a), SmallInt(b)) => **a == rug::Integer::from(*b),
+            (BigInt(a), SmallInt(b)) => **a == rug::integer::MiniInteger::from(*b),
             (BigInt(a), BigInt(b)) => a == b,
             (BigInt(a), Float(b)) => a.to_f64() == *b,
             (Float(a), SmallInt(b)) => *a == (*b as f64),
