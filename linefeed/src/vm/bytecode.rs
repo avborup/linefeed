@@ -217,6 +217,7 @@ impl Bytecode {
         Ok(Some(bytecode))
     }
 
+    #[allow(clippy::mutable_key_type)]
     fn into_runtime_value_with_mapper(
         value: IrValue,
         label_mapper: &LabelMapper,

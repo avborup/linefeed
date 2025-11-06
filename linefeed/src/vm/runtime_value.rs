@@ -1,3 +1,5 @@
+#![allow(clippy::mutable_key_type)]
+
 use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
 use crate::{
