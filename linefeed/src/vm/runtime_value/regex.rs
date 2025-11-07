@@ -1,5 +1,6 @@
 use std::rc::Rc;
 
+use oxc_allocator::Allocator;
 use regex::{Regex, RegexBuilder};
 
 use crate::vm::runtime_value::{
@@ -28,7 +29,7 @@ pub struct RegexModifiers {
     pub parse_nums: bool,
 }
 
-impl RuntimeRegex {
+impl<'gc> RuntimeRegex {
     pub fn compile(s: &str, modifiers: RegexModifiers) -> Result<Self, regex::Error> {
         let regex = RegexBuilder::new(s)
             .case_insensitive(modifiers.case_insensitive)
@@ -49,22 +50,22 @@ impl RuntimeRegex {
         self.0.regex.as_str()
     }
 
-    pub fn find_matches(&self, s: &RuntimeString) -> RuntimeList {
+    pub fn find_matches(&self, s: &RuntimeString, alloc: &'gc Allocator) -> RuntimeList<'gc> {
         let matches = self
             .0
             .regex
             .captures_iter(s.as_str())
-            .map(|m| self.process_capture(m))
+            .map(|m| self.process_capture(m, alloc))
             .collect::<Vec<_>>();
 
         RuntimeList::from_vec(matches)
     }
 
-    pub fn find_match(&self, s: &RuntimeString) -> RuntimeValue {
+    pub fn find_match(&self, s: &RuntimeString, alloc: &'gc Allocator) -> RuntimeValue<'gc> {
         self.0
             .regex
             .captures(s.as_str())
-            .map(|m| self.process_capture(m))
+            .map(|m| self.process_capture(m, alloc))
             .unwrap_or(RuntimeValue::Null)
     }
 
@@ -72,7 +73,11 @@ impl RuntimeRegex {
         self.0.regex.is_match(s.as_str())
     }
 
-    fn process_capture(&self, captures: regex::Captures) -> RuntimeValue {
+    fn process_capture(
+        &self,
+        captures: regex::Captures,
+        alloc: &'gc Allocator,
+    ) -> RuntimeValue<'gc> {
         let mut group_values = captures
             .iter()
             .map(|group| {
@@ -93,7 +98,7 @@ impl RuntimeRegex {
         let full_match = group_values.remove(0);
         group_values.push(full_match);
 
-        RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values))
+        RuntimeValue::Tuple(alloc.alloc(RuntimeTuple::from_vec(group_values)))
     }
 }
 

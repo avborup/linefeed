@@ -13,19 +13,19 @@ use crate::vm::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeCounter(Rc<RefCell<InnerRuntimeCounter>>);
+pub struct RuntimeCounter<'gc>(Rc<RefCell<InnerRuntimeCounter<'gc>>>);
 
 #[derive(Debug, Clone)]
-pub struct InnerRuntimeCounter {
-    pub map: FxHashMap<RuntimeValue, isize>,
+pub struct InnerRuntimeCounter<'gc> {
+    pub map: FxHashMap<RuntimeValue<'gc>, isize>,
 }
 
-impl RuntimeCounter {
+impl<'gc> RuntimeCounter<'gc> {
     pub fn new() -> Self {
         Self::from_map(FxHashMap::default())
     }
 
-    pub fn from_map(map: FxHashMap<RuntimeValue, isize>) -> Self {
+    pub fn from_map(map: FxHashMap<RuntimeValue<'gc>, isize>) -> Self {
         Self(Rc::new(RefCell::new(InnerRuntimeCounter { map })))
     }
 

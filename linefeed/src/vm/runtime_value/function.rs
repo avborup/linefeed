@@ -9,7 +9,7 @@ pub struct RuntimeFunction<L = usize> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MemoizationKey {
+pub struct MemoizationKey<'gc> {
     pub func_location: usize,
-    pub args: Vec<RuntimeValue>,
+    pub args: Vec<RuntimeValue<'gc>>,
 }

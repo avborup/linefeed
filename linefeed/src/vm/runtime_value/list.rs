@@ -17,18 +17,18 @@ use crate::vm::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeList(Rc<RefCell<Vec<RuntimeValue>>>);
+pub struct RuntimeList<'gc>(Rc<RefCell<Vec<RuntimeValue<'gc>>>>);
 
-impl RuntimeList {
+impl<'gc> RuntimeList<'gc> {
     pub fn new() -> Self {
         Self::from_vec(Vec::new())
     }
 
-    pub fn from_vec(vec: Vec<RuntimeValue>) -> Self {
+    pub fn from_vec(vec: Vec<RuntimeValue<'gc>>) -> Self {
         Self(Rc::new(RefCell::new(vec)))
     }
 
-    pub fn as_slice(&self) -> Ref<'_, [RuntimeValue]> {
+    pub fn as_slice(&self) -> Ref<'_, [RuntimeValue<'gc>]> {
         Ref::map(self.0.borrow(), |v| v.as_slice())
     }
 
@@ -44,7 +44,7 @@ impl RuntimeList {
         Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
 
-    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue, RuntimeError> {
+    pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue<'gc>, RuntimeError> {
         let i = resolve_index(self.len(), index)?;
 
         let value = self
@@ -65,14 +65,14 @@ impl RuntimeList {
     pub fn set_index(
         &self,
         index: &RuntimeNumber,
-        value: RuntimeValue,
+        value: RuntimeValue<'gc>,
     ) -> Result<(), RuntimeError> {
         let i = resolve_index(self.len(), index)?;
         self.0.borrow_mut()[i] = value;
         Ok(())
     }
 
-    pub fn contains(&self, value: &RuntimeValue) -> bool {
+    pub fn contains(&self, value: &RuntimeValue<'gc>) -> bool {
         self.0.borrow().contains(value)
     }
 
@@ -89,7 +89,7 @@ impl RuntimeList {
 
     pub fn sort_by_key(
         &self,
-        mut key_fn: impl FnMut(&RuntimeValue) -> Result<RuntimeValue, RuntimeError>,
+        mut key_fn: impl FnMut(&RuntimeValue<'gc>) -> Result<RuntimeValue<'gc>, RuntimeError>,
     ) -> Result<(), RuntimeError> {
         let keys = self
             .0
@@ -99,7 +99,7 @@ impl RuntimeList {
                 let key = key_fn(item)?;
                 Ok((item.clone(), key))
             })
-            .collect::<Result<FxHashMap<RuntimeValue, RuntimeValue>, RuntimeError>>()?;
+            .collect::<Result<FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>, RuntimeError>>()?;
 
         self.0.borrow_mut().sort_by(|a, b| {
             let key_a = keys.get(a).expect("key not found for item a");
@@ -119,13 +119,13 @@ impl RuntimeList {
     }
 }
 
-impl Default for RuntimeList {
+impl Default for RuntimeList<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl PartialEq for RuntimeList {
+impl PartialEq for RuntimeList<'_> {
     fn eq(&self, other: &Self) -> bool {
         let a = self.0.borrow();
         let b = other.0.borrow();
@@ -134,22 +134,22 @@ impl PartialEq for RuntimeList {
     }
 }
 
-impl Eq for RuntimeList {}
+impl Eq for RuntimeList<'_> {}
 
-impl std::hash::Hash for RuntimeList {
+impl std::hash::Hash for RuntimeList<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.0.borrow().hash(state);
     }
 }
 
-impl std::cmp::PartialOrd for RuntimeList {
+impl std::cmp::PartialOrd for RuntimeList<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.borrow().partial_cmp(&other.0.borrow())
     }
 }
 
-impl LfAppend for RuntimeList {
-    fn append(&mut self, other: RuntimeValue) -> Result<(), RuntimeError> {
+impl<'gc> LfAppend<'gc> for RuntimeList<'gc> {
+    fn append(&mut self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
         self.0.borrow_mut().push(other.clone());
         Ok(())
     }

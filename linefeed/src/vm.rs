@@ -1,5 +1,6 @@
 use std::io::{Read, Write};
 
+use oxc_allocator::Allocator;
 use rustc_hash::FxHashMap;
 use yansi::Paint;
 
@@ -24,10 +25,11 @@ pub mod runtime_error;
 pub mod runtime_value;
 pub mod stdlib;
 
-pub struct BytecodeInterpreter<I, O, E> {
-    program: Program<Bytecode>,
+pub struct BytecodeInterpreter<'gc, I, O, E> {
+    program: Program<Bytecode<'gc>>,
+    allocator: &'gc Allocator,
     // TODO: Optimisation: use stack-allocated array instead of Vec?
-    stack: Vec<RuntimeValue>,
+    stack: Vec<RuntimeValue<'gc>>,
     registers: [isize; DEFAULT_MAX_REGISTERS],
     pc: usize,
     bp: usize,
@@ -35,14 +37,15 @@ pub struct BytecodeInterpreter<I, O, E> {
     pub stdout: O,
     pub stderr: E,
     pub instructions_executed: usize,
-    memoized_functions: FxHashMap<MemoizationKey, RuntimeValue>,
-    ongoing_memoizations: FxHashMap<usize, MemoizationKey>,
+    memoized_functions: FxHashMap<MemoizationKey<'gc>, RuntimeValue<'gc>>,
+    ongoing_memoizations: FxHashMap<usize, MemoizationKey<'gc>>,
 }
 
-impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
-    pub fn new(program: Program<Bytecode>) -> Self {
+impl<'gc> BytecodeInterpreter<'gc, std::io::Stdin, std::io::Stdout, std::io::Stderr> {
+    pub fn new(program: Program<Bytecode<'gc>>, allocator: &'gc Allocator) -> Self {
         Self {
             program,
+            allocator,
             stack: vec![],
             registers: [-1; DEFAULT_MAX_REGISTERS],
             stdin: std::io::stdin(),
@@ -61,7 +64,17 @@ macro_rules! binary_op {
     ($vm:expr, $op:ident) => {{
         let rhs = $vm.pop_stack();
         let lhs = $vm.pop_stack();
-        $vm.push_stack(lhs.$op(&rhs)?);
+        let res = lhs.$op(&rhs)?;
+        $vm.push_stack(res);
+    }};
+}
+
+macro_rules! binary_op_alloc {
+    ($vm:expr, $op:ident) => {{
+        let rhs = $vm.pop_stack();
+        let lhs = $vm.pop_stack();
+        let res = lhs.$op(&rhs, $vm.allocator)?;
+        $vm.push_stack(res);
     }};
 }
 
@@ -101,6 +114,18 @@ macro_rules! stdlib_fn {
     }};
 }
 
+macro_rules! stdlib_fn_alloc {
+    ($vm:expr, $fn:ident) => {{
+        let val = $vm.pop_stack();
+        $vm.push_stack(stdlib::$fn(val, $vm.allocator)?);
+    }};
+
+    ($vm:expr, $fn:ident, $num_args:expr) => {{
+        let args = $vm.pop_args($num_args);
+        $vm.push_stack(stdlib::$fn(args, $vm.allocator)?);
+    }};
+}
+
 macro_rules! stdlib_fn_with_optional_arg {
     ($vm:expr, $fn:ident, $num_args:expr) => {{
         let mut args = $vm.pop_args($num_args);
@@ -109,7 +134,7 @@ macro_rules! stdlib_fn_with_optional_arg {
     }};
 }
 
-impl<I, O, E> BytecodeInterpreter<I, O, E>
+impl<'gc, I, O, E> BytecodeInterpreter<'gc, I, O, E>
 where
     I: Read,
     O: Write,
@@ -120,9 +145,10 @@ where
         stdin: II,
         stdout: OO,
         stderr: EE,
-    ) -> BytecodeInterpreter<II, OO, EE> {
+    ) -> BytecodeInterpreter<'gc, II, OO, EE> {
         BytecodeInterpreter {
             program: self.program,
+            allocator: self.allocator,
             stack: self.stack,
             registers: self.registers,
             stdin,
@@ -181,9 +207,14 @@ where
                 self.push_stack(val.deep_clone());
             }
 
-            Bytecode::Add => binary_op!(self, add),
+            Bytecode::Add => binary_op_alloc!(self, add),
             Bytecode::Sub => binary_op!(self, sub),
-            Bytecode::Mul => binary_op!(self, mul),
+            Bytecode::Mul => {
+                let rhs = self.pop_stack();
+                let lhs = self.pop_stack();
+                let res = lhs.mul(&rhs, &self.allocator)?;
+                self.push_stack(res);
+            }
             Bytecode::Div => binary_op!(self, div),
             Bytecode::DivFloor => binary_op!(self, div_floor),
             Bytecode::Mod => binary_op!(self, modulo),
@@ -428,7 +459,7 @@ where
                 };
 
                 let key_fn = key_func.as_ref().map(|func| {
-                    |item: &RuntimeValue| self.call_user_function(func, vec![item.clone()])
+                    |item: &RuntimeValue<'gc>| self.call_user_function(func, vec![item.clone()])
                 });
 
                 let res = target.sort(key_fn)?;
@@ -448,8 +479,8 @@ where
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
             Bytecode::Length => unary_mapper_method!(self, length),
             Bytecode::Count => binary_op!(self, count),
-            Bytecode::FindAll => binary_op!(self, find_all),
-            Bytecode::Find => binary_op!(self, find),
+            Bytecode::FindAll => binary_op_alloc!(self, find_all),
+            Bytecode::Find => binary_op_alloc!(self, find),
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
@@ -459,19 +490,20 @@ where
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),
-            Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
+            Bytecode::ToTuple => stdlib_fn_alloc!(self, to_tuple),
             Bytecode::CreateTuple(size) => {
                 let items = self.pop_args(*size);
-                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+                let tup = self.allocator.alloc(RuntimeTuple::from_vec(items));
+                self.push_stack(RuntimeValue::Tuple(tup));
             }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
-            Bytecode::ToCounter(num_args) => {
-                stdlib_fn_with_optional_arg!(self, to_counter, *num_args)
-            }
-            Bytecode::Product => stdlib_fn!(self, mul),
-            Bytecode::Sum => stdlib_fn!(self, sum),
+            // Bytecode::ToCounter(num_args) => {
+            //     stdlib_fn_with_optional_arg!(self, to_counter, *num_args)
+            // }
+            Bytecode::Product => stdlib_fn_alloc!(self, mul),
+            Bytecode::Sum => stdlib_fn_alloc!(self, sum),
             Bytecode::AllTrue(num_args) => stdlib_fn!(self, all, *num_args),
             Bytecode::AnyTrue(num_args) => stdlib_fn!(self, any, *num_args),
             Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
@@ -513,32 +545,32 @@ where
 
             #[allow(unreachable_patterns)]
             to_implement => {
-                return Err(RuntimeError::NotImplemented(to_implement.clone()));
+                return Err(RuntimeError::NotImplemented(format!("{to_implement:?}")));
             }
         }
 
         Ok(ControlFlow::Continue)
     }
 
-    pub fn pop_stack(&mut self) -> RuntimeValue {
+    pub fn pop_stack(&mut self) -> RuntimeValue<'gc> {
         self.stack.pop().unwrap()
     }
 
-    pub fn push_stack(&mut self, value: RuntimeValue) {
+    pub fn push_stack(&mut self, value: RuntimeValue<'gc>) {
         self.stack.push(value);
     }
 
-    pub fn peek_stack(&self) -> Result<&RuntimeValue, RuntimeError> {
+    pub fn peek_stack(&self) -> Result<&RuntimeValue<'gc>, RuntimeError> {
         self.stack.last().ok_or(RuntimeError::StackUnderflow)
     }
 
-    pub fn pop_args(&mut self, num_args: usize) -> Vec<RuntimeValue> {
+    pub fn pop_args(&mut self, num_args: usize) -> Vec<RuntimeValue<'gc>> {
         self.stack.split_off(self.stack.len() - num_args)
     }
 
     // TODO: It's probably very slow to check this every time, but it provides good diagnostics.
     // Provide feature flag to enable checks?
-    pub fn set(&mut self, index: usize, value: RuntimeValue) -> Result<(), RuntimeError> {
+    pub fn set(&mut self, index: usize, value: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
         if index >= self.stack.len() {
             return Err(RuntimeError::InternalBug(format!(
                 "Tried to set stack index {} but stack length is {}",
@@ -551,7 +583,7 @@ where
         Ok(())
     }
 
-    pub fn get(&self, index: usize) -> Result<&RuntimeValue, RuntimeError> {
+    pub fn get(&self, index: usize) -> Result<&RuntimeValue<'gc>, RuntimeError> {
         if index >= self.stack.len() {
             return Err(RuntimeError::InternalBug(format!(
                 "Tried to get stack index {} but stack length is {}",
@@ -563,7 +595,7 @@ where
         Ok(&self.stack[index])
     }
 
-    pub fn peek_stack_mut(&mut self) -> Result<&mut RuntimeValue, RuntimeError> {
+    pub fn peek_stack_mut(&mut self) -> Result<&mut RuntimeValue<'gc>, RuntimeError> {
         self.stack.last_mut().ok_or(RuntimeError::StackUnderflow)
     }
 
@@ -576,8 +608,8 @@ where
     pub fn call_user_function(
         &mut self,
         func: &RuntimeFunction,
-        args: Vec<RuntimeValue>,
-    ) -> Result<RuntimeValue, RuntimeError> {
+        args: Vec<RuntimeValue<'gc>>,
+    ) -> Result<RuntimeValue<'gc>, RuntimeError> {
         #[cfg(feature = "debug-vm")]
         eprintln!(
             "{}\n",

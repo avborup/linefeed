@@ -1,5 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
+use oxc_allocator::Allocator;
+
 use crate::{
     compiler::{
         ir_value::IrValue, method::Method, stdlib_fn::StdlibFn, CompileError, Instruction, Label,
@@ -12,7 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub enum Bytecode {
+pub enum Bytecode<'gc> {
     // Variables
     Load,
     Store,
@@ -22,7 +24,7 @@ pub enum Bytecode {
     StoreGlobal(usize),
 
     // Values
-    Value(RuntimeValue),
+    Value(RuntimeValue<'gc>),
     ConstantInt(isize),
 
     // Stack manipulation
@@ -120,10 +122,11 @@ const _: () = {
     assert!(SIZE == 16);
 };
 
-impl Bytecode {
+impl<'gc> Bytecode<'gc> {
     pub fn from_instruction(
         instruction: Instruction,
         label_mapper: &LabelMapper,
+        allocator: &'gc Allocator,
     ) -> Result<Option<Self>, CompileError> {
         let bytecode = match instruction {
             Instruction::Label(_) => return Ok(None),
@@ -134,9 +137,11 @@ impl Bytecode {
             Instruction::LoadGlobal(addr) => Bytecode::LoadGlobal(addr),
             Instruction::StoreGlobal(addr) => Bytecode::StoreGlobal(addr),
             Instruction::GetBasePtr => Bytecode::GetBasePtr,
-            Instruction::Value(value) => {
-                Bytecode::Value(Self::into_runtime_value_with_mapper(value, label_mapper)?)
-            }
+            Instruction::Value(value) => Bytecode::Value(Self::into_runtime_value_with_mapper(
+                value,
+                label_mapper,
+                allocator,
+            )?),
             Instruction::ConstantInt(i) => Bytecode::ConstantInt(i),
             Instruction::Add => Bytecode::Add,
             Instruction::Sub => Bytecode::Sub,
@@ -174,7 +179,9 @@ impl Bytecode {
             Instruction::Index => Bytecode::Index,
             Instruction::SetIndex => Bytecode::SetIndex,
             Instruction::NextIter => Bytecode::NextIter,
-            Instruction::NextIterOrJump(label) => Bytecode::NextIterOrJump(label_mapper.get(label)?),
+            Instruction::NextIterOrJump(label) => {
+                Bytecode::NextIterOrJump(label_mapper.get(label)?)
+            }
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::IsIn => Bytecode::IsIn,
             Instruction::CreateTuple(size) => Bytecode::CreateTuple(size),
@@ -223,7 +230,8 @@ impl Bytecode {
     fn into_runtime_value_with_mapper(
         value: IrValue,
         label_mapper: &LabelMapper,
-    ) -> Result<RuntimeValue, CompileError> {
+        allocator: &'gc Allocator,
+    ) -> Result<RuntimeValue<'gc>, CompileError> {
         let res = match value {
             IrValue::Null => RuntimeValue::Null,
             IrValue::Uninit => RuntimeValue::Uninit,
@@ -234,7 +242,7 @@ impl Bytecode {
             IrValue::List(xs) => {
                 let items = xs
                     .into_iter()
-                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
                     .collect::<Result<_, _>>()?;
 
                 RuntimeValue::List(RuntimeList::from_vec(items))
@@ -242,15 +250,15 @@ impl Bytecode {
             IrValue::Tuple(xs) => {
                 let items = xs
                     .into_iter()
-                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
                     .collect::<Result<_, _>>()?;
 
-                RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+                RuntimeValue::Tuple(allocator.alloc(RuntimeTuple::from_vec(items)))
             }
             IrValue::Set(xs) => {
                 let items = xs
                     .into_iter()
-                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
+                    .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
                     .collect::<Result<_, _>>()?;
 
                 RuntimeValue::Set(RuntimeSet::from_set(items))
@@ -260,8 +268,8 @@ impl Bytecode {
                     .into_iter()
                     .map(|(key, value)| {
                         Ok((
-                            Self::into_runtime_value_with_mapper(key, label_mapper)?,
-                            Self::into_runtime_value_with_mapper(value, label_mapper)?,
+                            Self::into_runtime_value_with_mapper(key, label_mapper, allocator)?,
+                            Self::into_runtime_value_with_mapper(value, label_mapper, allocator)?,
                         ))
                     })
                     .collect::<Result<_, _>>()?;
@@ -286,12 +294,17 @@ impl Bytecode {
 }
 
 impl Program<Instruction> {
-    pub fn into_bytecode(self) -> Result<Program<Bytecode>, CompileError> {
+    pub fn into_bytecode<'gc>(
+        self,
+        allocator: &'gc Allocator,
+    ) -> Result<Program<Bytecode<'gc>>, CompileError> {
         let label_mapper = LabelMapper::from(&self);
 
         let mut bytecode_program = Program::new();
         for (instruction, span) in self.instructions.into_iter().zip(self.source_map) {
-            if let Some(bytecode) = Bytecode::from_instruction(instruction, &label_mapper)? {
+            if let Some(bytecode) =
+                Bytecode::from_instruction(instruction, &label_mapper, allocator)?
+            {
                 bytecode_program.add_instruction(bytecode, span);
             }
         }

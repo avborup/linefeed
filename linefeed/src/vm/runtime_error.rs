@@ -1,14 +1,11 @@
-use crate::{
-    compiler::method::Method,
-    vm::{bytecode::Bytecode, runtime_value::RuntimeValue},
-};
+use crate::{compiler::method::Method, vm::runtime_value::RuntimeValue};
 
 #[derive(Debug, Clone)]
 pub enum RuntimeError {
     Plain(String),
     StackUnderflow,
-    NotImplemented(Bytecode),
-    InvalidAddress(RuntimeValue),
+    NotImplemented(String),
+    InvalidAddress(&'static str),
     TypeMismatch(String),
     InternalBug(String),
     IndexOutOfBounds(isize, usize),
@@ -43,10 +40,10 @@ impl std::fmt::Display for RuntimeError {
             RuntimeError::Plain(msg) => write!(f, "{msg}"),
             RuntimeError::StackUnderflow => write!(f, "Stack underflow"),
             RuntimeError::NotImplemented(instr) => {
-                write!(f, "Instruction not implemented: {instr:?}")
+                write!(f, "Instruction not implemented: {instr}")
             }
-            RuntimeError::InvalidAddress(val) => {
-                write!(f, "Invalid address of type {}", val.kind_str())
+            RuntimeError::InvalidAddress(kind_str) => {
+                write!(f, "Invalid address of type {}", kind_str)
             }
             RuntimeError::TypeMismatch(msg) => {
                 write!(f, "Type mismatch: {msg}")

@@ -8,18 +8,18 @@ use crate::vm::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeSet(Rc<RefCell<FxHashSet<RuntimeValue>>>);
+pub struct RuntimeSet<'gc>(Rc<RefCell<FxHashSet<RuntimeValue<'gc>>>>);
 
-impl RuntimeSet {
+impl<'gc> RuntimeSet<'gc> {
     pub fn new() -> Self {
         Self::from_set(FxHashSet::default())
     }
 
-    pub fn from_set(set: FxHashSet<RuntimeValue>) -> Self {
+    pub fn from_set(set: FxHashSet<RuntimeValue<'gc>>) -> Self {
         Self(Rc::new(RefCell::new(set)))
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<'_, FxHashSet<RuntimeValue>> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, FxHashSet<RuntimeValue<'gc>>> {
         self.0.borrow()
     }
 
@@ -48,18 +48,18 @@ impl RuntimeSet {
         Self::from_set(intersection)
     }
 
-    pub fn contains(&self, value: &RuntimeValue) -> bool {
+    pub fn contains(&self, value: &RuntimeValue<'gc>) -> bool {
         self.0.borrow().contains(value)
     }
 }
 
-impl Default for RuntimeSet {
+impl Default for RuntimeSet<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl PartialEq for RuntimeSet {
+impl PartialEq for RuntimeSet<'_> {
     fn eq(&self, other: &Self) -> bool {
         let a = self.0.borrow();
         let b = other.0.borrow();
@@ -68,10 +68,10 @@ impl PartialEq for RuntimeSet {
     }
 }
 
-impl TryFrom<RuntimeIterator> for RuntimeSet {
+impl<'gc> TryFrom<RuntimeIterator<'gc>> for RuntimeSet<'gc> {
     type Error = RuntimeError;
 
-    fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
+    fn try_from(iter: RuntimeIterator<'gc>) -> Result<Self, Self::Error> {
         let mut map = FxHashSet::default();
         while let Some(val) = iter.next() {
             map.insert(val);
@@ -80,9 +80,9 @@ impl TryFrom<RuntimeIterator> for RuntimeSet {
     }
 }
 
-impl Eq for RuntimeSet {}
+impl Eq for RuntimeSet<'_> {}
 
-impl std::hash::Hash for RuntimeSet {
+impl std::hash::Hash for RuntimeSet<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let set = self.0.borrow();
         let mut items = set.iter().collect::<Vec<_>>();
@@ -91,7 +91,7 @@ impl std::hash::Hash for RuntimeSet {
     }
 }
 
-impl std::cmp::PartialOrd for RuntimeSet {
+impl std::cmp::PartialOrd for RuntimeSet<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let a = self.0.borrow();
         let b = other.0.borrow();
@@ -99,8 +99,8 @@ impl std::cmp::PartialOrd for RuntimeSet {
     }
 }
 
-impl LfAppend for RuntimeSet {
-    fn append(&mut self, other: RuntimeValue) -> Result<(), RuntimeError> {
+impl<'gc> LfAppend<'gc> for RuntimeSet<'gc> {
+    fn append(&mut self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
         self.0.borrow_mut().insert(other);
         Ok(())
     }

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::vm::runtime_value::{number::RuntimeNumber, RuntimeValue};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,24 +50,26 @@ impl std::fmt::Display for RuntimeRange {
     }
 }
 
-pub struct RangeIterator {
+pub struct RangeIterator<'gc> {
     range: RuntimeRange,
     value: isize,
     step: isize,
+    phantom: PhantomData<&'gc ()>,
 }
 
-impl RangeIterator {
+impl<'gc> RangeIterator<'gc> {
     pub fn new(range: RuntimeRange) -> Self {
         Self {
             value: range.start.unwrap_or(0),
             step: if range.is_reverse() { -1 } else { 1 },
             range,
+            phantom: PhantomData,
         }
     }
 }
 
-impl Iterator for RangeIterator {
-    type Item = RuntimeValue;
+impl<'gc> Iterator for RangeIterator<'gc> {
+    type Item = RuntimeValue<'gc>;
 
     fn next(&mut self) -> Option<Self::Item> {
         debug_assert!(self.step.abs() == 1);

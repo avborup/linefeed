@@ -7,6 +7,7 @@ use std::time::Instant;
 use ariadne::{Color, Fmt as _, Label, Report, ReportKind, Source};
 use chumsky::error::Rich;
 use chumsky::prelude::*;
+use oxc_allocator::Allocator;
 
 use crate::{
     compiler::Compiler,
@@ -51,8 +52,10 @@ pub fn run_with_handles(
     };
     let parse_time = Instant::now().duration_since(parse_start);
 
+    let allocator = Allocator::new();
+
     let compile_start = Instant::now();
-    let program = match compiler.compile(&ast) {
+    let program = match compiler.compile(&ast, &allocator) {
         Ok(program) => program,
         Err(err) => {
             let span = err.span().unwrap_or(Span::new(0, 0));
@@ -65,8 +68,11 @@ pub fn run_with_handles(
 
     let run_start = Instant::now();
 
-    let mut bytecode_interpreter =
-        BytecodeInterpreter::new(program).with_handles(&mut stdin, &mut stdout, &mut stderr);
+    let mut bytecode_interpreter = BytecodeInterpreter::new(program, &allocator).with_handles(
+        &mut stdin,
+        &mut stdout,
+        &mut stderr,
+    );
 
     if let Err((span, err)) = bytecode_interpreter.run() {
         return pretty_print_errors(stderr, src, vec![Rich::<RuntimeError>::custom(span, err)]);

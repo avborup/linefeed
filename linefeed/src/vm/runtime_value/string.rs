@@ -14,7 +14,7 @@ use crate::vm::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct RuntimeString(Rc<String>);
 
-impl RuntimeString {
+impl<'gc> RuntimeString {
     pub fn new(s: impl Into<String>) -> Self {
         Self(Rc::new(s.into()))
     }
@@ -43,7 +43,7 @@ impl RuntimeString {
         self.map_str(|s| s.to_uppercase())
     }
 
-    pub fn split(&self, delimiter: &RuntimeString) -> RuntimeList {
+    pub fn split(&self, delimiter: &RuntimeString) -> RuntimeList<'gc> {
         let parts = self
             .as_str()
             .split(delimiter.as_str())
@@ -53,7 +53,7 @@ impl RuntimeString {
         RuntimeList::from_vec(parts)
     }
 
-    pub fn lines(&self) -> RuntimeList {
+    pub fn lines(&self) -> RuntimeList<'gc> {
         let parts = self
             .as_str()
             .lines()

@@ -1,12 +1,14 @@
 #![allow(clippy::mutable_key_type)]
 
-use std::{cmp::Ordering, io::Write, ops::Deref, rc::Rc};
+use std::{cell::Cell, cmp::Ordering, io::Write, ops::Deref, rc::Rc};
+
+use oxc_allocator::Allocator;
 
 use crate::{
     compiler::method::Method,
     vm::{
         runtime_value::{
-            counter::RuntimeCounter,
+            // counter::RuntimeCounter,
             function::RuntimeFunction,
             iterator::{EnumeratedListIterator, RuntimeIterator},
             list::RuntimeList,
@@ -23,7 +25,7 @@ use crate::{
     },
 };
 
-pub mod counter;
+// pub mod counter;
 pub mod function;
 pub mod iterator;
 pub mod list;
@@ -38,7 +40,7 @@ pub mod tuple;
 mod utils;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum RuntimeValue {
+pub enum RuntimeValue<'gc> {
     Null,
     Uninit,
     Bool(bool),
@@ -46,14 +48,13 @@ pub enum RuntimeValue {
     Num(RuntimeNumber),
     Str(RuntimeString),
     Regex(RuntimeRegex),
-    List(RuntimeList),
-    Tuple(RuntimeTuple),
-    Set(RuntimeSet),
-    Map(RuntimeMap),
-    Counter(RuntimeCounter),
+    List(RuntimeList<'gc>),
+    Tuple(&'gc RuntimeTuple<'gc>),
+    Set(RuntimeSet<'gc>),
+    Map(RuntimeMap<'gc>),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
-    Iterator(Box<RuntimeIterator>),
+    Iterator(Box<RuntimeIterator<'gc>>),
 }
 
 const _: () = {
@@ -63,8 +64,8 @@ const _: () = {
     assert!(SIZE == 16);
 };
 
-impl RuntimeValue {
-    pub fn kind_str(&self) -> &str {
+impl<'gc> RuntimeValue<'gc> {
+    pub fn kind_str(&self) -> &'static str {
         match self {
             RuntimeValue::Null => "null",
             RuntimeValue::Uninit => "uninitialized",
@@ -80,11 +81,11 @@ impl RuntimeValue {
             RuntimeValue::Range(_) => "range",
             RuntimeValue::Iterator(_) => "iterator",
             RuntimeValue::Map(_) => "map",
-            RuntimeValue::Counter(_) => "counter",
+            // RuntimeValue::Counter(_) => "counter",
         }
     }
 
-    pub fn add(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn add(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a + b)),
@@ -95,7 +96,7 @@ impl RuntimeValue {
             (RuntimeValue::List(a), RuntimeValue::List(b)) => Ok(RuntimeValue::List(a.concat(b))),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
-                Ok(RuntimeValue::Tuple(a.element_wise_add(b)?))
+                Ok(RuntimeValue::Tuple(a.element_wise_add(b, alloc)?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
@@ -113,15 +114,15 @@ impl RuntimeValue {
         }
     }
 
-    pub fn mul(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn mul(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
             (RuntimeValue::Tuple(t), RuntimeValue::Num(_)) => {
-                Ok(RuntimeValue::Tuple(t.scalar_multiply(other)?))
+                Ok(RuntimeValue::Tuple(t.scalar_multiply(other, alloc)?))
             }
             (RuntimeValue::Num(_), RuntimeValue::Tuple(t)) => {
-                Ok(RuntimeValue::Tuple(t.scalar_multiply(self)?))
+                Ok(RuntimeValue::Tuple(t.scalar_multiply(self, alloc)?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "multiply", self, other,
@@ -212,7 +213,7 @@ impl RuntimeValue {
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
             (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
             (RuntimeValue::Map(map), index) => map.get(index),
-            (RuntimeValue::Counter(counter), index) => counter.get(index),
+            // (RuntimeValue::Counter(counter), index) => counter.get(index),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot index into '{}' with type '{}'",
@@ -241,14 +242,14 @@ impl RuntimeValue {
         Ok(())
     }
 
-    pub fn to_iter_inner(&self) -> Result<RuntimeIterator, RuntimeError> {
+    pub fn to_iter_inner(&self) -> Result<RuntimeIterator<'gc>, RuntimeError> {
         let iter = match self {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
-            RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
-            RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
-            RuntimeValue::Tuple(tuple) => RuntimeIterator::from(tuple.clone()),
-            RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
-            RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
+            // RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
+            // RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
+            // RuntimeValue::Tuple(tuple) => RuntimeIterator::from(tuple.clone()),
+            // RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
+            // RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot iterate over '{}'",
@@ -348,12 +349,12 @@ impl RuntimeValue {
 
     pub fn sort(
         &self,
-        key_fn: Option<impl FnMut(&RuntimeValue) -> Result<RuntimeValue, RuntimeError>>,
+        key_fn: Option<impl FnMut(&RuntimeValue<'gc>) -> Result<RuntimeValue<'gc>, RuntimeError>>,
     ) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::List(list) => {
                 match key_fn {
-                    Some(key_fn) => list.sort_by_key(key_fn)?,
+                    Some(key_fn) => todo!(), //list.sort_by_key(key_fn)?,
                     None => list.sort(),
                 };
 
@@ -402,7 +403,7 @@ impl RuntimeValue {
     pub fn address(&self) -> Result<usize, RuntimeError> {
         match self {
             RuntimeValue::Int(i) => Ok(*i as usize),
-            _ => Err(RuntimeError::InvalidAddress(self.clone())),
+            _ => Err(RuntimeError::InvalidAddress(self.kind_str())),
         }
     }
 
@@ -422,7 +423,7 @@ impl RuntimeValue {
             RuntimeValue::Range(_) => true,
             RuntimeValue::Iterator(_) => true,
             RuntimeValue::Regex(_) => true,
-            RuntimeValue::Counter(c) => !c.borrow().is_empty(),
+            // RuntimeValue::Counter(c) => !c.borrow().is_empty(),
         }
     }
 
@@ -437,7 +438,7 @@ impl RuntimeValue {
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
-            RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
+            // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),
             _ => unimplemented!("deep_clone for {:?}", self),
@@ -462,7 +463,7 @@ fn write_items<T: std::fmt::Display>(
     Ok(())
 }
 
-impl std::fmt::Display for RuntimeValue {
+impl<'gc> std::fmt::Display for RuntimeValue<'gc> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             RuntimeValue::Null => write!(f, "null"),
@@ -507,9 +508,9 @@ impl std::fmt::Display for RuntimeValue {
                 })?;
                 write!(f, "}}")
             }
-            RuntimeValue::Counter(c) => {
-                std::fmt::Display::fmt(&RuntimeValue::Map(c.into_runtime_map()), f)
-            }
+            // RuntimeValue::Counter(c) => {
+            //     std::fmt::Display::fmt(&RuntimeValue::Map(c.into_runtime_map()), f)
+            // }
             RuntimeValue::Function(func) => write!(f, "<function@{}>", func.location),
             RuntimeValue::Range(range) => write!(f, "{range}"),
             RuntimeValue::Iterator(iterator) => write!(f, "{iterator}"),
@@ -518,7 +519,7 @@ impl std::fmt::Display for RuntimeValue {
     }
 }
 
-impl RuntimeValue {
+impl<'gc> RuntimeValue<'gc> {
     /// The "repr" string is the equivalent of the Rust Debug format, but from the POV of the
     /// language user. Much like Python. We don't use the Rust Debug format because we want it for
     /// debugging the compiler, interpreter, etc.
@@ -554,7 +555,7 @@ impl RuntimeValue {
     }
 }
 
-impl std::cmp::PartialOrd for RuntimeValue {
+impl<'gc> std::cmp::PartialOrd for RuntimeValue<'gc> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         match (self, other) {
             (RuntimeValue::Null, RuntimeValue::Null) => Some(Ordering::Equal),
@@ -571,12 +572,12 @@ impl std::cmp::PartialOrd for RuntimeValue {
 }
 
 // Method implementations
-impl RuntimeValue {
+impl<'gc> RuntimeValue<'gc> {
     pub fn append(&mut self, val: Self) -> Result<(), RuntimeError> {
         match self {
             RuntimeValue::List(list) => list.append(val)?,
             RuntimeValue::Set(set) => set.append(val)?,
-            RuntimeValue::Counter(counter) => counter.add(val, 1),
+            // RuntimeValue::Counter(counter) => counter.add(val, 1),
             _ => return Err(RuntimeError::invalid_method_for_type(Method::Append, self)),
         };
 
@@ -664,19 +665,21 @@ impl RuntimeValue {
         Ok(RuntimeValue::Str(RuntimeString::new(s)))
     }
 
-    pub fn find_all(&self, search: &Self) -> Result<Self, RuntimeError> {
+    pub fn find_all(&self, search: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, search) {
             (RuntimeValue::Str(input), RuntimeValue::Regex(regex)) => {
-                let matches = regex.find_matches(input);
+                let matches = regex.find_matches(input, alloc);
                 Ok(RuntimeValue::List(matches))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::FindAll, self)),
         }
     }
 
-    pub fn find(&self, search: &Self) -> Result<Self, RuntimeError> {
+    pub fn find(&self, search: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, search) {
-            (RuntimeValue::Str(input), RuntimeValue::Regex(regex)) => Ok(regex.find_match(input)),
+            (RuntimeValue::Str(input), RuntimeValue::Regex(regex)) => {
+                Ok(regex.find_match(input, alloc))
+            }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Find, self)),
         }
     }
@@ -729,7 +732,7 @@ impl RuntimeValue {
     pub fn values(&self) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {
-                let values: Vec<RuntimeValue> = map.borrow().values().cloned().collect();
+                let values: Vec<RuntimeValue<'gc>> = map.borrow().values().cloned().collect();
                 Ok(RuntimeValue::List(RuntimeList::from_vec(values)))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Values, self)),

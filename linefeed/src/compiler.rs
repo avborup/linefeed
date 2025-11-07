@@ -97,6 +97,7 @@ pub enum Instruction {
 }
 
 use chumsky::span::Span as _;
+use oxc_allocator::Allocator;
 use Instruction::*;
 
 type LoopId = Span;
@@ -117,7 +118,11 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn compile(&mut self, expr: &Spanned<Expr>) -> Result<Program<Bytecode>, CompileError> {
+    pub fn compile<'gc>(
+        &mut self,
+        expr: &Spanned<Expr>,
+        allocator: &'gc Allocator,
+    ) -> Result<Program<Bytecode<'gc>>, CompileError> {
         let program = self
             .compile_allocation_for_all_vars_in_scope(expr)
             .then_program(self.compile_expr(expr)?)
@@ -129,7 +134,7 @@ impl Compiler {
         //  - [ ] Remove unnecessary additions
         //  - [ ] Don't do lookups on constants, just insert them
 
-        let bytecode_program = program.into_bytecode()?;
+        let bytecode_program = program.into_bytecode(&allocator)?;
 
         Ok(bytecode_program)
     }

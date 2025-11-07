@@ -10,27 +10,27 @@ use crate::vm::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeMap(Rc<RefCell<InnerRuntimeMap>>);
+pub struct RuntimeMap<'gc>(Rc<RefCell<InnerRuntimeMap<'gc>>>);
 
 #[derive(Debug, Clone)]
-pub struct InnerRuntimeMap {
-    pub map: FxHashMap<RuntimeValue, RuntimeValue>,
-    pub default_value: Option<RuntimeValue>,
+pub struct InnerRuntimeMap<'gc> {
+    pub map: FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>,
+    pub default_value: Option<RuntimeValue<'gc>>,
 }
 
-impl RuntimeMap {
+impl<'gc> RuntimeMap<'gc> {
     pub fn new() -> Self {
         Self::from_map(FxHashMap::default())
     }
 
-    pub fn from_map(map: FxHashMap<RuntimeValue, RuntimeValue>) -> Self {
+    pub fn from_map(map: FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>) -> Self {
         Self(Rc::new(RefCell::new(InnerRuntimeMap {
             map,
             default_value: None,
         })))
     }
 
-    pub fn new_with_default_value(default_value: RuntimeValue) -> Self {
+    pub fn new_with_default_value(default_value: RuntimeValue<'gc>) -> Self {
         let runtime_map = Self::new();
         runtime_map.borrow_mut().default_value = Some(default_value);
         runtime_map
@@ -44,11 +44,11 @@ impl RuntimeMap {
         self.borrow().is_empty()
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<'_, InnerRuntimeMap> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, InnerRuntimeMap<'gc>> {
         self.0.borrow()
     }
 
-    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, InnerRuntimeMap> {
+    pub fn borrow_mut(&self) -> std::cell::RefMut<'_, InnerRuntimeMap<'gc>> {
         self.0.borrow_mut()
     }
 
@@ -67,7 +67,7 @@ impl RuntimeMap {
         new_map
     }
 
-    pub fn get(&self, key: &RuntimeValue) -> RuntimeValue {
+    pub fn get(&self, key: &RuntimeValue<'gc>) -> RuntimeValue<'gc> {
         self.insert_default_value_if_missing(key);
 
         self.borrow()
@@ -76,15 +76,15 @@ impl RuntimeMap {
             .unwrap_or(RuntimeValue::Null)
     }
 
-    pub fn insert(&self, key: RuntimeValue, value: RuntimeValue) {
+    pub fn insert(&self, key: RuntimeValue<'gc>, value: RuntimeValue<'gc>) {
         self.borrow_mut().insert(key, value);
     }
 
-    pub fn contains_key(&self, key: &RuntimeValue) -> bool {
+    pub fn contains_key(&self, key: &RuntimeValue<'gc>) -> bool {
         self.borrow().contains_key(key)
     }
 
-    fn insert_default_value_if_missing(&self, key: &RuntimeValue) {
+    fn insert_default_value_if_missing(&self, key: &RuntimeValue<'gc>) {
         let Some(default_value) = self.borrow().default_value.clone() else {
             return;
         };
@@ -95,27 +95,27 @@ impl RuntimeMap {
     }
 }
 
-impl std::ops::Deref for InnerRuntimeMap {
-    type Target = FxHashMap<RuntimeValue, RuntimeValue>;
+impl<'gc> std::ops::Deref for InnerRuntimeMap<'gc> {
+    type Target = FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
     }
 }
 
-impl std::ops::DerefMut for InnerRuntimeMap {
+impl std::ops::DerefMut for InnerRuntimeMap<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.map
     }
 }
 
-impl Default for RuntimeMap {
+impl Default for RuntimeMap<'_> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl PartialEq for RuntimeMap {
+impl PartialEq for RuntimeMap<'_> {
     fn eq(&self, other: &Self) -> bool {
         let a = self.borrow();
         let b = other.borrow();
@@ -124,9 +124,9 @@ impl PartialEq for RuntimeMap {
     }
 }
 
-impl Eq for RuntimeMap {}
+impl Eq for RuntimeMap<'_> {}
 
-impl std::hash::Hash for RuntimeMap {
+impl std::hash::Hash for RuntimeMap<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         let set = self.borrow();
         let mut items = set.iter().collect::<Vec<_>>();
@@ -135,7 +135,7 @@ impl std::hash::Hash for RuntimeMap {
     }
 }
 
-impl std::cmp::PartialOrd for RuntimeMap {
+impl std::cmp::PartialOrd for RuntimeMap<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let a = self.borrow();
         let b = other.borrow();
@@ -143,28 +143,28 @@ impl std::cmp::PartialOrd for RuntimeMap {
     }
 }
 
-impl TryFrom<RuntimeIterator> for RuntimeMap {
-    type Error = RuntimeError;
+// impl TryFrom<RuntimeIterator> for RuntimeMap<'_> {
+//     type Error = RuntimeError;
+//
+//     fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
+//         let mut map = FxHashMap::default();
+//         while let Some(item) = iter.next() {
+//             let key = item.index(&RuntimeValue::Num(RuntimeNumber::from(0)))?;
+//             let val = item.index(&RuntimeValue::Num(RuntimeNumber::from(1)))?;
+//             map.insert(key, val);
+//         }
+//         Ok(Self::from_map(map))
+//     }
+// }
 
-    fn try_from(iter: RuntimeIterator) -> Result<Self, Self::Error> {
-        let mut map = FxHashMap::default();
-        while let Some(item) = iter.next() {
-            let key = item.index(&RuntimeValue::Num(RuntimeNumber::from(0)))?;
-            let val = item.index(&RuntimeValue::Num(RuntimeNumber::from(1)))?;
-            map.insert(key, val);
-        }
-        Ok(Self::from_map(map))
-    }
-}
-
-pub struct MapIterator {
-    map: RuntimeMap,
-    keys: Vec<RuntimeValue>,
+pub struct MapIterator<'gc> {
+    map: RuntimeMap<'gc>,
+    keys: Vec<RuntimeValue<'gc>>,
     index: usize,
 }
 
-impl From<RuntimeMap> for MapIterator {
-    fn from(map: RuntimeMap) -> Self {
+impl<'gc> From<RuntimeMap<'gc>> for MapIterator<'gc> {
+    fn from(map: RuntimeMap<'gc>) -> Self {
         let keys = map.borrow().keys().cloned().collect();
         Self {
             map,
@@ -174,16 +174,18 @@ impl From<RuntimeMap> for MapIterator {
     }
 }
 
-impl Iterator for MapIterator {
-    type Item = RuntimeValue;
+impl<'gc> Iterator for MapIterator<'gc> {
+    type Item = RuntimeValue<'gc>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let key = self.keys.get(self.index).cloned()?;
         let value = self.map.borrow().get(&key).cloned()?;
-        let pair = RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![key, value]));
 
-        self.index += 1;
+        todo!()
+        // let pair = RuntimeValue::Tuple(&RuntimeTuple::from_vec(vec![key, value]));
 
-        Some(pair)
+        // self.index += 1;
+        //
+        // Some(pair)
     }
 }
