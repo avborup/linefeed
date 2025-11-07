@@ -389,6 +389,18 @@ where
                 into.set_index(&index, value)?;
             }
 
+            Bytecode::NextIterOrJump(end_label) => {
+                let end_label = *end_label;
+                let iter = self.pop_stack();
+                let value = iter.next()?;
+
+                if let Some(value) = value {
+                    self.push_stack(value);
+                } else {
+                    self.pc = end_label;
+                }
+            }
+
             Bytecode::NextIter => {
                 let iter = self.pop_stack();
                 let value = iter.next()?;

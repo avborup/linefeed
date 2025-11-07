@@ -91,6 +91,7 @@ pub enum Instruction {
     Index,
     SetIndex,
     NextIter,
+    NextIterOrJump(Label),
     ToIter,
     CreateTuple(usize),
 }
@@ -486,7 +487,7 @@ impl Compiler {
                     .then_instruction(Value(IrValue::Null), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &loop_vars.iterator_var)?)
-                    .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
+                    .then_instruction(NextIterOrJump(end_label), expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(vec![SwapPop, Goto(iter_label)], expr.span())
@@ -542,7 +543,7 @@ impl Compiler {
                     .then_instruction(Value(IrValue::List(Vec::new())), expr.span())
                     .then_instruction(Instruction::Label(iter_label), expr.span())
                     .then_program(self.compile_var_load(expr, &loop_vars.iterator_var)?)
-                    .then_instructions(vec![NextIter, IfFalse(end_label)], expr.span())
+                    .then_instruction(NextIterOrJump(end_label), expr.span())
                     .then_program(self.compile_loop_var_assign(loop_var, expr)?)
                     .then_program(self.compile_expr(body)?)
                     .then_instructions(
