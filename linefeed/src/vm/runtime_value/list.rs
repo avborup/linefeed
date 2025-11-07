@@ -1,14 +1,11 @@
-use std::{
-    cell::{Ref, RefCell},
-    rc::Rc,
-};
+use std::cell::{Ref, RefCell};
 
+use oxc_allocator::{Allocator, CloneIn, Vec as AVec};
 use rustc_hash::FxHashMap;
 
 use crate::vm::{
     runtime_value::{
         number::RuntimeNumber,
-        operations::LfAppend,
         range::RuntimeRange,
         utils::{resolve_index, resolve_slice_indices},
         RuntimeValue,
@@ -16,20 +13,41 @@ use crate::vm::{
     RuntimeError,
 };
 
-#[derive(Debug, Clone)]
-pub struct RuntimeList<'gc>(Rc<RefCell<Vec<RuntimeValue<'gc>>>>);
+#[derive(Debug)]
+pub struct RuntimeList<'gc>(RefCell<AVec<'gc, RuntimeValue<'gc>>>);
 
 impl<'gc> RuntimeList<'gc> {
-    pub fn new() -> Self {
-        Self::from_vec(Vec::new())
+    pub fn new(alloc: &'gc Allocator) -> Self {
+        Self::from_vec(AVec::new_in(alloc))
     }
 
-    pub fn from_vec(vec: Vec<RuntimeValue<'gc>>) -> Self {
-        Self(Rc::new(RefCell::new(vec)))
+    pub fn from_iter(
+        iter: impl IntoIterator<Item = RuntimeValue<'gc>>,
+        alloc: &'gc Allocator,
+    ) -> Self {
+        Self::from_vec(AVec::from_iter_in(iter, alloc))
+    }
+
+    pub fn from_vec(vec: AVec<'gc, RuntimeValue<'gc>>) -> Self {
+        Self(RefCell::new(vec))
+    }
+
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
+    }
+
+    #[inline]
+    pub fn borrow(&self) -> Ref<'_, AVec<'gc, RuntimeValue<'gc>>> {
+        self.0.borrow()
     }
 
     pub fn as_slice(&self) -> Ref<'_, [RuntimeValue<'gc>]> {
         Ref::map(self.0.borrow(), |v| v.as_slice())
+    }
+
+    pub fn append(&self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
+        self.0.borrow_mut().push(other.clone());
+        Ok(())
     }
 
     pub fn len(&self) -> usize {
@@ -38,10 +56,6 @@ impl<'gc> RuntimeList<'gc> {
 
     pub fn is_empty(&self) -> bool {
         self.0.borrow().is_empty()
-    }
-
-    pub fn deep_clone(&self) -> Self {
-        Self::from_vec(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
     }
 
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue<'gc>, RuntimeError> {
@@ -76,9 +90,14 @@ impl<'gc> RuntimeList<'gc> {
         self.0.borrow().contains(value)
     }
 
-    pub fn slice(&self, range: &RuntimeRange) -> Result<Self, RuntimeError> {
+    pub fn slice(
+        &self,
+        range: &RuntimeRange,
+        alloc: &'gc Allocator,
+    ) -> Result<&Self, RuntimeError> {
         let (start, end) = resolve_slice_indices(self.len(), range)?;
-        Ok(Self::from_vec(self.0.borrow()[start..end + 1].to_vec()))
+        let out = AVec::from_iter_in(self.borrow()[start..end + 1].iter().cloned(), alloc);
+        Ok(alloc.alloc(Self::from_vec(out)))
     }
 
     pub fn sort(&self) {
@@ -112,16 +131,27 @@ impl<'gc> RuntimeList<'gc> {
         Ok(())
     }
 
-    pub fn concat(&self, other: &Self) -> Self {
-        let mut new_vec = self.0.borrow().clone();
-        new_vec.extend_from_slice(&other.0.borrow());
-        Self::from_vec(new_vec)
+    pub fn concat(&self, other: &Self, alloc: &'gc Allocator) -> &Self {
+        let mut new_vec = AVec::with_capacity_in(self.len() + other.len(), alloc);
+        new_vec.extend_from_slice(&self.as_slice());
+        new_vec.extend_from_slice(&other.as_slice());
+        alloc.alloc(Self::from_vec(new_vec))
     }
 }
 
-impl Default for RuntimeList<'_> {
-    fn default() -> Self {
-        Self::new()
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeList<'old> {
+    type Cloned = &'new RuntimeList<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        let cloned = self.as_slice().iter().map(|v| v.clone_in(alloc)).fold(
+            AVec::with_capacity_in(self.len(), alloc),
+            |mut acc, v| {
+                acc.push(v);
+                acc
+            },
+        );
+
+        alloc.alloc(RuntimeList::from_vec(cloned))
     }
 }
 
@@ -145,12 +175,5 @@ impl std::hash::Hash for RuntimeList<'_> {
 impl std::cmp::PartialOrd for RuntimeList<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         self.0.borrow().partial_cmp(&other.0.borrow())
-    }
-}
-
-impl<'gc> LfAppend<'gc> for RuntimeList<'gc> {
-    fn append(&mut self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
-        self.0.borrow_mut().push(other.clone());
-        Ok(())
     }
 }

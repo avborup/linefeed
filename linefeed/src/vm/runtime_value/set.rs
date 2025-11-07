@@ -3,7 +3,7 @@ use std::{cell::RefCell, rc::Rc};
 use rustc_hash::FxHashSet;
 
 use crate::vm::{
-    runtime_value::{iterator::RuntimeIterator, operations::LfAppend, RuntimeValue},
+    runtime_value::{iterator::RuntimeIterator, RuntimeValue},
     RuntimeError,
 };
 
@@ -21,6 +21,11 @@ impl<'gc> RuntimeSet<'gc> {
 
     pub fn borrow(&self) -> std::cell::Ref<'_, FxHashSet<RuntimeValue<'gc>>> {
         self.0.borrow()
+    }
+
+    pub fn append(&self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
+        self.0.borrow_mut().insert(other);
+        Ok(())
     }
 
     pub fn len(&self) -> usize {
@@ -96,12 +101,5 @@ impl std::cmp::PartialOrd for RuntimeSet<'_> {
         let a = self.0.borrow();
         let b = other.0.borrow();
         a.len().partial_cmp(&b.len())
-    }
-}
-
-impl<'gc> LfAppend<'gc> for RuntimeSet<'gc> {
-    fn append(&mut self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
-        self.0.borrow_mut().insert(other);
-        Ok(())
     }
 }

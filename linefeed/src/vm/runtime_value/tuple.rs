@@ -1,48 +1,49 @@
-use std::cell::{Ref, RefCell};
-
-use oxc_allocator::Allocator;
+use oxc_allocator::{Allocator, Vec as AVec};
 
 use crate::vm::{
     runtime_value::{number::RuntimeNumber, utils::resolve_index, RuntimeValue},
     RuntimeError,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, PartialEq, Eq)]
 // TODO: just use cell
-pub struct RuntimeTuple<'gc>(RefCell<Vec<RuntimeValue<'gc>>>);
+pub struct RuntimeTuple<'gc>(AVec<'gc, RuntimeValue<'gc>>);
 
 impl<'gc> RuntimeTuple<'gc> {
-    pub fn from_vec(vec: Vec<RuntimeValue<'gc>>) -> Self {
-        Self(RefCell::new(vec))
+    pub fn from_iter(
+        iter: impl IntoIterator<Item = RuntimeValue<'gc>>,
+        alloc: &'gc Allocator,
+    ) -> Self {
+        Self(AVec::from_iter_in(iter, alloc))
     }
 
-    pub fn as_slice(&self) -> Ref<'_, [RuntimeValue<'gc>]> {
-        Ref::map(self.0.borrow(), |v| v.as_slice())
+    pub fn from_vec(vec: AVec<'gc, RuntimeValue<'gc>>) -> Self {
+        Self(vec)
     }
 
-    pub fn borrow(&self) -> Ref<'_, Vec<RuntimeValue<'gc>>> {
-        self.0.borrow()
+    pub fn as_slice(&self) -> &[RuntimeValue<'gc>] {
+        self.0.as_slice()
     }
 
     pub fn len(&self) -> usize {
-        self.borrow().len()
+        self.as_slice().len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.borrow().is_empty()
+        self.as_slice().is_empty()
     }
 
     pub fn index(&self, index: &RuntimeNumber) -> Result<RuntimeValue<'gc>, RuntimeError> {
         let i = resolve_index(self.len(), index)?;
 
-        self.borrow()
+        self.as_slice()
             .get(i)
             .cloned()
             .ok_or_else(|| RuntimeError::IndexOutOfBounds(i as isize, self.len()))
     }
 
     pub fn contains(&self, value: &RuntimeValue<'gc>) -> bool {
-        self.borrow().iter().any(|v| v == value)
+        self.as_slice().iter().any(|v| v == value)
     }
 
     pub fn element_wise_add(
@@ -58,16 +59,17 @@ impl<'gc> RuntimeTuple<'gc> {
             )));
         }
 
-        let result: Result<Vec<RuntimeValue<'gc>>, RuntimeError> = self
-            .borrow()
+        let result = self
+            .as_slice()
             .iter()
-            .zip(other.borrow().iter())
+            .zip(other.as_slice().iter())
             .map(|(a, b)| a.add(b, alloc))
-            .collect();
+            .try_fold(AVec::with_capacity_in(self.len(), alloc), |mut acc, res| {
+                acc.push(res?);
+                Ok(acc)
+            })?;
 
-        let tup = alloc.alloc(RuntimeTuple::from_vec(result?));
-
-        Ok(tup)
+        Ok(alloc.alloc(RuntimeTuple::from_vec(result)))
     }
 
     pub fn scalar_multiply(
@@ -75,19 +77,30 @@ impl<'gc> RuntimeTuple<'gc> {
         scalar: &RuntimeValue<'gc>,
         alloc: &'gc Allocator,
     ) -> Result<&Self, RuntimeError> {
-        let result: Result<Vec<RuntimeValue<'gc>>, RuntimeError> = self
-            .borrow()
+        let result = self
+            .as_slice()
             .iter()
             .map(|elem| elem.mul(scalar, alloc))
-            .collect();
+            .try_fold(AVec::with_capacity_in(self.len(), alloc), |mut acc, res| {
+                acc.push(res?);
+                Ok(acc)
+            })?;
 
-        Ok(alloc.alloc(RuntimeTuple::from_vec(result?)))
+        Ok(alloc.alloc(RuntimeTuple::from_vec(result)))
+    }
+}
+
+impl std::cmp::PartialOrd for RuntimeTuple<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let a = self.as_slice();
+        let b = other.as_slice();
+        a.partial_cmp(b)
     }
 }
 
 impl std::hash::Hash for RuntimeTuple<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        for item in self.borrow().iter() {
+        for item in self.as_slice().iter() {
             item.hash(state);
         }
     }

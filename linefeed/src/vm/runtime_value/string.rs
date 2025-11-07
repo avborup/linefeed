@@ -1,5 +1,7 @@
 use std::rc::Rc;
 
+use oxc_allocator::{Allocator, Vec as AVec};
+
 use crate::vm::{
     runtime_value::{
         list::RuntimeList,
@@ -43,24 +45,22 @@ impl<'gc> RuntimeString {
         self.map_str(|s| s.to_uppercase())
     }
 
-    pub fn split(&self, delimiter: &RuntimeString) -> RuntimeList<'gc> {
+    pub fn split(&self, delimiter: &RuntimeString, alloc: &'gc Allocator) -> &'gc RuntimeList<'gc> {
         let parts = self
             .as_str()
             .split(delimiter.as_str())
-            .map(|s| RuntimeValue::Str(Self::new(s)))
-            .collect();
+            .map(|s| RuntimeValue::Str(Self::new(s)));
 
-        RuntimeList::from_vec(parts)
+        RuntimeList::from_vec(AVec::from_iter_in(parts, alloc)).alloc(alloc)
     }
 
-    pub fn lines(&self) -> RuntimeList<'gc> {
+    pub fn lines(&self, alloc: &'gc Allocator) -> &'gc RuntimeList<'gc> {
         let parts = self
             .as_str()
             .lines()
-            .map(|s| RuntimeValue::Str(Self::new(s)))
-            .collect();
+            .map(|s| RuntimeValue::Str(Self::new(s)));
 
-        RuntimeList::from_vec(parts)
+        RuntimeList::from_vec(AVec::from_iter_in(parts, alloc)).alloc(alloc)
     }
 
     pub fn concat(&self, other: &RuntimeString) -> Self {

@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use oxc_allocator::{Allocator, Vec as AVec};
+
 use crate::vm::runtime_value::{
     // counter::RuntimeCounter,
     list::RuntimeList,
@@ -12,19 +14,39 @@ use crate::vm::runtime_value::{
 };
 
 #[derive(Clone)]
-pub struct RuntimeIterator<'gc>(Rc<RefCell<dyn Iterator<Item = RuntimeValue<'gc>>>>);
+pub struct RuntimeIterator<'gc>(RefCell<IteratorKind<'gc>>);
+
+#[derive(Clone)]
+enum IteratorKind<'gc> {
+    // List(ListIterator<'gc>),
+    Tuple(TupleIterator<'gc>),
+    // Range(RangeIterator),
+    // Map(MapIterator<'gc>),
+    // Counter(CounterIterator),
+    Empty,
+}
 
 impl<'gc> RuntimeIterator<'gc> {
     pub fn next(&self) -> Option<RuntimeValue<'gc>> {
-        self.0.borrow_mut().next()
+        match &mut *self.0.borrow_mut() {
+            IteratorKind::Tuple(iter) => iter.next(),
+            IteratorKind::Empty => None,
+        }
     }
 
-    pub fn to_vec(&self) -> Vec<RuntimeValue<'gc>> {
-        let mut out = Vec::new();
+    pub fn to_vec(&self, alloc: &'gc Allocator) -> AVec<'gc, RuntimeValue<'gc>> {
+        let mut out = AVec::with_capacity_in(self.len(), alloc);
         while let Some(value) = self.next() {
             out.push(value);
         }
         out
+    }
+
+    pub fn len(&self) -> usize {
+        match &*self.0.borrow() {
+            IteratorKind::Tuple(iter) => iter.tuple.len(),
+            IteratorKind::Empty => 0,
+        }
     }
 }
 
@@ -49,26 +71,28 @@ impl<'gc> Iterator for ListIterator<'gc> {
 //     }
 // }
 
+#[derive(Clone)]
 struct TupleIterator<'gc> {
-    tuple: RuntimeTuple<'gc>,
+    tuple: &'gc RuntimeTuple<'gc>,
     index: usize,
 }
 
-impl<'gc> Iterator for TupleIterator<'gc> {
-    type Item = RuntimeValue<'gc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<'gc> TupleIterator<'gc> {
+    fn next(&mut self) -> Option<RuntimeValue<'gc>> {
         let value = self.tuple.as_slice().get(self.index).cloned();
         self.index += 1;
         value
     }
 }
 
-// impl<'gc> From<RuntimeTuple<'gc>> for RuntimeIterator<'gc> {
-//     fn from(tuple: RuntimeTuple) -> Self {
-//         Self(Rc::new(RefCell::new(TupleIterator { tuple, index: 0 })))
-//     }
-// }
+impl<'gc> From<&'gc RuntimeTuple<'gc>> for RuntimeIterator<'gc> {
+    fn from(tuple: &'gc RuntimeTuple<'gc>) -> Self {
+        Self(RefCell::new(IteratorKind::Tuple(TupleIterator {
+            tuple,
+            index: 0,
+        })))
+    }
+}
 
 pub struct EnumeratedListIterator<'gc> {
     list: RuntimeList<'gc>,
@@ -117,19 +141,9 @@ impl<'gc> From<EnumeratedListIterator<'gc>> for RuntimeIterator<'gc> {
 //     }
 // }
 
-pub struct EmptyIterator;
-
-impl Iterator for EmptyIterator {
-    type Item = RuntimeValue<'static>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl From<()> for RuntimeIterator<'static> {
+impl<'gc> From<()> for RuntimeIterator<'gc> {
     fn from(_: ()) -> Self {
-        Self(Rc::new(RefCell::new(EmptyIterator)))
+        Self(RefCell::new(IteratorKind::Empty))
     }
 }
 
@@ -147,7 +161,7 @@ impl From<()> for RuntimeIterator<'static> {
 
 impl std::cmp::PartialEq for RuntimeIterator<'_> {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
+        self.0.as_ptr() == other.0.as_ptr()
     }
 }
 

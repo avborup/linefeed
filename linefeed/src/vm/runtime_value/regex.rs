@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use oxc_allocator::Allocator;
+use oxc_allocator::{Allocator, Vec as AVec};
 use regex::{Regex, RegexBuilder};
 
 use crate::vm::runtime_value::{
@@ -91,7 +91,10 @@ impl<'gc> RuntimeRegex {
                     RuntimeValue::Str(RuntimeString::new(g.as_str()))
                 })
             })
-            .collect::<Vec<_>>();
+            .fold(AVec::with_capacity_in(captures.len(), alloc), |mut f, v| {
+                f.push(v);
+                f
+            });
 
         // The full match is almost never useful, so just put it at the end, enabling the user
         // to just ignore it if they don't need it.

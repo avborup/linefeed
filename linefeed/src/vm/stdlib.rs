@@ -25,7 +25,10 @@ pub fn parse_int(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
     Ok(res)
 }
 
-pub fn to_list(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
+pub fn to_list<'gc>(
+    val: RuntimeValue<'gc>,
+    alloc: &'gc Allocator,
+) -> Result<RuntimeValue<'gc>, RuntimeError> {
     if let RuntimeValue::List(_) = val {
         return Ok(val.clone());
     }
@@ -37,7 +40,10 @@ pub fn to_list(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         )));
     };
 
-    Ok(RuntimeValue::List(RuntimeList::from_vec(iter.to_vec())))
+    todo!()
+    // Ok(RuntimeValue::List(RuntimeList::from_vec(
+    //     iter.to_vec(alloc),
+    // )))
 }
 
 pub fn to_tuple<'gc>(
@@ -56,7 +62,7 @@ pub fn to_tuple<'gc>(
     };
 
     Ok(RuntimeValue::Tuple(
-        alloc.alloc(RuntimeTuple::from_vec(iter.to_vec())),
+        alloc.alloc(RuntimeTuple::from_vec(iter.to_vec(alloc))),
     ))
 }
 

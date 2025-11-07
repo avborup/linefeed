@@ -1,6 +1,6 @@
 use std::io::{Read, Write};
 
-use oxc_allocator::Allocator;
+use oxc_allocator::{Allocator, CloneIn};
 use rustc_hash::FxHashMap;
 use yansi::Paint;
 
@@ -90,6 +90,13 @@ macro_rules! unary_mapper_method {
     ($vm:expr, $method:ident) => {{
         let val = $vm.pop_stack();
         $vm.push_stack(val.$method()?);
+    }};
+}
+
+macro_rules! unary_mapper_method_alloc {
+    ($vm:expr, $method:ident) => {{
+        let val = $vm.pop_stack();
+        $vm.push_stack(val.$method($vm.allocator)?);
     }};
 }
 
@@ -204,7 +211,7 @@ where
                 // stack. For things with mutable access, this is BAD. Assign list repeatedly to a
                 // variable? Same list is shared, it's not a new list. Value is no longer referenced on
                 // the stack? Too bad, it's still in the program instructions, so it'll keep living.
-                self.push_stack(val.deep_clone());
+                self.push_stack(val.clone_in(self.allocator));
             }
 
             Bytecode::Add => binary_op_alloc!(self, add),
@@ -406,11 +413,12 @@ where
                 into.append(val)?;
             }
 
+            // TODO: convert to macro
             Bytecode::Index => {
                 let index = self.pop_stack();
-                let into = self.peek_stack_mut()?;
-                let value = into.index(&index)?;
-                *into = value;
+                let into = self.pop_stack();
+                let value = into.index(&index, self.allocator)?;
+                self.push_stack(value);
             }
 
             Bytecode::SetIndex => {
@@ -474,8 +482,8 @@ where
             Bytecode::ToIter => unary_mapper_method!(self, to_iter),
             Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
             Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
-            Bytecode::Split => binary_op!(self, split),
-            Bytecode::SplitLines => unary_mapper_method!(self, lines),
+            Bytecode::Split => binary_op_alloc!(self, split),
+            Bytecode::SplitLines => unary_mapper_method_alloc!(self, lines),
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
             Bytecode::Length => unary_mapper_method!(self, length),
             Bytecode::Count => binary_op!(self, count),
@@ -485,15 +493,18 @@ where
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
-            Bytecode::GetAll => binary_op!(self, get_all),
-            Bytecode::Values => unary_mapper_method!(self, values),
+            Bytecode::GetAll => binary_op_alloc!(self, get_all),
+            Bytecode::Values => unary_mapper_method_alloc!(self, values),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
-            Bytecode::ToList => stdlib_fn!(self, to_list),
+            Bytecode::ToList => stdlib_fn_alloc!(self, to_list),
             Bytecode::ToTuple => stdlib_fn_alloc!(self, to_tuple),
             Bytecode::CreateTuple(size) => {
                 let items = self.pop_args(*size);
-                let tup = self.allocator.alloc(RuntimeTuple::from_vec(items));
+                // FIXME: make more optimized!
+                let tup = self
+                    .allocator
+                    .alloc(RuntimeTuple::from_iter(items, self.allocator));
                 self.push_stack(RuntimeValue::Tuple(tup));
             }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
@@ -565,6 +576,7 @@ where
     }
 
     pub fn pop_args(&mut self, num_args: usize) -> Vec<RuntimeValue<'gc>> {
+        // FIXME: use reusable buffer! buf.clear() + buf.extend(self.stack.drain(-num_args..)) ish
         self.stack.split_off(self.stack.len() - num_args)
     }
 

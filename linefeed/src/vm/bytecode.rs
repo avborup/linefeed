@@ -251,9 +251,9 @@ impl<'gc> Bytecode<'gc> {
                 let items = xs
                     .into_iter()
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
-                    .collect::<Result<_, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()?;
 
-                RuntimeValue::Tuple(allocator.alloc(RuntimeTuple::from_vec(items)))
+                RuntimeValue::Tuple(allocator.alloc(RuntimeTuple::from_iter(items, allocator)))
             }
             IrValue::Set(xs) => {
                 let items = xs

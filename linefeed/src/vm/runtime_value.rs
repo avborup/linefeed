@@ -2,7 +2,7 @@
 
 use std::{cell::Cell, cmp::Ordering, io::Write, ops::Deref, rc::Rc};
 
-use oxc_allocator::Allocator;
+use oxc_allocator::{Allocator, Vec as AVec};
 
 use crate::{
     compiler::method::Method,
@@ -14,7 +14,6 @@ use crate::{
             list::RuntimeList,
             map::{MapIterator, RuntimeMap},
             number::RuntimeNumber,
-            operations::LfAppend,
             range::RuntimeRange,
             regex::RuntimeRegex,
             set::RuntimeSet,
@@ -31,7 +30,6 @@ pub mod iterator;
 pub mod list;
 pub mod map;
 pub mod number;
-pub mod operations;
 pub mod range;
 pub mod regex;
 pub mod set;
@@ -48,7 +46,7 @@ pub enum RuntimeValue<'gc> {
     Num(RuntimeNumber),
     Str(RuntimeString),
     Regex(RuntimeRegex),
-    List(RuntimeList<'gc>),
+    List(&'gc RuntimeList<'gc>),
     Tuple(&'gc RuntimeTuple<'gc>),
     Set(RuntimeSet<'gc>),
     Map(RuntimeMap<'gc>),
@@ -93,7 +91,9 @@ impl<'gc> RuntimeValue<'gc> {
             (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
                 a.concat(&RuntimeString::new(b.to_string())),
             )),
-            (RuntimeValue::List(a), RuntimeValue::List(b)) => Ok(RuntimeValue::List(a.concat(b))),
+            (RuntimeValue::List(a), RuntimeValue::List(b)) => {
+                Ok(RuntimeValue::List(a.concat(b, alloc)))
+            }
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_add(b, alloc)?))
@@ -203,11 +203,11 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(res)
     }
 
-    pub fn index(&self, index: &Self) -> Result<Self, RuntimeError> {
+    pub fn index(&self, index: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let res = match (self, index) {
             (RuntimeValue::List(list), RuntimeValue::Num(i)) => list.index(i)?,
             (RuntimeValue::List(list), RuntimeValue::Range(r)) => {
-                RuntimeValue::List(list.slice(r)?)
+                RuntimeValue::List(list.slice(r, alloc)?)
             }
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
@@ -247,7 +247,7 @@ impl<'gc> RuntimeValue<'gc> {
             RuntimeValue::Iterator(iter) => iter.deref().clone(),
             // RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
             // RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
-            // RuntimeValue::Tuple(tuple) => RuntimeIterator::from(tuple.clone()),
+            RuntimeValue::Tuple(tuple) => RuntimeIterator::from(*tuple),
             // RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             // RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             _ => {
@@ -366,9 +366,9 @@ impl<'gc> RuntimeValue<'gc> {
 
     pub fn enumerate(&self) -> Result<Self, RuntimeError> {
         match self {
-            RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
-                RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
-            ))),
+            // RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
+            //     RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
+            // ))),
             _ => Err(RuntimeError::invalid_method_for_type(
                 Method::Enumerate,
                 self,
@@ -427,7 +427,7 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn deep_clone(&self) -> Self {
+    pub fn deep_clone(&self, alloc: &'gc Allocator) -> Self {
         match self {
             RuntimeValue::Null => RuntimeValue::Null,
             RuntimeValue::Uninit => RuntimeValue::Uninit,
@@ -435,12 +435,35 @@ impl<'gc> RuntimeValue<'gc> {
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
             RuntimeValue::Num(n) => RuntimeValue::Num(n.clone()),
             RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
-            RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
+            // RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone(alloc)),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),
+            _ => unimplemented!("deep_clone for {:?}", self),
+        }
+    }
+}
+
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
+    type Cloned = RuntimeValue<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        match self {
+            RuntimeValue::Null => RuntimeValue::Null,
+            RuntimeValue::Uninit => RuntimeValue::Uninit,
+            RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
+            RuntimeValue::Int(n) => RuntimeValue::Int(*n),
+            // RuntimeValue::Num(n) => todo!(),
+            // RuntimeValue::Str(s) => RuntimeValue::Str(s.clone_in(alloc)),
+            RuntimeValue::List(xs) => RuntimeValue::List(xs.clone_in(alloc)),
+            // RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone_in(alloc)),
+            // RuntimeValue::Set(xs) => RuntimeValue::Set(xs.clone_in(alloc)),
+            // RuntimeValue::Map(m) => RuntimeValue::Map(m.clone_in(alloc)),
+            // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.clone_in(alloc)),
+            // RuntimeValue::Function(_) => self.clone(),
+            // RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone_in(alloc)),
             _ => unimplemented!("deep_clone for {:?}", self),
         }
     }
@@ -496,10 +519,11 @@ impl<'gc> std::fmt::Display for RuntimeValue<'gc> {
 
                 write!(f, "{{")?;
                 write_items(f, kv_pairs.iter(), |f, kv| {
-                    let write_item = |f: &mut std::fmt::Formatter, idx: isize| {
-                        kv.index(&RuntimeValue::Num(RuntimeNumber::from(idx)))
-                            .unwrap()
-                            .repr_fmt(f)
+                    let write_item = |f: &mut std::fmt::Formatter, idx: isize| match kv {
+                        RuntimeValue::Tuple(tuple) => {
+                            tuple.index(&RuntimeNumber::from(idx)).unwrap().repr_fmt(f)
+                        }
+                        _ => unreachable!(),
                     };
 
                     write_item(f, 0)?;
@@ -606,7 +630,7 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(RuntimeValue::Str(s.to_lowercase()))
     }
 
-    pub fn split(&self, by: &Self) -> Result<Self, RuntimeError> {
+    pub fn split(&self, by: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let RuntimeValue::Str(s) = self else {
             return Err(RuntimeError::invalid_method_for_type(Method::Split, self));
         };
@@ -618,17 +642,15 @@ impl<'gc> RuntimeValue<'gc> {
             )));
         };
 
-        let list = s.split(delimiter);
-
-        Ok(RuntimeValue::List(list))
+        Ok(RuntimeValue::List(s.split(delimiter, alloc)))
     }
 
-    pub fn lines(&self) -> Result<Self, RuntimeError> {
+    pub fn lines(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let RuntimeValue::Str(s) = self else {
             return Err(RuntimeError::invalid_method_for_type(Method::Split, self));
         };
 
-        Ok(RuntimeValue::List(s.lines()))
+        Ok(RuntimeValue::List(s.lines(alloc)))
     }
 
     pub fn join(&self, separator: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
@@ -713,27 +735,31 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(RuntimeValue::Bool(contains))
     }
 
-    pub fn get_all(&self, iterable: &Self) -> Result<Self, RuntimeError> {
+    pub fn get_all(&self, iterable: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {
                 let iterator = iterable.to_iter_inner()?;
-                let mut results = Vec::new();
+                let mut results = AVec::with_capacity_in(iterator.len(), alloc);
 
                 while let Some(key) = iterator.next() {
                     results.push(map.get(&key));
                 }
 
-                Ok(RuntimeValue::List(RuntimeList::from_vec(results)))
+                Ok(RuntimeValue::List(
+                    RuntimeList::from_vec(results).alloc(alloc),
+                ))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::GetAll, self)),
         }
     }
 
-    pub fn values(&self) -> Result<Self, RuntimeError> {
+    pub fn values(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {
-                let values: Vec<RuntimeValue<'gc>> = map.borrow().values().cloned().collect();
-                Ok(RuntimeValue::List(RuntimeList::from_vec(values)))
+                let values = AVec::from_iter_in(map.borrow().values().cloned(), alloc);
+                Ok(RuntimeValue::List(
+                    RuntimeList::from_vec(values).alloc(alloc),
+                ))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Values, self)),
         }
