@@ -215,17 +215,12 @@ where
             }
 
             Bytecode::Add => binary_op_alloc!(self, add),
-            Bytecode::Sub => binary_op!(self, sub),
-            Bytecode::Mul => {
-                let rhs = self.pop_stack();
-                let lhs = self.pop_stack();
-                let res = lhs.mul(&rhs, &self.allocator)?;
-                self.push_stack(res);
-            }
+            Bytecode::Sub => binary_op_alloc!(self, sub),
+            Bytecode::Mul => binary_op_alloc!(self, mul),
             Bytecode::Div => binary_op!(self, div),
-            Bytecode::DivFloor => binary_op!(self, div_floor),
-            Bytecode::Mod => binary_op!(self, modulo),
-            Bytecode::Pow => binary_op!(self, pow),
+            Bytecode::DivFloor => binary_op_alloc!(self, div_floor),
+            Bytecode::Mod => binary_op_alloc!(self, modulo),
+            Bytecode::Pow => binary_op_alloc!(self, pow),
             Bytecode::Eq => binary_op!(self, eq_bool),
             Bytecode::NotEq => binary_op!(self, not_eq_bool),
             Bytecode::Less => binary_op!(self, less_than),
@@ -485,8 +480,8 @@ where
             Bytecode::Split => binary_op_alloc!(self, split),
             Bytecode::SplitLines => unary_mapper_method_alloc!(self, lines),
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
-            Bytecode::Length => unary_mapper_method!(self, length),
-            Bytecode::Count => binary_op!(self, count),
+            Bytecode::Length => unary_mapper_method_alloc!(self, length),
+            Bytecode::Count => binary_op_alloc!(self, count),
             Bytecode::FindAll => binary_op_alloc!(self, find_all),
             Bytecode::Find => binary_op_alloc!(self, find),
             Bytecode::IsMatch => binary_op!(self, is_match),

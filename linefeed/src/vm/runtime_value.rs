@@ -13,7 +13,7 @@ use crate::{
             iterator::{EnumeratedListIterator, RuntimeIterator},
             list::RuntimeList,
             map::{MapIterator, RuntimeMap},
-            number::RuntimeNumber,
+            number::{FromWithAlloc, RuntimeNumber},
             range::RuntimeRange,
             regex::RuntimeRegex,
             set::RuntimeSet,
@@ -43,7 +43,7 @@ pub enum RuntimeValue<'gc> {
     Uninit,
     Bool(bool),
     Int(isize),
-    Num(RuntimeNumber),
+    Num(RuntimeNumber<'gc>),
     Str(RuntimeString),
     Regex(RuntimeRegex),
     List(&'gc RuntimeList<'gc>),
@@ -89,7 +89,7 @@ impl<'gc> RuntimeValue<'gc> {
     pub fn add(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a + b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.add(b, alloc))),
             (RuntimeValue::Str(a), RuntimeValue::Str(b)) => Ok(RuntimeValue::Str(a.concat(b))),
             (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
                 a.concat(&RuntimeString::new(b.to_string())),
@@ -109,10 +109,10 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn sub(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn sub(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a - b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a - b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.sub(b, alloc))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
             )),
@@ -122,7 +122,7 @@ impl<'gc> RuntimeValue<'gc> {
     pub fn mul(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a * b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a * b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.mul(b, alloc))),
             (RuntimeValue::Tuple(t), RuntimeValue::Num(_)) => {
                 Ok(RuntimeValue::Tuple(t.scalar_multiply(other, alloc)?))
             }
@@ -138,36 +138,40 @@ impl<'gc> RuntimeValue<'gc> {
     pub fn div(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a / b)),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.div(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
         }
     }
 
-    pub fn div_floor(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn div_floor(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.div_floor(b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Num(a.div_floor(b, alloc)))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
         }
     }
 
-    pub fn modulo(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn modulo(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a % b)),
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.modulo(b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Num(a.modulo(b, alloc)))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "modulo", self, other,
             )),
         }
     }
 
-    pub fn pow(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn pow(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.pow(b))),
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.pow(b, alloc))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "power", self, other,
             )),
@@ -280,11 +284,17 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn length(&self) -> Result<Self, RuntimeError> {
+    pub fn length(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let res = match self {
-            RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::from(list.len())),
-            RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
-            RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
+            RuntimeValue::List(list) => {
+                RuntimeValue::Num(RuntimeNumber::from_with_alloc(list.len(), alloc))
+            }
+            RuntimeValue::Str(s) => {
+                RuntimeValue::Num(RuntimeNumber::from_with_alloc(s.len(), alloc))
+            }
+            RuntimeValue::Set(s) => {
+                RuntimeValue::Num(RuntimeNumber::from_with_alloc(s.len(), alloc))
+            }
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",
@@ -296,10 +306,11 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(res)
     }
 
-    pub fn count(&self, item: &Self) -> Result<Self, RuntimeError> {
+    pub fn count(&self, item: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let res = match (self, item) {
-            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::from(
+            (RuntimeValue::List(list), _) => RuntimeValue::Num(RuntimeNumber::from_with_alloc(
                 list.as_slice().iter().filter(|x| *x == item).count(),
+                alloc,
             )),
             (RuntimeValue::Str(s), RuntimeValue::Str(sub)) => RuntimeValue::Num(s.count(sub)),
             _ => {

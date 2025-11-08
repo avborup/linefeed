@@ -105,17 +105,17 @@ impl<'gc> EnumeratedListIterator<'gc> {
     }
 }
 
-impl<'gc> Iterator for EnumeratedListIterator<'gc> {
-    type Item = RuntimeValue<'gc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let value = self.list.as_slice().get(self.index).cloned()?;
-        let index_val = RuntimeValue::Num(RuntimeNumber::from(self.index));
-        let enumerated = todo!(); // RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![index_val, value]));
-        self.index += 1;
-        Some(enumerated)
-    }
-}
+// impl<'gc> Iterator for EnumeratedListIterator<'gc> {
+//     type Item = RuntimeValue<'gc>;
+//
+//     fn next(&mut self) -> Option<Self::Item> {
+//         let value = self.list.as_slice().get(self.index).cloned()?;
+//         let index_val = RuntimeValue::Num(RuntimeNumber::from(self.index));
+//         let enumerated = todo!(); // RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![index_val, value]));
+//         self.index += 1;
+//         Some(enumerated)
+//     }
+// }
 
 impl<'gc> From<EnumeratedListIterator<'gc>> for RuntimeIterator<'gc> {
     fn from(iter: EnumeratedListIterator<'gc>) -> Self {

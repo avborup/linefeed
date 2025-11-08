@@ -67,7 +67,7 @@ impl<'gc> RuntimeString {
         Self::new(format!("{}{}", self.as_str(), other.as_str()))
     }
 
-    pub fn count(&self, substr: &RuntimeString) -> RuntimeNumber {
+    pub fn count(&self, substr: &RuntimeString) -> RuntimeNumber<'gc> {
         let n = self.as_str().matches(substr.as_str()).count();
         RuntimeNumber::from(n as isize)
     }

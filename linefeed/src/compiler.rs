@@ -4,7 +4,7 @@ use std::{collections::HashMap, ops::RangeInclusive};
 
 use crate::{
     compiler::{
-        ir_value::IrValue,
+        ir_value::{IrNumber, IrValue},
         method::Method,
         scoped_map::{ScopedMap, VarType},
         stdlib_fn::StdlibFn,
@@ -134,7 +134,7 @@ impl Compiler {
         //  - [ ] Remove unnecessary additions
         //  - [ ] Don't do lookups on constants, just insert them
 
-        let bytecode_program = program.into_bytecode(&allocator)?;
+        let bytecode_program = program.into_bytecode(allocator)?;
 
         Ok(bytecode_program)
     }
@@ -268,7 +268,7 @@ impl Compiler {
 
                 let to_add = match op {
                     UnaryOp::Not => vec![Not],
-                    UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::from(-1))), Mul],
+                    UnaryOp::Neg => vec![Value(IrValue::Num(IrNumber::Int(-1))), Mul],
                 };
 
                 program.then_instructions(to_add, expr.span())
@@ -753,7 +753,7 @@ impl Compiler {
                 .into_iter()
                 .enumerate()
                 .fold(Program::new(), |program, (i, p)| {
-                    let index = Value(IrValue::Num(RuntimeNumber::from(i as isize)));
+                    let index = Value(IrValue::Num(IrNumber::Int(i as i64)));
                     program
                         .then_instructions(vec![Dup, index, Index], expr.span())
                         .then_program(p)

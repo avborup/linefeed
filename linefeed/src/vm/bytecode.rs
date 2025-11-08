@@ -240,7 +240,7 @@ impl<'gc> Bytecode<'gc> {
             IrValue::Uninit => RuntimeValue::Uninit,
             IrValue::Bool(b) => RuntimeValue::Bool(b),
             IrValue::Int(i) => RuntimeValue::Int(i),
-            IrValue::Num(n) => RuntimeValue::Num(n),
+            IrValue::Num(n) => RuntimeValue::Num(n.to_runtime_number(allocator)),
             IrValue::Str(s) => RuntimeValue::Str(RuntimeString::new(s)),
             IrValue::List(xs) => {
                 let items = xs
