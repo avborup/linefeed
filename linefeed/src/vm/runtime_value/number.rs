@@ -256,6 +256,18 @@ impl PartialEq for RuntimeNumber<'_> {
     }
 }
 
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeNumber<'old> {
+    type Cloned = RuntimeNumber<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        match self {
+            SmallInt(i) => SmallInt(*i),
+            BigInt(i) => BigInt(rug::Integer::from(*i).alloc(alloc)),
+            Float(f) => Float(*f),
+        }
+    }
+}
+
 use crate::vm::RuntimeError;
 
 // Fuck it, we ball

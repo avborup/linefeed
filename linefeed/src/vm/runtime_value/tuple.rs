@@ -94,6 +94,22 @@ impl<'gc> RuntimeTuple<'gc> {
     }
 }
 
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeTuple<'old> {
+    type Cloned = RuntimeTuple<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        let cloned = self.as_slice().iter().map(|v| v.clone_in(alloc)).fold(
+            AVec::with_capacity_in(self.len(), alloc),
+            |mut acc, v| {
+                acc.push(v);
+                acc
+            },
+        );
+
+        RuntimeTuple::from_vec(cloned)
+    }
+}
+
 impl std::cmp::PartialOrd for RuntimeTuple<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         let a = self.as_slice();

@@ -475,16 +475,16 @@ impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
             RuntimeValue::Uninit => RuntimeValue::Uninit,
             RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
-            // RuntimeValue::Num(n) => todo!(),
+            RuntimeValue::Num(n) => RuntimeValue::Num(n.clone_in(alloc)),
             // RuntimeValue::Str(s) => RuntimeValue::Str(s.clone_in(alloc)),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.clone_in(alloc).alloc(alloc)),
-            // RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone_in(alloc)),
+            RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Set(xs) => RuntimeValue::Set(xs.clone_in(alloc)),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.clone_in(alloc)),
             // RuntimeValue::Function(_) => self.clone(),
             // RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone_in(alloc)),
-            _ => unimplemented!("deep_clone for {:?}", self),
+            _ => unimplemented!("clone_in for {:?}", self),
         }
     }
 }
