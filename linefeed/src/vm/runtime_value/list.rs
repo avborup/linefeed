@@ -1,6 +1,6 @@
 use std::cell::{Ref, RefCell};
 
-use oxc_allocator::{Allocator, CloneIn, Vec as AVec};
+use oxc_allocator::{Allocator, Vec as AVec};
 use rustc_hash::FxHashMap;
 
 use crate::vm::{

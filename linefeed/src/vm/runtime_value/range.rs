@@ -18,7 +18,7 @@ impl RuntimeRange {
         }
     }
 
-    pub fn alloc<'gc>(self, alloc: &'gc Allocator) -> &'gc Self {
+    pub fn alloc(self, alloc: &Allocator) -> &Self {
         alloc.alloc(self)
     }
 
@@ -77,7 +77,7 @@ impl<'gc> RangeIterator<'gc> {
         match (self.range.start, self.range.end) {
             (Some(start), Some(end)) => {
                 let dist = start.abs_diff(end);
-                Some(dist / self.step.abs() as usize)
+                Some(dist / self.step.unsigned_abs())
             }
             _ => None,
         }

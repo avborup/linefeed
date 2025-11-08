@@ -1,13 +1,13 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
 use oxc_allocator::{Allocator, Vec as AVec};
 
 use crate::vm::runtime_value::{
     list::RuntimeList,
-    map::{MapIterator, RuntimeMap},
+    map::MapIterator,
     number::RuntimeNumber,
     range::{RangeIterator, RuntimeRange},
-    string::{RuntimeString, StringIterator},
+    string::StringIterator,
     tuple::RuntimeTuple,
     // counter::RuntimeCounter,
     RuntimeValue,
@@ -164,7 +164,7 @@ impl<'gc> From<()> for RuntimeIterator<'gc> {
 
 impl<'gc> From<MapIterator<'gc>> for RuntimeIterator<'gc> {
     fn from(map_iter: MapIterator<'gc>) -> Self {
-        Self(RefCell::new(IteratorKind::Map(MapIterator::from(map_iter))))
+        Self(RefCell::new(IteratorKind::Map(map_iter)))
     }
 }
 

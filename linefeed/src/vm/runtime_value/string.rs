@@ -1,4 +1,3 @@
-use std::rc::Rc;
 
 use oxc_allocator::{Allocator, Vec as AVec};
 
@@ -30,7 +29,7 @@ impl<'gc> RuntimeString<'gc> {
     }
 
     pub fn as_str(&self) -> &str {
-        &self.0
+        self.0
     }
 
     pub fn len(&self) -> usize {

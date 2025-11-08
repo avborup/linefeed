@@ -1,4 +1,4 @@
-use std::{mem::ManuallyDrop, rc::Rc};
+use std::mem::ManuallyDrop;
 
 use oxc_allocator::{Allocator, Vec as AVec};
 use regex::{Regex, RegexBuilder};

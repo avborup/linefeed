@@ -1,14 +1,10 @@
-use std::{cell::RefCell, mem::ManuallyDrop, ops::Deref, rc::Rc};
+use std::{cell::RefCell, ops::Deref};
 
 use oxc_allocator::{Allocator, Box as ABox, CloneIn, HashMap as AHashMap, Vec as AVec};
-use rustc_hash::FxHashMap;
 
-use crate::vm::{
-    runtime_value::{
-        iterator::RuntimeIterator, number::RuntimeNumber, tuple::RuntimeTuple, RuntimeValue,
-    },
-    RuntimeError,
-};
+use crate::vm::runtime_value::{
+        tuple::RuntimeTuple, RuntimeValue,
+    };
 
 #[derive(Debug)]
 pub struct RuntimeMap<'gc>(RefCell<InnerRuntimeMap<'gc>>);

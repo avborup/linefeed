@@ -89,13 +89,6 @@ macro_rules! binary_op_swapped {
 macro_rules! unary_mapper_method {
     ($vm:expr, $method:ident) => {{
         let val = $vm.pop_stack();
-        $vm.push_stack(val.$method()?);
-    }};
-}
-
-macro_rules! unary_mapper_method_alloc {
-    ($vm:expr, $method:ident) => {{
-        let val = $vm.pop_stack();
         $vm.push_stack(val.$method($vm.allocator)?);
     }};
 }
@@ -474,22 +467,22 @@ where
                 self.pop_stack();
             }
 
-            Bytecode::ToIter => unary_mapper_method_alloc!(self, to_iter),
-            Bytecode::ToUpperCase => unary_mapper_method_alloc!(self, to_uppercase),
-            Bytecode::ToLowerCase => unary_mapper_method_alloc!(self, to_lowercase),
+            Bytecode::ToIter => unary_mapper_method!(self, to_iter),
+            Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
+            Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
             Bytecode::Split => binary_op_alloc!(self, split),
-            Bytecode::SplitLines => unary_mapper_method_alloc!(self, lines),
+            Bytecode::SplitLines => unary_mapper_method!(self, lines),
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
-            Bytecode::Length => unary_mapper_method_alloc!(self, length),
+            Bytecode::Length => unary_mapper_method!(self, length),
             Bytecode::Count => binary_op_alloc!(self, count),
             Bytecode::FindAll => binary_op_alloc!(self, find_all),
             Bytecode::Find => binary_op_alloc!(self, find),
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
-            Bytecode::Enumerate => unary_mapper_method_alloc!(self, enumerate),
+            Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
             Bytecode::GetAll => binary_op_alloc!(self, get_all),
-            Bytecode::Values => unary_mapper_method_alloc!(self, values),
+            Bytecode::Values => unary_mapper_method!(self, values),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn_alloc!(self, to_list),

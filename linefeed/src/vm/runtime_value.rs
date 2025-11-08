@@ -1,6 +1,6 @@
 #![allow(clippy::mutable_key_type)]
 
-use std::{cell::Cell, cmp::Ordering, io::Write, ops::Deref, rc::Rc};
+use std::{cmp::Ordering, io::Write};
 
 use oxc_allocator::{Allocator, Vec as AVec};
 
@@ -383,7 +383,7 @@ impl<'gc> RuntimeValue<'gc> {
                     None => list.sort(),
                 };
 
-                Ok(RuntimeValue::List(list.clone()))
+                Ok(RuntimeValue::List(list))
             }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Sort, self)),
         }

@@ -12,7 +12,7 @@ use crate::{
     grammar::ast::{AstValue, BinaryOp, Expr, Pattern, Span, Spanned, UnaryOp},
     vm::{
         bytecode::Bytecode,
-        runtime_value::{function::RuntimeFunction, number::RuntimeNumber},
+        runtime_value::function::RuntimeFunction,
     },
 };
 

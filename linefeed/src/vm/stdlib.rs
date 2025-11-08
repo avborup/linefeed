@@ -2,8 +2,8 @@ use oxc_allocator::Allocator;
 
 use crate::vm::{
     runtime_value::{
-        iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap, number::RuntimeNumber,
-        set::RuntimeSet, tuple::RuntimeTuple, RuntimeValue,
+        list::RuntimeList, map::RuntimeMap, number::RuntimeNumber, tuple::RuntimeTuple,
+        RuntimeValue,
     },
     RuntimeError,
 };

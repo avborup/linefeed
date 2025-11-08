@@ -38,7 +38,7 @@ impl<'gc> RuntimeNumber<'gc> {
     pub fn floor(&self) -> Self {
         match self {
             SmallInt(i) => SmallInt(*i),
-            BigInt(i) => BigInt(*i),
+            BigInt(i) => BigInt(i),
             Float(f) => Float(f.floor()),
         }
     }
