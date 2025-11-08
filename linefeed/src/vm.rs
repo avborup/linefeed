@@ -105,7 +105,7 @@ macro_rules! method_with_optional_arg {
         let mut args = $vm.pop_args($num_args);
         let arg = args.pop();
         let target = $vm.pop_stack();
-        $vm.push_stack(target.$method(arg)?);
+        $vm.push_stack(target.$method(arg, $vm.allocator)?);
     }};
 }
 
@@ -137,7 +137,7 @@ macro_rules! stdlib_fn_with_optional_arg {
     ($vm:expr, $fn:ident, $num_args:expr) => {{
         let mut args = $vm.pop_args($num_args);
         let arg = args.pop();
-        $vm.push_stack(stdlib::$fn(arg)?);
+        $vm.push_stack(stdlib::$fn(arg, $vm.allocator)?);
     }};
 }
 
@@ -227,7 +227,7 @@ where
             Bytecode::LessEq => binary_op!(self, less_than_or_eq),
             Bytecode::Greater => binary_op!(self, greater_than),
             Bytecode::GreaterEq => binary_op!(self, greater_than_or_eq),
-            Bytecode::Range => binary_op!(self, range),
+            Bytecode::Range => binary_op_alloc!(self, range),
             Bytecode::Xor => binary_op!(self, xor),
             Bytecode::BitwiseAnd => binary_op_alloc!(self, bitwise_and),
 
@@ -474,9 +474,9 @@ where
                 self.pop_stack();
             }
 
-            Bytecode::ToIter => unary_mapper_method!(self, to_iter),
-            Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
-            Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
+            Bytecode::ToIter => unary_mapper_method_alloc!(self, to_iter),
+            Bytecode::ToUpperCase => unary_mapper_method_alloc!(self, to_uppercase),
+            Bytecode::ToLowerCase => unary_mapper_method_alloc!(self, to_lowercase),
             Bytecode::Split => binary_op_alloc!(self, split),
             Bytecode::SplitLines => unary_mapper_method_alloc!(self, lines),
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
@@ -502,7 +502,7 @@ where
                     .alloc(RuntimeTuple::from_iter(items, self.allocator));
                 self.push_stack(RuntimeValue::Tuple(tup));
             }
-            Bytecode::ToMap => stdlib_fn!(self, to_map),
+            Bytecode::ToMap => stdlib_fn_alloc!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn_alloc!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
             // Bytecode::ToCounter(num_args) => {
@@ -535,7 +535,10 @@ where
             Bytecode::ReprString => {
                 let val = self.pop_stack();
                 let repr = val.repr_string();
-                self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
+                self.push_stack(RuntimeValue::Str(RuntimeString::alloc_from_str(
+                    repr,
+                    self.allocator,
+                )));
             }
 
             Bytecode::ReadInput => {
@@ -544,7 +547,10 @@ where
                     .read_to_string(&mut input)
                     .map_err(|e| RuntimeError::InternalBug(format!("Failed to read stdin: {e}")))?;
 
-                self.push_stack(RuntimeValue::Str(RuntimeString::new(input)));
+                self.push_stack(RuntimeValue::Str(RuntimeString::alloc_from_str(
+                    input,
+                    self.allocator,
+                )));
             }
 
             Bytecode::RuntimeError(err) => return Err(RuntimeError::Plain(*err.clone())),

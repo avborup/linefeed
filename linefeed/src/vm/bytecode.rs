@@ -279,11 +279,14 @@ impl<'gc> Bytecode<'gc> {
 
                 RuntimeValue::Map(RuntimeMap::from_iter(map, allocator).alloc(allocator))
             }
-            IrValue::Function(func) => RuntimeValue::Function(Rc::new(RuntimeFunction {
-                location: label_mapper.get(func.location)?,
-                arity: func.arity,
-                is_memoized: func.is_memoized,
-            })),
+            IrValue::Function(func) => RuntimeValue::Function(
+                RuntimeFunction {
+                    location: label_mapper.get(func.location)?,
+                    arity: func.arity,
+                    is_memoized: func.is_memoized,
+                }
+                .alloc(allocator),
+            ),
             IrValue::Regex(s, modifiers) => {
                 let regex = RuntimeRegex::compile(&s, modifiers)
                     .map_err(|e| CompileError::Plain(format!("Invalid regex: {e}")))?;

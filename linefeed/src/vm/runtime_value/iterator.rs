@@ -27,6 +27,10 @@ enum IteratorKind<'gc> {
 }
 
 impl<'gc> RuntimeIterator<'gc> {
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
+    }
+
     pub fn next(&self) -> Option<RuntimeValue<'gc>> {
         match &mut *self.0.borrow_mut() {
             IteratorKind::Tuple(iter) => iter.next(),

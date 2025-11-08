@@ -33,7 +33,7 @@ pub fn to_list<'gc>(
         return Ok(val.clone());
     }
 
-    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter(alloc) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot convert type {} to a list",
             val.kind_str()
@@ -54,7 +54,7 @@ pub fn to_tuple<'gc>(
         return Ok(val.clone());
     }
 
-    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter(alloc) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot convert type {} to a tuple",
             val.kind_str()
@@ -75,12 +75,15 @@ pub fn map_with_default<'gc>(
     ))
 }
 
-pub fn to_map<'gc>(val: RuntimeValue<'gc>) -> Result<RuntimeValue<'gc>, RuntimeError> {
+pub fn to_map<'gc>(
+    val: RuntimeValue<'gc>,
+    alloc: &'gc Allocator,
+) -> Result<RuntimeValue<'gc>, RuntimeError> {
     if let RuntimeValue::Map(_) = val {
         return Ok(val.clone());
     }
 
-    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter(alloc) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot convert type {} to a map",
             val.kind_str()
@@ -91,12 +94,15 @@ pub fn to_map<'gc>(val: RuntimeValue<'gc>) -> Result<RuntimeValue<'gc>, RuntimeE
     // Ok(RuntimeValue::Map(RuntimeMap::try_from(*iter)?))
 }
 
-pub fn to_set<'gc>(val: Option<RuntimeValue<'gc>>) -> Result<RuntimeValue<'gc>, RuntimeError> {
+pub fn to_set<'gc>(
+    val: Option<RuntimeValue<'gc>>,
+    alloc: &'gc Allocator,
+) -> Result<RuntimeValue<'gc>, RuntimeError> {
     if let Some(RuntimeValue::Set(_)) = val {
         return Ok(val.unwrap().clone());
     }
 
-    let Some(Ok(iter)) = val.as_ref().map(|v| v.to_iter()) else {
+    let Some(Ok(iter)) = val.as_ref().map(|v| v.to_iter(alloc)) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot convert type {} to a set",
             val.unwrap().kind_str()
@@ -123,7 +129,7 @@ pub fn to_set<'gc>(val: Option<RuntimeValue<'gc>>) -> Result<RuntimeValue<'gc>, 
 // }
 
 pub fn sum<'gc>(val: RuntimeValue<'gc>, alloc: &'gc Allocator) -> RuntimeResult<'gc> {
-    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter(alloc) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot sum over type {}",
             val.kind_str()
@@ -139,7 +145,7 @@ pub fn sum<'gc>(val: RuntimeValue<'gc>, alloc: &'gc Allocator) -> RuntimeResult<
 }
 
 pub fn mul<'gc>(val: RuntimeValue<'gc>, alloc: &'gc Allocator) -> RuntimeResult<'gc> {
-    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter() else {
+    let Ok(RuntimeValue::Iterator(iter)) = val.to_iter(alloc) else {
         return Err(RuntimeError::TypeMismatch(format!(
             "Cannot multiply over type {}",
             val.kind_str()

@@ -44,15 +44,15 @@ pub enum RuntimeValue<'gc> {
     Bool(bool),
     Int(isize),
     Num(RuntimeNumber<'gc>),
-    Str(RuntimeString),
-    Regex(RuntimeRegex),
+    Str(&'gc RuntimeString<'gc>),
+    Regex(&'gc RuntimeRegex),
     List(&'gc RuntimeList<'gc>),
     Tuple(&'gc RuntimeTuple<'gc>),
     Set(&'gc RuntimeSet<'gc>),
     Map(&'gc RuntimeMap<'gc>),
-    Function(Rc<RuntimeFunction>),
-    Range(Box<RuntimeRange>),
-    Iterator(Box<RuntimeIterator<'gc>>),
+    Function(&'gc RuntimeFunction),
+    Range(&'gc RuntimeRange),
+    Iterator(&'gc RuntimeIterator<'gc>),
 }
 
 const _: () = {
@@ -90,10 +90,12 @@ impl<'gc> RuntimeValue<'gc> {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a + b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.add(b, alloc))),
-            (RuntimeValue::Str(a), RuntimeValue::Str(b)) => Ok(RuntimeValue::Str(a.concat(b))),
-            (RuntimeValue::Str(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Str(
-                a.concat(&RuntimeString::new(b.to_string())),
-            )),
+            (RuntimeValue::Str(a), RuntimeValue::Str(b)) => {
+                Ok(RuntimeValue::Str(a.concat(b, alloc)))
+            }
+            (RuntimeValue::Str(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Str(a.concat(b.to_string(), alloc)))
+            }
             (RuntimeValue::List(a), RuntimeValue::List(b)) => {
                 Ok(RuntimeValue::List(a.concat(b, alloc)))
             }
@@ -219,8 +221,10 @@ impl<'gc> RuntimeValue<'gc> {
                 RuntimeValue::List(list.slice(r, alloc)?)
             }
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
-            (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
-            (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
+            (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i, alloc)?),
+            (RuntimeValue::Str(s), RuntimeValue::Range(r)) => {
+                RuntimeValue::Str(s.substr(r, alloc)?)
+            }
             (RuntimeValue::Map(map), index) => map.get(index, alloc),
             // (RuntimeValue::Counter(counter), index) => counter.get(index),
             _ => {
@@ -270,8 +274,8 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(iter)
     }
 
-    pub fn to_iter(&self) -> Result<Self, RuntimeError> {
-        Ok(RuntimeValue::Iterator(Box::new(self.to_iter_inner()?)))
+    pub fn to_iter(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
+        Ok(RuntimeValue::Iterator(self.to_iter_inner()?.alloc(alloc)))
     }
 
     pub fn next(&self) -> Result<Option<Self>, RuntimeError> {
@@ -392,7 +396,7 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn range(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {
                 RuntimeRange::new(Some(start.clone()), Some(end.clone()))
@@ -413,7 +417,7 @@ impl<'gc> RuntimeValue<'gc> {
             }
         };
 
-        Ok(RuntimeValue::Range(Box::new(range)))
+        Ok(RuntimeValue::Range(range.alloc(alloc)))
     }
 
     pub fn address(&self) -> Result<usize, RuntimeError> {
@@ -618,7 +622,7 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(())
     }
 
-    pub fn to_uppercase(&self) -> Result<Self, RuntimeError> {
+    pub fn to_uppercase(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let RuntimeValue::Str(s) = self else {
             return Err(RuntimeError::invalid_method_for_type(
                 Method::ToUpperCase,
@@ -626,10 +630,10 @@ impl<'gc> RuntimeValue<'gc> {
             ));
         };
 
-        Ok(RuntimeValue::Str(s.to_uppercase()))
+        Ok(RuntimeValue::Str(s.to_uppercase(alloc)))
     }
 
-    pub fn to_lowercase(&self) -> Result<Self, RuntimeError> {
+    pub fn to_lowercase(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         let RuntimeValue::Str(s) = self else {
             return Err(RuntimeError::invalid_method_for_type(
                 Method::ToLowerCase,
@@ -637,7 +641,7 @@ impl<'gc> RuntimeValue<'gc> {
             ));
         };
 
-        Ok(RuntimeValue::Str(s.to_lowercase()))
+        Ok(RuntimeValue::Str(s.to_lowercase(alloc)))
     }
 
     pub fn split(&self, by: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
@@ -663,14 +667,18 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(RuntimeValue::List(s.lines(alloc)))
     }
 
-    pub fn join(&self, separator: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
-        let Ok(Self::Iterator(iter)) = self.to_iter() else {
+    pub fn join(
+        &self,
+        separator: Option<RuntimeValue>,
+        alloc: &'gc Allocator,
+    ) -> Result<Self, RuntimeError> {
+        let Ok(Self::Iterator(iter)) = self.to_iter(alloc) else {
             return Err(RuntimeError::invalid_method_for_type(Method::Join, self));
         };
 
         let separator = match separator {
-            Some(RuntimeValue::Str(s)) => s,
-            None => RuntimeString::new(String::new()),
+            Some(RuntimeValue::Str(s)) => s.as_str(),
+            None => "",
             Some(val) => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot join by type '{}'",
@@ -678,7 +686,6 @@ impl<'gc> RuntimeValue<'gc> {
                 )))
             }
         };
-        let separator = separator.as_str();
 
         let mut output = Vec::new();
         let mut first = true;
@@ -694,7 +701,7 @@ impl<'gc> RuntimeValue<'gc> {
 
         let s = String::from_utf8(output).map_err(|e| RuntimeError::InternalBug(e.to_string()))?;
 
-        Ok(RuntimeValue::Str(RuntimeString::new(s)))
+        Ok(RuntimeValue::Str(RuntimeString::alloc_from_str(s, alloc)))
     }
 
     pub fn find_all(&self, search: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {

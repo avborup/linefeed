@@ -1,5 +1,7 @@
 use std::marker::PhantomData;
 
+use oxc_allocator::Allocator;
+
 use crate::vm::runtime_value::{number::RuntimeNumber, RuntimeValue};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -14,6 +16,10 @@ impl RuntimeRange {
             start: start.map(|n| n.floor_int()),
             end: end.map(|n| n.floor_int()),
         }
+    }
+
+    pub fn alloc<'gc>(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
     }
 
     pub fn is_reverse(&self) -> bool {
