@@ -158,9 +158,9 @@ impl TryFrom<RuntimeIterator> for RuntimeMap {
 }
 
 pub struct MapIterator {
-    map: RuntimeMap,
-    keys: Vec<RuntimeValue>,
-    index: usize,
+    pub map: RuntimeMap,
+    pub keys: Vec<RuntimeValue>,
+    pub index: usize,
 }
 
 impl From<RuntimeMap> for MapIterator {

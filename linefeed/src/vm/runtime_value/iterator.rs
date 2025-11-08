@@ -12,11 +12,29 @@ use crate::vm::runtime_value::{
 };
 
 #[derive(Clone)]
-pub struct RuntimeIterator(Rc<RefCell<dyn Iterator<Item = RuntimeValue>>>);
+pub struct RuntimeIterator(Rc<RefCell<IteratorKind>>);
+
+enum IteratorKind {
+    List(ListIterator),
+    Tuple(TupleIterator),
+    Range(RangeIterator),
+    Map(MapIterator),
+    Enumerated(EnumeratedListIterator),
+    String(StringIterator),
+    Empty,
+}
 
 impl RuntimeIterator {
     pub fn next(&self) -> Option<RuntimeValue> {
-        self.0.borrow_mut().next()
+        match &mut *self.0.borrow_mut() {
+            IteratorKind::List(iter) => iter.next(),
+            IteratorKind::Tuple(iter) => iter.next(),
+            IteratorKind::Range(iter) => iter.next(),
+            IteratorKind::Map(iter) => iter.next(),
+            IteratorKind::Enumerated(iter) => iter.next(),
+            IteratorKind::String(iter) => iter.next(),
+            IteratorKind::Empty => None,
+        }
     }
 
     pub fn to_vec(&self) -> Vec<RuntimeValue> {
@@ -25,6 +43,24 @@ impl RuntimeIterator {
             out.push(value);
         }
         out
+    }
+
+    pub fn len(&self) -> usize {
+        match &*self.0.borrow() {
+            IteratorKind::List(iter) => iter.list.len().saturating_sub(iter.index),
+            IteratorKind::Tuple(iter) => iter.tuple.len().saturating_sub(iter.index),
+            IteratorKind::Range(_) => {
+                todo!()
+            }
+            IteratorKind::Map(iter) => iter.keys.len().saturating_sub(iter.index),
+            IteratorKind::Enumerated(iter) => iter.list.len().saturating_sub(iter.index),
+            IteratorKind::String(iter) => iter.chars.len().saturating_sub(iter.index),
+            IteratorKind::Empty => 0,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 
@@ -43,12 +79,6 @@ impl Iterator for ListIterator {
     }
 }
 
-impl From<RuntimeList> for RuntimeIterator {
-    fn from(list: RuntimeList) -> Self {
-        Self(Rc::new(RefCell::new(ListIterator { list, index: 0 })))
-    }
-}
-
 struct TupleIterator {
     tuple: RuntimeTuple,
     index: usize,
@@ -61,12 +91,6 @@ impl Iterator for TupleIterator {
         let value = self.tuple.as_slice().get(self.index).cloned();
         self.index += 1;
         value
-    }
-}
-
-impl From<RuntimeTuple> for RuntimeIterator {
-    fn from(tuple: RuntimeTuple) -> Self {
-        Self(Rc::new(RefCell::new(TupleIterator { tuple, index: 0 })))
     }
 }
 
@@ -93,54 +117,87 @@ impl Iterator for EnumeratedListIterator {
     }
 }
 
-impl From<EnumeratedListIterator> for RuntimeIterator {
-    fn from(iter: EnumeratedListIterator) -> Self {
-        Self(Rc::new(RefCell::new(iter)))
+pub struct StringIterator {
+    chars: Vec<RuntimeString>,
+    index: usize,
+}
+
+impl StringIterator {
+    pub fn new(s: &RuntimeString) -> Self {
+        let chars = s.as_str().chars().map(RuntimeString::new).collect();
+        Self { chars, index: 0 }
+    }
+}
+
+impl Iterator for StringIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let ch = self.chars.get(self.index).cloned()?;
+        self.index += 1;
+        Some(RuntimeValue::Str(ch))
+    }
+}
+
+impl From<RuntimeList> for RuntimeIterator {
+    fn from(list: RuntimeList) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::List(ListIterator {
+            list,
+            index: 0,
+        }))))
+    }
+}
+
+impl From<RuntimeTuple> for RuntimeIterator {
+    fn from(tuple: RuntimeTuple) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::Tuple(TupleIterator {
+            tuple,
+            index: 0,
+        }))))
     }
 }
 
 impl From<RuntimeRange> for RuntimeIterator {
     fn from(range: RuntimeRange) -> Self {
-        Self(Rc::new(RefCell::new(RangeIterator::new(range))))
+        Self(Rc::new(RefCell::new(IteratorKind::Range(
+            RangeIterator::new(range),
+        ))))
     }
 }
 
 impl From<RuntimeString> for RuntimeIterator {
     fn from(s: RuntimeString) -> Self {
-        Self::from(RuntimeList::from_vec(
-            s.as_str()
-                .chars()
-                .map(|c| RuntimeValue::Str(RuntimeString::new(c)))
-                .collect(),
-        ))
+        Self(Rc::new(RefCell::new(IteratorKind::String(
+            StringIterator::new(&s),
+        ))))
     }
 }
 
-pub struct EmptyIterator;
-
-impl Iterator for EmptyIterator {
-    type Item = RuntimeValue;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        None
-    }
-}
-
-impl From<()> for RuntimeIterator {
-    fn from(_: ()) -> Self {
-        Self(Rc::new(RefCell::new(EmptyIterator)))
+impl From<EnumeratedListIterator> for RuntimeIterator {
+    fn from(iter: EnumeratedListIterator) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::Enumerated(iter))))
     }
 }
 
 impl From<RuntimeMap> for RuntimeIterator {
     fn from(map: RuntimeMap) -> Self {
-        Self(Rc::new(RefCell::new(MapIterator::from(map))))
+        Self(Rc::new(RefCell::new(IteratorKind::Map(MapIterator::from(
+            map,
+        )))))
     }
 }
 
 impl From<RuntimeCounter> for RuntimeIterator {
-    fn from(map: RuntimeCounter) -> Self {
-        Self(Rc::new(RefCell::new(MapIterator::from(map))))
+    fn from(counter: RuntimeCounter) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::Map(MapIterator::from(
+            counter,
+        )))))
+    }
+}
+
+impl From<()> for RuntimeIterator {
+    fn from(_: ()) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::Empty)))
     }
 }
 
