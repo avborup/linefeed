@@ -1,4 +1,4 @@
-use std::rc::Rc;
+use std::{mem::ManuallyDrop, rc::Rc};
 
 use oxc_allocator::{Allocator, Vec as AVec};
 use regex::{Regex, RegexBuilder};
@@ -9,7 +9,7 @@ use crate::vm::runtime_value::{
 };
 
 #[derive(Debug, Clone)]
-pub struct RuntimeRegex(Rc<RegexConfig>);
+pub struct RuntimeRegex(ManuallyDrop<RegexConfig>);
 
 #[derive(Debug, Clone)]
 pub struct RegexConfig {
@@ -38,8 +38,12 @@ impl<'gc> RuntimeRegex {
         Ok(Self::new(RegexConfig { regex, modifiers }))
     }
 
-    pub fn new(regex: RegexConfig) -> Self {
-        Self(Rc::new(regex))
+    pub fn new(config: RegexConfig) -> Self {
+        Self(ManuallyDrop::new(config))
+    }
+
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
     }
 
     pub fn as_regex(&self) -> &Regex {
@@ -87,7 +91,7 @@ impl<'gc> RuntimeRegex {
                         }
                     }
 
-                    RuntimeValue::Str(RuntimeString::new(g.as_str()))
+                    RuntimeValue::Str(RuntimeString::alloc_from_str(g.as_str(), alloc))
                 })
             })
             .fold(AVec::with_capacity_in(captures.len(), alloc), |mut f, v| {

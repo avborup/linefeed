@@ -241,7 +241,7 @@ impl<'gc> Bytecode<'gc> {
             IrValue::Bool(b) => RuntimeValue::Bool(b),
             IrValue::Int(i) => RuntimeValue::Int(i),
             IrValue::Num(n) => RuntimeValue::Num(n.to_runtime_number(allocator)),
-            IrValue::Str(s) => RuntimeValue::Str(RuntimeString::new(s)),
+            IrValue::Str(s) => RuntimeValue::Str(RuntimeString::alloc_from_str(s, allocator)),
             IrValue::List(xs) => {
                 let items = xs
                     .into_iter()
@@ -291,7 +291,7 @@ impl<'gc> Bytecode<'gc> {
                 let regex = RuntimeRegex::compile(&s, modifiers)
                     .map_err(|e| CompileError::Plain(format!("Invalid regex: {e}")))?;
 
-                RuntimeValue::Regex(regex)
+                RuntimeValue::Regex(regex.alloc(allocator))
             }
         };
 
