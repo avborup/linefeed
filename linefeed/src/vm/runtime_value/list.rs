@@ -140,7 +140,7 @@ impl<'gc> RuntimeList<'gc> {
 }
 
 impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeList<'old> {
-    type Cloned = &'new RuntimeList<'new>;
+    type Cloned = RuntimeList<'new>;
 
     fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
         let cloned = self.as_slice().iter().map(|v| v.clone_in(alloc)).fold(
@@ -151,7 +151,7 @@ impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeList<'old> {
             },
         );
 
-        alloc.alloc(RuntimeList::from_vec(cloned))
+        RuntimeList::from_vec(cloned)
     }
 }
 

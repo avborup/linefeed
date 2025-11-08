@@ -66,10 +66,13 @@ pub fn to_tuple<'gc>(
     ))
 }
 
-pub fn map_with_default(default_value: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-    Ok(RuntimeValue::Map(RuntimeMap::new_with_default_value(
-        default_value,
-    )))
+pub fn map_with_default<'gc>(
+    default_value: RuntimeValue<'gc>,
+    alloc: &'gc Allocator,
+) -> Result<RuntimeValue<'gc>, RuntimeError> {
+    Ok(RuntimeValue::Map(
+        RuntimeMap::new_with_default_value(default_value, alloc).alloc(alloc),
+    ))
 }
 
 pub fn to_map<'gc>(val: RuntimeValue<'gc>) -> Result<RuntimeValue<'gc>, RuntimeError> {

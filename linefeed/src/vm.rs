@@ -503,7 +503,7 @@ where
                 self.push_stack(RuntimeValue::Tuple(tup));
             }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
-            Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
+            Bytecode::MapWithDefault => stdlib_fn_alloc!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),
             // Bytecode::ToCounter(num_args) => {
             //     stdlib_fn_with_optional_arg!(self, to_counter, *num_args)

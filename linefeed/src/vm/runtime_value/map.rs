@@ -1,5 +1,6 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, ops::Deref, rc::Rc};
 
+use oxc_allocator::{Allocator, Box as ABox, CloneIn, HashMap as AHashMap};
 use rustc_hash::FxHashMap;
 
 use crate::vm::{
@@ -9,31 +10,38 @@ use crate::vm::{
     RuntimeError,
 };
 
-#[derive(Debug, Clone)]
-pub struct RuntimeMap<'gc>(Rc<RefCell<InnerRuntimeMap<'gc>>>);
+#[derive(Debug)]
+pub struct RuntimeMap<'gc>(RefCell<InnerRuntimeMap<'gc>>);
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct InnerRuntimeMap<'gc> {
-    pub map: FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>,
-    pub default_value: Option<RuntimeValue<'gc>>,
+    pub map: AHashMap<'gc, RuntimeValue<'gc>, RuntimeValue<'gc>>,
+    pub default_value: Option<ABox<'gc, RuntimeValue<'gc>>>,
 }
 
 impl<'gc> RuntimeMap<'gc> {
-    pub fn new() -> Self {
-        Self::from_map(FxHashMap::default())
+    pub fn from_iter(
+        iter: impl IntoIterator<Item = (RuntimeValue<'gc>, RuntimeValue<'gc>)>,
+        alloc: &'gc Allocator,
+    ) -> Self {
+        Self::from_map(AHashMap::from_iter_in(iter, alloc))
     }
 
-    pub fn from_map(map: FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>) -> Self {
-        Self(Rc::new(RefCell::new(InnerRuntimeMap {
+    pub fn from_map(map: AHashMap<'gc, RuntimeValue<'gc>, RuntimeValue<'gc>>) -> Self {
+        Self(RefCell::new(InnerRuntimeMap {
             map,
             default_value: None,
-        })))
+        }))
     }
 
-    pub fn new_with_default_value(default_value: RuntimeValue<'gc>) -> Self {
-        let runtime_map = Self::new();
-        runtime_map.borrow_mut().default_value = Some(default_value);
+    pub fn new_with_default_value(default_value: RuntimeValue<'gc>, alloc: &'gc Allocator) -> Self {
+        let runtime_map = Self::from_map(AHashMap::new_in(alloc));
+        runtime_map.borrow_mut().default_value = Some(ABox::new_in(default_value, alloc));
         runtime_map
+    }
+
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
     }
 
     pub fn len(&self) -> usize {
@@ -67,8 +75,8 @@ impl<'gc> RuntimeMap<'gc> {
     //     new_map
     // }
 
-    pub fn get(&self, key: &RuntimeValue<'gc>) -> RuntimeValue<'gc> {
-        self.insert_default_value_if_missing(key);
+    pub fn get(&self, key: &RuntimeValue<'gc>, alloc: &'gc Allocator) -> RuntimeValue<'gc> {
+        self.insert_default_value_if_missing(key, alloc);
 
         self.borrow()
             .get(key)
@@ -84,20 +92,37 @@ impl<'gc> RuntimeMap<'gc> {
         self.borrow().contains_key(key)
     }
 
-    fn insert_default_value_if_missing(&self, key: &RuntimeValue<'gc>) {
-        let Some(default_value) = self.borrow().default_value.clone() else {
+    fn insert_default_value_if_missing(&self, key: &RuntimeValue<'gc>, alloc: &'gc Allocator) {
+        let Some(default_value) = &self.borrow().default_value else {
             return;
         };
 
         if !self.borrow().contains_key(key) {
-            todo!()
-            // self.insert(key.clone(), default_value.deep_clone());
+            self.insert(key.clone(), default_value.deref().clone_in(alloc));
         }
     }
 }
 
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeMap<'old> {
+    type Cloned = RuntimeMap<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        let cloned = self.0.borrow().iter().fold(
+            AHashMap::with_capacity_in(self.len(), alloc),
+            |mut acc, (k, v)| {
+                let k = k.clone_in(alloc);
+                let v = v.clone_in(alloc);
+                acc.insert(k, v);
+                acc
+            },
+        );
+
+        RuntimeMap::from_map(cloned)
+    }
+}
+
 impl<'gc> std::ops::Deref for InnerRuntimeMap<'gc> {
-    type Target = FxHashMap<RuntimeValue<'gc>, RuntimeValue<'gc>>;
+    type Target = AHashMap<'gc, RuntimeValue<'gc>, RuntimeValue<'gc>>;
 
     fn deref(&self) -> &Self::Target {
         &self.map
@@ -107,12 +132,6 @@ impl<'gc> std::ops::Deref for InnerRuntimeMap<'gc> {
 impl std::ops::DerefMut for InnerRuntimeMap<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.map
-    }
-}
-
-impl Default for RuntimeMap<'_> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 

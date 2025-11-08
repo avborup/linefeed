@@ -275,9 +275,9 @@ impl<'gc> Bytecode<'gc> {
                             Self::into_runtime_value_with_mapper(value, label_mapper, allocator)?,
                         ))
                     })
-                    .collect::<Result<_, _>>()?;
+                    .collect::<Result<HashMap<_, _>, _>>()?;
 
-                RuntimeValue::Map(RuntimeMap::from_map(map))
+                RuntimeValue::Map(RuntimeMap::from_iter(map, allocator).alloc(allocator))
             }
             IrValue::Function(func) => RuntimeValue::Function(Rc::new(RuntimeFunction {
                 location: label_mapper.get(func.location)?,

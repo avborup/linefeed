@@ -37,7 +37,7 @@ pub mod string;
 pub mod tuple;
 mod utils;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue<'gc> {
     Null,
     Uninit,
@@ -49,7 +49,7 @@ pub enum RuntimeValue<'gc> {
     List(&'gc RuntimeList<'gc>),
     Tuple(&'gc RuntimeTuple<'gc>),
     Set(&'gc RuntimeSet<'gc>),
-    Map(RuntimeMap<'gc>),
+    Map(&'gc RuntimeMap<'gc>),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
     Iterator(Box<RuntimeIterator<'gc>>),
@@ -221,7 +221,7 @@ impl<'gc> RuntimeValue<'gc> {
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
             (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
-            (RuntimeValue::Map(map), index) => map.get(index),
+            (RuntimeValue::Map(map), index) => map.get(index, alloc),
             // (RuntimeValue::Counter(counter), index) => counter.get(index),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
@@ -473,10 +473,10 @@ impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
             // RuntimeValue::Num(n) => todo!(),
             // RuntimeValue::Str(s) => RuntimeValue::Str(s.clone_in(alloc)),
-            RuntimeValue::List(xs) => RuntimeValue::List(xs.clone_in(alloc)),
+            RuntimeValue::List(xs) => RuntimeValue::List(xs.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone_in(alloc)),
             // RuntimeValue::Set(xs) => RuntimeValue::Set(xs.clone_in(alloc)),
-            // RuntimeValue::Map(m) => RuntimeValue::Map(m.clone_in(alloc)),
+            RuntimeValue::Map(m) => RuntimeValue::Map(m.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.clone_in(alloc)),
             // RuntimeValue::Function(_) => self.clone(),
             // RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone_in(alloc)),
@@ -485,7 +485,7 @@ impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
     }
 }
 
-fn write_items<T: std::fmt::Display>(
+fn write_items<T>(
     f: &mut std::fmt::Formatter,
     items: impl Iterator<Item = T>,
     formatter: impl Fn(&mut std::fmt::Formatter, &T) -> std::fmt::Result,
@@ -530,21 +530,15 @@ impl<'gc> std::fmt::Display for RuntimeValue<'gc> {
                 write!(f, "}}")
             }
             RuntimeValue::Map(m) => {
-                let mut kv_pairs = MapIterator::from(m.clone()).collect::<Vec<_>>();
+                let m = m.borrow();
+                let mut kv_pairs = m.map.iter().collect::<Vec<_>>();
                 kv_pairs.sort_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal));
 
                 write!(f, "{{")?;
-                write_items(f, kv_pairs.iter(), |f, kv| {
-                    let write_item = |f: &mut std::fmt::Formatter, idx: isize| match kv {
-                        RuntimeValue::Tuple(tuple) => {
-                            tuple.index(&RuntimeNumber::from(idx)).unwrap().repr_fmt(f)
-                        }
-                        _ => unreachable!(),
-                    };
-
-                    write_item(f, 0)?;
+                write_items(f, kv_pairs.iter(), |f, (k, v)| {
+                    k.repr_fmt(f)?;
                     write!(f, ": ")?;
-                    write_item(f, 1)
+                    v.repr_fmt(f)
                 })?;
                 write!(f, "}}")
             }
@@ -758,7 +752,7 @@ impl<'gc> RuntimeValue<'gc> {
                 let mut results = AVec::with_capacity_in(iterator.len(), alloc);
 
                 while let Some(key) = iterator.next() {
-                    results.push(map.get(&key));
+                    results.push(map.get(&key, alloc));
                 }
 
                 Ok(RuntimeValue::List(
