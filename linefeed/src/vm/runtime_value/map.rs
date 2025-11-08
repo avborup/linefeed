@@ -1,6 +1,6 @@
-use std::{cell::RefCell, ops::Deref, rc::Rc};
+use std::{cell::RefCell, mem::ManuallyDrop, ops::Deref, rc::Rc};
 
-use oxc_allocator::{Allocator, Box as ABox, CloneIn, HashMap as AHashMap};
+use oxc_allocator::{Allocator, Box as ABox, CloneIn, HashMap as AHashMap, Vec as AVec};
 use rustc_hash::FxHashMap;
 
 use crate::vm::{
@@ -60,21 +60,6 @@ impl<'gc> RuntimeMap<'gc> {
         self.0.borrow_mut()
     }
 
-    // pub fn deep_clone(&self) -> Self {
-    //     let new_map = Self::from_map(
-    //         self.borrow()
-    //             .iter()
-    //             .map(|(k, v)| (k.deep_clone(), v.deep_clone()))
-    //             .collect(),
-    //     );
-    //
-    //     if let Some(default_value) = &self.borrow().default_value {
-    //         new_map.borrow_mut().default_value = Some(default_value.deep_clone());
-    //     }
-    //
-    //     new_map
-    // }
-
     pub fn get(&self, key: &RuntimeValue<'gc>, alloc: &'gc Allocator) -> RuntimeValue<'gc> {
         self.insert_default_value_if_missing(key, alloc);
 
@@ -93,11 +78,11 @@ impl<'gc> RuntimeMap<'gc> {
     }
 
     fn insert_default_value_if_missing(&self, key: &RuntimeValue<'gc>, alloc: &'gc Allocator) {
-        let Some(default_value) = &self.borrow().default_value else {
+        let Some(default_value) = self.borrow().default_value.clone_in(alloc) else {
             return;
         };
 
-        if !self.borrow().contains_key(key) {
+        if !self.contains_key(key) {
             self.insert(key.clone(), default_value.deref().clone_in(alloc));
         }
     }
@@ -178,14 +163,15 @@ impl std::cmp::PartialOrd for RuntimeMap<'_> {
 // }
 
 pub struct MapIterator<'gc> {
-    map: RuntimeMap<'gc>,
-    keys: Vec<RuntimeValue<'gc>>,
+    map: &'gc RuntimeMap<'gc>,
+    keys: ManuallyDrop<Vec<RuntimeValue<'gc>>>,
     index: usize,
 }
 
-impl<'gc> From<RuntimeMap<'gc>> for MapIterator<'gc> {
-    fn from(map: RuntimeMap<'gc>) -> Self {
-        let keys = map.borrow().keys().cloned().collect();
+impl<'gc> From<&'gc RuntimeMap<'gc>> for MapIterator<'gc> {
+    fn from(map: &'gc RuntimeMap<'gc>) -> Self {
+        // FIXME: Avoid cloning all keys at once. Somehow iterate over map...
+        let keys = ManuallyDrop::new(map.borrow().keys().cloned().collect());
         Self {
             map,
             keys,
@@ -194,18 +180,20 @@ impl<'gc> From<RuntimeMap<'gc>> for MapIterator<'gc> {
     }
 }
 
-impl<'gc> Iterator for MapIterator<'gc> {
-    type Item = RuntimeValue<'gc>;
-
-    fn next(&mut self) -> Option<Self::Item> {
+impl<'gc> MapIterator<'gc> {
+    pub fn next(&mut self, alloc: &'gc Allocator) -> Option<RuntimeValue<'gc>> {
         let key = self.keys.get(self.index).cloned()?;
         let value = self.map.borrow().get(&key).cloned()?;
 
-        todo!()
-        // let pair = RuntimeValue::Tuple(&RuntimeTuple::from_vec(vec![key, value]));
+        let pair_vec = AVec::from_iter_in([key, value], alloc);
+        let pair = RuntimeValue::Tuple(RuntimeTuple::from_vec(pair_vec).alloc(alloc));
 
-        // self.index += 1;
-        //
-        // Some(pair)
+        self.index += 1;
+
+        Some(pair)
+    }
+
+    pub fn len(&self) -> usize {
+        self.map.len()
     }
 }

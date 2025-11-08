@@ -426,7 +426,7 @@ where
             Bytecode::NextIterOrJump(end_label) => {
                 let end_label = *end_label;
                 let iter = self.pop_stack();
-                let value = iter.next()?;
+                let value = iter.next(self.allocator)?;
 
                 if let Some(value) = value {
                     self.push_stack(value);
@@ -437,7 +437,7 @@ where
 
             Bytecode::NextIter => {
                 let iter = self.pop_stack();
-                let value = iter.next()?;
+                let value = iter.next(self.allocator)?;
                 let has_value = RuntimeValue::Bool(value.is_some());
 
                 if let Some(value) = value {
@@ -487,7 +487,7 @@ where
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
-            Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
+            Bytecode::Enumerate => unary_mapper_method_alloc!(self, enumerate),
             Bytecode::GetAll => binary_op_alloc!(self, get_all),
             Bytecode::Values => unary_mapper_method_alloc!(self, values),
 

@@ -117,6 +117,14 @@ impl<'gc> RuntimeString<'gc> {
     }
 }
 
+impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeString<'old> {
+    type Cloned = RuntimeString<'new>;
+
+    fn clone_in(&self, alloc: &'new Allocator) -> Self::Cloned {
+        RuntimeString(alloc.alloc_str(self.as_str()))
+    }
+}
+
 impl std::fmt::Display for RuntimeString<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         write!(f, "{}", self.as_str())
@@ -126,5 +134,31 @@ impl std::fmt::Display for RuntimeString<'_> {
 impl AsRef<str> for RuntimeString<'_> {
     fn as_ref(&self) -> &str {
         self.as_str()
+    }
+}
+
+pub struct StringIterator<'gc> {
+    pub chars: AVec<'gc, &'gc RuntimeString<'gc>>,
+    index: usize,
+}
+
+impl<'gc> StringIterator<'gc> {
+    pub fn new(s: &'gc RuntimeString<'gc>, alloc: &'gc Allocator) -> Self {
+        let chars = s
+            .as_str()
+            .chars()
+            .map(|ch| RuntimeString::alloc_from_str(ch.to_string(), alloc))
+            .fold(AVec::with_capacity_in(s.len(), alloc), |mut vec, ch| {
+                vec.push(ch);
+                vec
+            });
+
+        Self { chars, index: 0 }
+    }
+
+    pub fn next(&mut self) -> Option<RuntimeValue<'gc>> {
+        let value = self.chars.get(self.index).cloned()?;
+        self.index += 1;
+        Some(RuntimeValue::Str(value))
     }
 }

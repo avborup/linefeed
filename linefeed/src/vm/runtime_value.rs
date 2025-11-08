@@ -17,7 +17,7 @@ use crate::{
             range::RuntimeRange,
             regex::RuntimeRegex,
             set::RuntimeSet,
-            string::RuntimeString,
+            string::{RuntimeString, StringIterator},
             tuple::RuntimeTuple,
         },
         RuntimeError,
@@ -262,10 +262,12 @@ impl<'gc> RuntimeValue<'gc> {
         let iter = match self {
             RuntimeValue::Iterator(iter) => *iter,
             RuntimeValue::Range(range) => RuntimeIterator::from((*range).clone()).alloc(alloc),
-            // RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
+            RuntimeValue::List(list) => RuntimeIterator::from(*list).alloc(alloc),
             RuntimeValue::Tuple(tuple) => RuntimeIterator::from(*tuple).alloc(alloc),
-            // RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
-            // RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
+            RuntimeValue::Str(s) => {
+                RuntimeIterator::from(StringIterator::new(s, alloc)).alloc(alloc)
+            }
+            RuntimeValue::Map(m) => RuntimeIterator::from(MapIterator::from(*m)).alloc(alloc),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot iterate over '{}'",
@@ -281,9 +283,9 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(RuntimeValue::Iterator(self.to_iter_inner(alloc)?))
     }
 
-    pub fn next(&self) -> Result<Option<Self>, RuntimeError> {
+    pub fn next(&self, alloc: &'gc Allocator) -> Result<Option<Self>, RuntimeError> {
         match self {
-            RuntimeValue::Iterator(iterator) => Ok(iterator.next()),
+            RuntimeValue::Iterator(iterator) => Ok(iterator.next(alloc)),
             _ => Err(RuntimeError::TypeMismatch(format!(
                 "Cannot call next on '{}'",
                 self.kind_str()
@@ -387,11 +389,11 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn enumerate(&self) -> Result<Self, RuntimeError> {
+    pub fn enumerate(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match self {
-            // RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
-            //     RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
-            // ))),
+            RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(
+                RuntimeIterator::from(EnumeratedListIterator::new(list)).alloc(alloc),
+            )),
             _ => Err(RuntimeError::invalid_method_for_type(
                 Method::Enumerate,
                 self,
@@ -449,24 +451,6 @@ impl<'gc> RuntimeValue<'gc> {
             // RuntimeValue::Counter(c) => !c.borrow().is_empty(),
         }
     }
-
-    pub fn deep_clone(&self, alloc: &'gc Allocator) -> Self {
-        match self {
-            RuntimeValue::Null => RuntimeValue::Null,
-            RuntimeValue::Uninit => RuntimeValue::Uninit,
-            RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
-            RuntimeValue::Int(n) => RuntimeValue::Int(*n),
-            RuntimeValue::Num(n) => RuntimeValue::Num(n.clone()),
-            RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
-            // RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone(alloc)),
-            RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
-            // RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
-            // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
-            RuntimeValue::Function(_) => self.clone(),
-            RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),
-            _ => unimplemented!("deep_clone for {:?}", self),
-        }
-    }
 }
 
 impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
@@ -479,13 +463,13 @@ impl<'old, 'new> oxc_allocator::CloneIn<'new> for RuntimeValue<'old> {
             RuntimeValue::Bool(b) => RuntimeValue::Bool(*b),
             RuntimeValue::Int(n) => RuntimeValue::Int(*n),
             RuntimeValue::Num(n) => RuntimeValue::Num(n.clone_in(alloc)),
-            // RuntimeValue::Str(s) => RuntimeValue::Str(s.clone_in(alloc)),
+            RuntimeValue::Str(s) => RuntimeValue::Str(s.clone_in(alloc).alloc(alloc)),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.clone_in(alloc).alloc(alloc)),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Set(xs) => RuntimeValue::Set(xs.clone_in(alloc)),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.clone_in(alloc).alloc(alloc)),
             // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.clone_in(alloc)),
-            // RuntimeValue::Function(_) => self.clone(),
+            RuntimeValue::Function(f) => RuntimeValue::Function((*f).clone().alloc(alloc)),
             // RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone_in(alloc)),
             _ => unimplemented!("clone_in for {:?}", self),
         }
@@ -692,7 +676,7 @@ impl<'gc> RuntimeValue<'gc> {
 
         let mut output = Vec::new();
         let mut first = true;
-        while let Some(val) = iter.next() {
+        while let Some(val) = iter.next(alloc) {
             if !first {
                 write!(&mut output, "{separator}")
                     .map_err(|e| RuntimeError::InternalBug(e.to_string()))?;
@@ -761,7 +745,7 @@ impl<'gc> RuntimeValue<'gc> {
                 let iterator = iterable.to_iter_inner(alloc)?;
                 let mut results = AVec::with_capacity_in(iterator.len(), alloc);
 
-                while let Some(key) = iterator.next() {
+                while let Some(key) = iterator.next(alloc) {
                     results.push(map.get(&key, alloc));
                 }
 
