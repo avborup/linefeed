@@ -267,7 +267,7 @@ impl<'gc> RuntimeValue<'gc> {
             RuntimeValue::Str(s) => {
                 RuntimeIterator::from(StringIterator::new(s, alloc)).alloc(alloc)
             }
-            RuntimeValue::Map(m) => RuntimeIterator::from(MapIterator::new(m, alloc)).alloc(alloc),
+            RuntimeValue::Map(m) => RuntimeIterator::from(MapIterator::new(m)).alloc(alloc),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot iterate over '{}'",

@@ -1,10 +1,8 @@
-use std::{cell::RefCell, ops::Deref};
+use std::{cell::RefCell, mem::ManuallyDrop, ops::Deref};
 
 use oxc_allocator::{Allocator, Box as ABox, CloneIn, HashMap as AHashMap, Vec as AVec};
 
-use crate::vm::runtime_value::{
-        tuple::RuntimeTuple, RuntimeValue,
-    };
+use crate::vm::runtime_value::{tuple::RuntimeTuple, RuntimeValue};
 
 #[derive(Debug)]
 pub struct RuntimeMap<'gc>(RefCell<InnerRuntimeMap<'gc>>);
@@ -74,13 +72,23 @@ impl<'gc> RuntimeMap<'gc> {
     }
 
     fn insert_default_value_if_missing(&self, key: &RuntimeValue<'gc>, alloc: &'gc Allocator) {
-        let Some(default_value) = self.borrow().default_value.clone_in(alloc) else {
-            return;
+        let to_insert = {
+            let inner = self.0.borrow();
+
+            let Some(default_box) = inner.default_value.as_ref() else {
+                return;
+            };
+
+            if inner.map.contains_key(key) {
+                return;
+            }
+
+            default_box.as_ref().clone_in(alloc)
         };
 
-        if !self.contains_key(key) {
-            self.insert(key.clone(), default_value.deref().clone_in(alloc));
-        }
+        let mut inner = self.0.borrow_mut();
+
+        inner.map.insert(key.clone(), to_insert);
     }
 }
 
@@ -158,36 +166,41 @@ impl std::cmp::PartialOrd for RuntimeMap<'_> {
 //     }
 // }
 
+use ouroboros::self_referencing;
+use oxc_allocator::hash_map::Iter as HbIter;
+use std::cell::Ref;
+
+#[self_referencing]
+struct MapIterCell<'gc> {
+    owner: Ref<'gc, InnerRuntimeMap<'gc>>,
+    #[borrows(owner)]
+    #[covariant]
+    iter: HbIter<'this, RuntimeValue<'gc>, RuntimeValue<'gc>>,
+}
+
 pub struct MapIterator<'gc> {
-    map: &'gc RuntimeMap<'gc>,
-    keys: AVec<'gc, RuntimeValue<'gc>>,
-    index: usize,
+    cell: ManuallyDrop<MapIterCell<'gc>>,
+    len: usize,
 }
 
 impl<'gc> MapIterator<'gc> {
-    pub fn new(map: &'gc RuntimeMap<'gc>, alloc: &'gc Allocator) -> Self {
-        let keys = AVec::from_iter_in(map.borrow().keys().cloned(), alloc);
-
+    pub fn new(map: &'gc RuntimeMap<'gc>) -> Self {
+        let len = map.borrow().len(); // short borrow just to read len
+        let cell = MapIterCell::new(map.borrow(), |guard| guard.iter());
         Self {
-            map,
-            keys,
-            index: 0,
+            cell: ManuallyDrop::new(cell),
+            len,
         }
     }
 
     pub fn next(&mut self, alloc: &'gc Allocator) -> Option<RuntimeValue<'gc>> {
-        let key = self.keys.get(self.index).cloned()?;
-        let value = self.map.borrow().get(&key).cloned()?;
-
-        let pair_vec = AVec::from_iter_in([key, value], alloc);
-        let pair = RuntimeValue::Tuple(RuntimeTuple::from_vec(pair_vec).alloc(alloc));
-
-        self.index += 1;
-
-        Some(pair)
+        self.cell.with_iter_mut(|it| it.next()).map(|(k, v)| {
+            let pair_vec = AVec::from_iter_in([k.clone(), v.clone()], alloc);
+            RuntimeValue::Tuple(RuntimeTuple::from_vec(pair_vec).alloc(alloc))
+        })
     }
 
     pub fn len(&self) -> usize {
-        self.map.len()
+        self.len
     }
 }

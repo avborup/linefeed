@@ -11,6 +11,7 @@ debug-vm = []
 [dependencies]
 ariadne = "0.3.0"
 chumsky = { git = "https://github.com/zesterer/chumsky.git", rev = "282bf5e", features = ["memoization"] }
+ouroboros = "0.18.5"
 oxc_allocator = "0.96.0"
 regex = "1.11.1"
 rug = "1.27.0"
