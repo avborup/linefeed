@@ -255,12 +255,15 @@ impl<'gc> RuntimeValue<'gc> {
         Ok(())
     }
 
-    pub fn to_iter_inner(&self) -> Result<RuntimeIterator<'gc>, RuntimeError> {
+    pub fn to_iter_inner(
+        &self,
+        alloc: &'gc Allocator,
+    ) -> Result<&'gc RuntimeIterator<'gc>, RuntimeError> {
         let iter = match self {
-            RuntimeValue::Iterator(iter) => iter.deref().clone(),
-            // RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
+            RuntimeValue::Iterator(iter) => *iter,
+            RuntimeValue::Range(range) => RuntimeIterator::from((*range).clone()).alloc(alloc),
             // RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
-            RuntimeValue::Tuple(tuple) => RuntimeIterator::from(*tuple),
+            RuntimeValue::Tuple(tuple) => RuntimeIterator::from(*tuple).alloc(alloc),
             // RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             // RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             _ => {
@@ -275,7 +278,7 @@ impl<'gc> RuntimeValue<'gc> {
     }
 
     pub fn to_iter(&self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
-        Ok(RuntimeValue::Iterator(self.to_iter_inner()?.alloc(alloc)))
+        Ok(RuntimeValue::Iterator(self.to_iter_inner(alloc)?))
     }
 
     pub fn next(&self) -> Result<Option<Self>, RuntimeError> {
@@ -755,7 +758,7 @@ impl<'gc> RuntimeValue<'gc> {
     pub fn get_all(&self, iterable: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {
-                let iterator = iterable.to_iter_inner()?;
+                let iterator = iterable.to_iter_inner(alloc)?;
                 let mut results = AVec::with_capacity_in(iterator.len(), alloc);
 
                 while let Some(key) = iterator.next() {

@@ -13,14 +13,12 @@ use crate::vm::runtime_value::{
     RuntimeValue,
 };
 
-#[derive(Clone)]
 pub struct RuntimeIterator<'gc>(RefCell<IteratorKind<'gc>>);
 
-#[derive(Clone)]
 enum IteratorKind<'gc> {
     // List(ListIterator<'gc>),
     Tuple(TupleIterator<'gc>),
-    // Range(RangeIterator),
+    Range(RangeIterator<'gc>),
     // Map(MapIterator<'gc>),
     // Counter(CounterIterator),
     Empty,
@@ -34,6 +32,7 @@ impl<'gc> RuntimeIterator<'gc> {
     pub fn next(&self) -> Option<RuntimeValue<'gc>> {
         match &mut *self.0.borrow_mut() {
             IteratorKind::Tuple(iter) => iter.next(),
+            IteratorKind::Range(iter) => iter.next(),
             IteratorKind::Empty => None,
         }
     }
@@ -49,6 +48,7 @@ impl<'gc> RuntimeIterator<'gc> {
     pub fn len(&self) -> usize {
         match &*self.0.borrow() {
             IteratorKind::Tuple(iter) => iter.tuple.len(),
+            IteratorKind::Range(iter) => iter.len().unwrap_or(usize::MAX),
             IteratorKind::Empty => 0,
         }
     }
@@ -128,11 +128,11 @@ impl<'gc> From<EnumeratedListIterator<'gc>> for RuntimeIterator<'gc> {
     }
 }
 
-// impl<'gc> From<RuntimeRange> for RuntimeIterator<'gc> {
-//     fn from(range: RuntimeRange) -> Self {
-//         Self(Rc::new(RefCell::new(RangeIterator::new(range))))
-//     }
-// }
+impl<'gc> From<RuntimeRange> for RuntimeIterator<'gc> {
+    fn from(range: RuntimeRange) -> Self {
+        Self(RefCell::new(IteratorKind::Range(RangeIterator::new(range))))
+    }
+}
 
 // impl<'gc> From<RuntimeString> for RuntimeIterator<'gc> {
 //     fn from(s: RuntimeString) -> Self {

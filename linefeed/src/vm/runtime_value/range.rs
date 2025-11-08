@@ -72,6 +72,16 @@ impl<'gc> RangeIterator<'gc> {
             phantom: PhantomData,
         }
     }
+
+    pub fn len(&self) -> Option<usize> {
+        match (self.range.start, self.range.end) {
+            (Some(start), Some(end)) => {
+                let dist = start.abs_diff(end);
+                Some(dist / self.step.abs() as usize)
+            }
+            _ => None,
+        }
+    }
 }
 
 impl<'gc> Iterator for RangeIterator<'gc> {
