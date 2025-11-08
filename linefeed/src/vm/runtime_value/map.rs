@@ -164,23 +164,21 @@ impl std::cmp::PartialOrd for RuntimeMap<'_> {
 
 pub struct MapIterator<'gc> {
     map: &'gc RuntimeMap<'gc>,
-    keys: ManuallyDrop<Vec<RuntimeValue<'gc>>>,
+    keys: AVec<'gc, RuntimeValue<'gc>>,
     index: usize,
 }
 
-impl<'gc> From<&'gc RuntimeMap<'gc>> for MapIterator<'gc> {
-    fn from(map: &'gc RuntimeMap<'gc>) -> Self {
-        // FIXME: Avoid cloning all keys at once. Somehow iterate over map...
-        let keys = ManuallyDrop::new(map.borrow().keys().cloned().collect());
+impl<'gc> MapIterator<'gc> {
+    pub fn new(map: &'gc RuntimeMap<'gc>, alloc: &'gc Allocator) -> Self {
+        let keys = AVec::from_iter_in(map.borrow().keys().cloned(), alloc);
+
         Self {
             map,
             keys,
             index: 0,
         }
     }
-}
 
-impl<'gc> MapIterator<'gc> {
     pub fn next(&mut self, alloc: &'gc Allocator) -> Option<RuntimeValue<'gc>> {
         let key = self.keys.get(self.index).cloned()?;
         let value = self.map.borrow().get(&key).cloned()?;
