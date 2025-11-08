@@ -1,4 +1,7 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{
+    collections::{HashMap, HashSet},
+    rc::Rc,
+};
 
 use oxc_allocator::Allocator;
 
@@ -243,9 +246,9 @@ impl<'gc> Bytecode<'gc> {
                 let items = xs
                     .into_iter()
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
-                    .collect::<Result<_, _>>()?;
+                    .collect::<Result<Vec<_>, _>>()?;
 
-                RuntimeValue::List(RuntimeList::from_vec(items))
+                RuntimeValue::List(RuntimeList::from_iter(items, allocator).alloc(allocator))
             }
             IrValue::Tuple(xs) => {
                 let items = xs
@@ -253,15 +256,15 @@ impl<'gc> Bytecode<'gc> {
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
                     .collect::<Result<Vec<_>, _>>()?;
 
-                RuntimeValue::Tuple(allocator.alloc(RuntimeTuple::from_iter(items, allocator)))
+                RuntimeValue::Tuple(RuntimeTuple::from_iter(items, allocator).alloc(allocator))
             }
             IrValue::Set(xs) => {
                 let items = xs
                     .into_iter()
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper, allocator))
-                    .collect::<Result<_, _>>()?;
+                    .collect::<Result<HashSet<_>, _>>()?;
 
-                RuntimeValue::Set(RuntimeSet::from_set(items))
+                RuntimeValue::Set(RuntimeSet::from_iter(items, allocator).alloc(allocator))
             }
             IrValue::Map(m) => {
                 let map = m

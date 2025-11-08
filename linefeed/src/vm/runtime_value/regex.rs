@@ -50,15 +50,14 @@ impl<'gc> RuntimeRegex {
         self.0.regex.as_str()
     }
 
-    pub fn find_matches(&self, s: &RuntimeString, alloc: &'gc Allocator) -> RuntimeList<'gc> {
+    pub fn find_matches(&self, s: &RuntimeString, alloc: &'gc Allocator) -> &'gc RuntimeList<'gc> {
         let matches = self
             .0
             .regex
             .captures_iter(s.as_str())
-            .map(|m| self.process_capture(m, alloc))
-            .collect::<Vec<_>>();
+            .map(|m| self.process_capture(m, alloc));
 
-        RuntimeList::from_vec(matches)
+        RuntimeList::from_vec(AVec::from_iter_in(matches, alloc)).alloc(alloc)
     }
 
     pub fn find_match(&self, s: &RuntimeString, alloc: &'gc Allocator) -> RuntimeValue<'gc> {
@@ -101,7 +100,7 @@ impl<'gc> RuntimeRegex {
         let full_match = group_values.remove(0);
         group_values.push(full_match);
 
-        RuntimeValue::Tuple(alloc.alloc(RuntimeTuple::from_vec(group_values)))
+        RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values).alloc(alloc))
     }
 }
 

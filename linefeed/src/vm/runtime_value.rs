@@ -37,7 +37,7 @@ pub mod string;
 pub mod tuple;
 mod utils;
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue<'gc> {
     Null,
     Uninit,
@@ -48,7 +48,7 @@ pub enum RuntimeValue<'gc> {
     Regex(RuntimeRegex),
     List(&'gc RuntimeList<'gc>),
     Tuple(&'gc RuntimeTuple<'gc>),
-    Set(RuntimeSet<'gc>),
+    Set(&'gc RuntimeSet<'gc>),
     Map(RuntimeMap<'gc>),
     Function(Rc<RuntimeFunction>),
     Range(Box<RuntimeRange>),
@@ -60,6 +60,9 @@ const _: () = {
     // cloning super expensive.
     const SIZE: usize = std::mem::size_of::<RuntimeValue>();
     assert!(SIZE == 16);
+
+    // Needs to be non-Drop in order to be allocatable in oxc-allocator.
+    assert!(!std::mem::needs_drop::<RuntimeValue>());
 };
 
 impl<'gc> RuntimeValue<'gc> {
@@ -94,7 +97,9 @@ impl<'gc> RuntimeValue<'gc> {
             (RuntimeValue::List(a), RuntimeValue::List(b)) => {
                 Ok(RuntimeValue::List(a.concat(b, alloc)))
             }
-            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
+                Ok(RuntimeValue::Set(a.union(b, alloc)))
+            }
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_add(b, alloc)?))
             }
@@ -178,10 +183,10 @@ impl<'gc> RuntimeValue<'gc> {
         }
     }
 
-    pub fn bitwise_and(&self, other: &Self) -> Result<Self, RuntimeError> {
+    pub fn bitwise_and(&self, other: &Self, alloc: &'gc Allocator) -> Result<Self, RuntimeError> {
         match (self, other) {
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
-                Ok(RuntimeValue::Set(a.intersection(b)))
+                Ok(RuntimeValue::Set(a.intersection(b, alloc)))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "use & on", self, other,
@@ -437,7 +442,7 @@ impl<'gc> RuntimeValue<'gc> {
             RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
             // RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone(alloc)),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
-            RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
+            // RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             // RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),

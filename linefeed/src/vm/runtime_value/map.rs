@@ -52,20 +52,20 @@ impl<'gc> RuntimeMap<'gc> {
         self.0.borrow_mut()
     }
 
-    pub fn deep_clone(&self) -> Self {
-        let new_map = Self::from_map(
-            self.borrow()
-                .iter()
-                .map(|(k, v)| (k.deep_clone(), v.deep_clone()))
-                .collect(),
-        );
-
-        if let Some(default_value) = &self.borrow().default_value {
-            new_map.borrow_mut().default_value = Some(default_value.deep_clone());
-        }
-
-        new_map
-    }
+    // pub fn deep_clone(&self) -> Self {
+    //     let new_map = Self::from_map(
+    //         self.borrow()
+    //             .iter()
+    //             .map(|(k, v)| (k.deep_clone(), v.deep_clone()))
+    //             .collect(),
+    //     );
+    //
+    //     if let Some(default_value) = &self.borrow().default_value {
+    //         new_map.borrow_mut().default_value = Some(default_value.deep_clone());
+    //     }
+    //
+    //     new_map
+    // }
 
     pub fn get(&self, key: &RuntimeValue<'gc>) -> RuntimeValue<'gc> {
         self.insert_default_value_if_missing(key);
@@ -90,7 +90,8 @@ impl<'gc> RuntimeMap<'gc> {
         };
 
         if !self.borrow().contains_key(key) {
-            self.insert(key.clone(), default_value.deep_clone());
+            todo!()
+            // self.insert(key.clone(), default_value.deep_clone());
         }
     }
 }

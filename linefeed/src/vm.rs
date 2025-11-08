@@ -234,7 +234,7 @@ where
             Bytecode::GreaterEq => binary_op!(self, greater_than_or_eq),
             Bytecode::Range => binary_op!(self, range),
             Bytecode::Xor => binary_op!(self, xor),
-            Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
+            Bytecode::BitwiseAnd => binary_op_alloc!(self, bitwise_and),
 
             Bytecode::Not => {
                 let val = self.pop_stack();

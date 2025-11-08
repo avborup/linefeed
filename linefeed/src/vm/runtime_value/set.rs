@@ -1,26 +1,30 @@
-use std::{cell::RefCell, rc::Rc};
+use std::cell::RefCell;
 
-use rustc_hash::FxHashSet;
+use oxc_allocator::{Allocator, HashSet as AHashSet};
 
-use crate::vm::{
-    runtime_value::{iterator::RuntimeIterator, RuntimeValue},
-    RuntimeError,
-};
+use crate::vm::{runtime_value::RuntimeValue, RuntimeError};
 
-#[derive(Debug, Clone)]
-pub struct RuntimeSet<'gc>(Rc<RefCell<FxHashSet<RuntimeValue<'gc>>>>);
+#[derive(Debug)]
+pub struct RuntimeSet<'gc>(RefCell<AHashSet<'gc, RuntimeValue<'gc>>>);
 
 impl<'gc> RuntimeSet<'gc> {
-    pub fn new() -> Self {
-        Self::from_set(FxHashSet::default())
+    pub fn from_set(set: AHashSet<'gc, RuntimeValue<'gc>>) -> Self {
+        Self(RefCell::new(set))
     }
 
-    pub fn from_set(set: FxHashSet<RuntimeValue<'gc>>) -> Self {
-        Self(Rc::new(RefCell::new(set)))
+    pub fn from_iter(
+        iter: impl IntoIterator<Item = RuntimeValue<'gc>>,
+        alloc: &'gc Allocator,
+    ) -> Self {
+        Self::from_set(AHashSet::from_iter_in(iter, alloc))
     }
 
-    pub fn borrow(&self) -> std::cell::Ref<'_, FxHashSet<RuntimeValue<'gc>>> {
+    pub fn borrow(&self) -> std::cell::Ref<'_, AHashSet<'gc, RuntimeValue<'gc>>> {
         self.0.borrow()
+    }
+
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
     }
 
     pub fn append(&self, other: RuntimeValue<'gc>) -> Result<(), RuntimeError> {
@@ -36,31 +40,27 @@ impl<'gc> RuntimeSet<'gc> {
         self.0.borrow().is_empty()
     }
 
-    pub fn union(&self, other: &Self) -> Self {
-        let mut union = self.0.borrow().clone();
-        union.extend(other.0.borrow().iter().cloned());
-        Self::from_set(union)
+    pub fn union(&self, other: &Self, alloc: &'gc Allocator) -> &'gc Self {
+        let mut union = AHashSet::with_capacity_in(self.len() + other.len(), alloc);
+        union.extend(self.borrow().iter().cloned());
+        union.extend(other.borrow().iter().cloned());
+        Self::from_set(union).alloc(alloc)
     }
 
-    pub fn intersection(&self, other: &Self) -> Self {
-        let intersection = self
-            .0
-            .borrow()
-            .intersection(&other.0.borrow())
-            .cloned()
-            .collect();
+    pub fn intersection(&self, other: &Self, alloc: &'gc Allocator) -> &'gc Self {
+        let intersection = self.borrow().intersection(&other.borrow()).cloned().fold(
+            AHashSet::with_capacity_in(self.len().min(other.len()), alloc),
+            |mut acc, item| {
+                acc.insert(item);
+                acc
+            },
+        );
 
-        Self::from_set(intersection)
+        Self::from_set(intersection).alloc(alloc)
     }
 
     pub fn contains(&self, value: &RuntimeValue<'gc>) -> bool {
         self.0.borrow().contains(value)
-    }
-}
-
-impl Default for RuntimeSet<'_> {
-    fn default() -> Self {
-        Self::new()
     }
 }
 
@@ -73,17 +73,17 @@ impl PartialEq for RuntimeSet<'_> {
     }
 }
 
-impl<'gc> TryFrom<RuntimeIterator<'gc>> for RuntimeSet<'gc> {
-    type Error = RuntimeError;
-
-    fn try_from(iter: RuntimeIterator<'gc>) -> Result<Self, Self::Error> {
-        let mut map = FxHashSet::default();
-        while let Some(val) = iter.next() {
-            map.insert(val);
-        }
-        Ok(Self::from_set(map))
-    }
-}
+// impl<'gc> TryFrom<RuntimeIterator<'gc>> for RuntimeSet<'gc> {
+//     type Error = RuntimeError;
+//
+//     fn try_from(iter: RuntimeIterator<'gc>) -> Result<Self, Self::Error> {
+//         let mut map = FxHashSet::default();
+//         while let Some(val) = iter.next() {
+//             map.insert(val);
+//         }
+//         Ok(Self::from_set(map))
+//     }
+// }
 
 impl Eq for RuntimeSet<'_> {}
 

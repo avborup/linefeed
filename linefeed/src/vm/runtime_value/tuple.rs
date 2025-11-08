@@ -21,6 +21,10 @@ impl<'gc> RuntimeTuple<'gc> {
         Self(vec)
     }
 
+    pub fn alloc(self, alloc: &'gc Allocator) -> &'gc Self {
+        alloc.alloc(self)
+    }
+
     pub fn as_slice(&self) -> &[RuntimeValue<'gc>] {
         self.0.as_slice()
     }
