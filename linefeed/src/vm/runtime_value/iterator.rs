@@ -52,7 +52,7 @@ impl RuntimeIterator {
             IteratorKind::Range(_) => {
                 todo!()
             }
-            IteratorKind::Map(iter) => iter.keys.len().saturating_sub(iter.index),
+            IteratorKind::Map(iter) => iter.len(),
             IteratorKind::Enumerated(iter) => iter.list.len().saturating_sub(iter.index),
             IteratorKind::String(iter) => iter.chars.len().saturating_sub(iter.index),
             IteratorKind::Empty => 0,

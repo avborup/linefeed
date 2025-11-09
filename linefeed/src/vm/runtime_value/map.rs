@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use ouroboros::self_referencing;
 use rustc_hash::FxHashMap;
 
 use crate::vm::{
@@ -157,20 +158,47 @@ impl TryFrom<RuntimeIterator> for RuntimeMap {
     }
 }
 
+#[self_referencing]
+struct MapIterCell {
+    owner: RuntimeMap,
+    #[borrows(owner)]
+    #[covariant]
+    guard: std::cell::Ref<'this, InnerRuntimeMap>,
+    #[borrows(guard)]
+    #[covariant]
+    iter: std::collections::hash_map::Iter<'this, RuntimeValue, RuntimeValue>,
+}
+
 pub struct MapIterator {
-    pub map: RuntimeMap,
-    pub keys: Vec<RuntimeValue>,
-    pub index: usize,
+    cell: MapIterCell,
+    len: usize,
+}
+
+impl MapIterator {
+    fn new(map: RuntimeMap) -> Self {
+        let len = map.borrow().len();
+        let cell = MapIterCellBuilder {
+            owner: map,
+            guard_builder: |owner| owner.borrow(),
+            iter_builder: |guard| guard.iter(),
+        }
+        .build();
+
+        Self { cell, len }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
 }
 
 impl From<RuntimeMap> for MapIterator {
     fn from(map: RuntimeMap) -> Self {
-        let keys = map.borrow().keys().cloned().collect();
-        Self {
-            map,
-            keys,
-            index: 0,
-        }
+        Self::new(map)
     }
 }
 
@@ -178,12 +206,8 @@ impl Iterator for MapIterator {
     type Item = RuntimeValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let key = self.keys.get(self.index).cloned()?;
-        let value = self.map.borrow().get(&key).cloned()?;
-        let pair = RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![key, value]));
-
-        self.index += 1;
-
-        Some(pair)
+        self.cell
+            .with_iter_mut(|it| it.next())
+            .map(|(k, v)| RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![k.clone(), v.clone()])))
     }
 }
