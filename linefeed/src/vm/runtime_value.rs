@@ -714,7 +714,7 @@ impl RuntimeValue {
         match self {
             RuntimeValue::Map(map) => {
                 let iterator = iterable.to_iter_inner()?;
-                let mut results = Vec::new();
+                let mut results = Vec::with_capacity(iterator.len());
 
                 while let Some(key) = iterator.next() {
                     results.push(map.get(&key));
