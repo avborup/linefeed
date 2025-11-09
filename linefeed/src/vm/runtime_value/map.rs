@@ -86,13 +86,21 @@ impl RuntimeMap {
     }
 
     fn insert_default_value_if_missing(&self, key: &RuntimeValue) {
-        let Some(default_value) = self.borrow().default_value.clone() else {
-            return;
+        let to_insert = {
+            let inner = self.0.borrow();
+
+            let Some(default_value) = inner.default_value.as_ref() else {
+                return;
+            };
+
+            if inner.map.contains_key(key) {
+                return;
+            }
+
+            default_value.deep_clone()
         };
 
-        if !self.borrow().contains_key(key) {
-            self.insert(key.clone(), default_value.deep_clone());
-        }
+        self.insert(key.clone(), to_insert);
     }
 }
 
