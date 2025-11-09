@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::vm::{
     runtime_value::{
         counter::RuntimeCounter, iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap,
@@ -112,12 +114,9 @@ pub fn sum(val: RuntimeValue) -> RuntimeResult {
         )));
     };
 
-    let mut sum = RuntimeValue::Num(RuntimeNumber::from(0));
-    while let Some(val) = iter.next() {
-        sum = sum.add(&val)?;
-    }
-
-    Ok(sum)
+    iter.try_fold(RuntimeValue::Num(RuntimeNumber::from(0)), |acc, v| {
+        acc.add(&v)
+    })
 }
 
 pub fn mul(val: RuntimeValue) -> RuntimeResult {
@@ -128,59 +127,24 @@ pub fn mul(val: RuntimeValue) -> RuntimeResult {
         )));
     };
 
-    let mut prod = RuntimeValue::Num(RuntimeNumber::from(1));
-    while let Some(val) = iter.next() {
-        prod = prod.mul(&val)?;
-    }
-
-    Ok(prod)
-}
-
-fn iterator_from_variadic_args(args: Vec<RuntimeValue>) -> RuntimeIterator {
-    if let [arg] = args.as_slice() {
-        match arg.to_iter_inner() {
-            Ok(iter) => iter,
-            Err(_) => RuntimeIterator::from(RuntimeList::from_vec(args)),
-        }
-    } else {
-        RuntimeIterator::from(RuntimeList::from_vec(args))
-    }
+    iter.try_fold(RuntimeValue::Num(RuntimeNumber::from(1)), |acc, v| {
+        acc.mul(&v)
+    })
 }
 
 pub fn all(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = iterator_from_variadic_args(args);
-
-    while let Some(value) = iter.next() {
-        if !value.bool() {
-            return Ok(RuntimeValue::Bool(false));
-        }
-    }
-
-    Ok(RuntimeValue::Bool(true))
+    Ok(RuntimeValue::Bool(args.iter().all(|v| v.bool())))
 }
 
 pub fn any(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = iterator_from_variadic_args(args);
-
-    while let Some(value) = iter.next() {
-        if value.bool() {
-            return Ok(RuntimeValue::Bool(true));
-        }
-    }
-
-    Ok(RuntimeValue::Bool(false))
+    Ok(RuntimeValue::Bool(args.iter().any(|v| v.bool())))
 }
 
 pub fn max(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = iterator_from_variadic_args(args);
-
-    let mut max = None;
-    while let Some(value) = iter.next() {
-        max = match max {
-            Some(max) => Some(if value > max { value } else { max }),
-            None => Some(value),
-        };
-    }
+    let max = args
+        .iter()
+        .max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+        .cloned();
 
     max.ok_or_else(|| {
         RuntimeError::Plain("Received empty iterator, cannot find maximum".to_string())
@@ -188,15 +152,10 @@ pub fn max(args: Vec<RuntimeValue>) -> RuntimeResult {
 }
 
 pub fn min(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let iter = iterator_from_variadic_args(args);
-
-    let mut min = None;
-    while let Some(value) = iter.next() {
-        min = match min {
-            Some(min) => Some(if value < min { value } else { min }),
-            None => Some(value),
-        };
-    }
+    let min = args
+        .iter()
+        .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+        .cloned();
 
     min.ok_or_else(|| {
         RuntimeError::Plain("Received empty iterator, cannot find minimum".to_string())

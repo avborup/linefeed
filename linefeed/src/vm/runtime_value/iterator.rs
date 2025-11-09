@@ -69,6 +69,28 @@ impl RuntimeIterator {
         }
         out
     }
+
+    pub fn fold<T, F>(&self, init: T, f: F) -> T
+    where
+        F: Fn(T, RuntimeValue) -> T,
+    {
+        let mut acc = init;
+        while let Some(value) = self.next() {
+            acc = f(acc, value);
+        }
+        acc
+    }
+
+    pub fn try_fold<T, E, F>(&self, init: T, f: F) -> Result<T, E>
+    where
+        F: Fn(T, RuntimeValue) -> Result<T, E>,
+    {
+        let mut acc = init;
+        while let Some(value) = self.next() {
+            acc = f(acc, value)?;
+        }
+        Ok(acc)
+    }
 }
 
 struct ListIterator {
