@@ -132,32 +132,57 @@ pub fn mul(val: RuntimeValue) -> RuntimeResult {
     })
 }
 
+fn iterator_from_variadic_args(args: Vec<RuntimeValue>) -> RuntimeIterator {
+    if let [arg] = args.as_slice() {
+        match arg.to_iter_inner() {
+            Ok(iter) => iter,
+            Err(_) => RuntimeIterator::from(RuntimeList::from_vec(args)),
+        }
+    } else {
+        RuntimeIterator::from(RuntimeList::from_vec(args))
+    }
+}
+
 pub fn all(args: Vec<RuntimeValue>) -> RuntimeResult {
-    Ok(RuntimeValue::Bool(args.iter().all(|v| v.bool())))
+    let iter = iterator_from_variadic_args(args);
+
+    while let Some(value) = iter.next() {
+        if !value.bool() {
+            return Ok(RuntimeValue::Bool(false));
+        }
+    }
+
+    Ok(RuntimeValue::Bool(true))
 }
 
 pub fn any(args: Vec<RuntimeValue>) -> RuntimeResult {
-    Ok(RuntimeValue::Bool(args.iter().any(|v| v.bool())))
+    let iter = iterator_from_variadic_args(args);
+
+    while let Some(value) = iter.next() {
+        if value.bool() {
+            return Ok(RuntimeValue::Bool(true));
+        }
+    }
+
+    Ok(RuntimeValue::Bool(false))
 }
 
 pub fn max(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let max = args
-        .iter()
-        .max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
-        .cloned();
+    let iter = iterator_from_variadic_args(args);
 
-    max.ok_or_else(|| {
+    let first = iter.next().ok_or_else(|| {
         RuntimeError::Plain("Received empty iterator, cannot find maximum".to_string())
-    })
+    })?;
+
+    Ok(iter.fold(first, |max, value| if value > max { value } else { max }))
 }
 
 pub fn min(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let min = args
-        .iter()
-        .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
-        .cloned();
+    let iter = iterator_from_variadic_args(args);
 
-    min.ok_or_else(|| {
+    let first = iter.next().ok_or_else(|| {
         RuntimeError::Plain("Received empty iterator, cannot find minimum".to_string())
-    })
+    })?;
+
+    Ok(iter.fold(first, |min, value| if value < min { value } else { min }))
 }
