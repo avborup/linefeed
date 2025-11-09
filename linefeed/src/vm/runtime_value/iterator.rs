@@ -1,4 +1,4 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, convert::identity, rc::Rc};
 
 use crate::vm::runtime_value::{
     counter::RuntimeCounter,
@@ -38,11 +38,7 @@ impl RuntimeIterator {
     }
 
     pub fn to_vec(&self) -> Vec<RuntimeValue> {
-        let mut out = Vec::new();
-        while let Some(value) = self.next() {
-            out.push(value);
-        }
-        out
+        self.map_to_vec(identity)
     }
 
     pub fn len(&self) -> usize {
@@ -61,6 +57,17 @@ impl RuntimeIterator {
 
     pub fn is_empty(&self) -> bool {
         self.len() == 0
+    }
+
+    pub fn map_to_vec<F>(&self, f: F) -> Vec<RuntimeValue>
+    where
+        F: Fn(RuntimeValue) -> RuntimeValue,
+    {
+        let mut out = Vec::with_capacity(self.len());
+        while let Some(value) = self.next() {
+            out.push(f(value));
+        }
+        out
     }
 }
 

@@ -713,12 +713,7 @@ impl RuntimeValue {
     pub fn get_all(&self, iterable: &Self) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {
-                let iterator = iterable.to_iter_inner()?;
-                let mut results = Vec::with_capacity(iterator.len());
-
-                while let Some(key) = iterator.next() {
-                    results.push(map.get(&key));
-                }
+                let results = iterable.to_iter_inner()?.map_to_vec(|key| map.get(&key));
 
                 Ok(RuntimeValue::List(RuntimeList::from_vec(results)))
             }
