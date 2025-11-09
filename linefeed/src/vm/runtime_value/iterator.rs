@@ -45,9 +45,7 @@ impl RuntimeIterator {
         match &*self.0.borrow() {
             IteratorKind::List(iter) => iter.list.len().saturating_sub(iter.index),
             IteratorKind::Tuple(iter) => iter.tuple.len().saturating_sub(iter.index),
-            IteratorKind::Range(_) => {
-                todo!()
-            }
+            IteratorKind::Range(iter) => iter.len().unwrap_or(usize::MAX),
             IteratorKind::Map(iter) => iter.len(),
             IteratorKind::Enumerated(iter) => iter.list.len().saturating_sub(iter.index),
             IteratorKind::String(iter) => iter.chars.len().saturating_sub(iter.index),

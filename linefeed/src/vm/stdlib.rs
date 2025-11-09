@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use crate::vm::{
     runtime_value::{
         counter::RuntimeCounter, iterator::RuntimeIterator, list::RuntimeList, map::RuntimeMap,

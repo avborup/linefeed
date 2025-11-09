@@ -62,6 +62,22 @@ impl RangeIterator {
             range,
         }
     }
+
+    pub fn len(&self) -> Option<usize> {
+        match (self.range.start, self.range.end) {
+            (Some(start), Some(end)) => {
+                let distance = start.abs_diff(end);
+                let steps = distance / self.step.unsigned_abs();
+                let stepped = self.value.unsigned_abs() / self.step.unsigned_abs();
+                Some(steps - stepped)
+            }
+            _ => None,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == Some(0)
+    }
 }
 
 impl Iterator for RangeIterator {
