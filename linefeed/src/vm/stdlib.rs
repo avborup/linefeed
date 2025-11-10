@@ -184,3 +184,13 @@ pub fn min(args: Vec<RuntimeValue>) -> RuntimeResult {
 
     Ok(iter.fold(first, |min, value| if value < min { value } else { min }))
 }
+
+pub fn abs(val: RuntimeValue) -> RuntimeResult {
+    match val {
+        RuntimeValue::Num(n) => Ok(RuntimeValue::Num(n.abs())),
+        _ => Err(RuntimeError::TypeMismatch(format!(
+            "Cannot compute absolute value of type {}",
+            val.kind_str()
+        ))),
+    }
+}

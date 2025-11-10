@@ -116,6 +116,14 @@ impl RuntimeNumber {
     pub fn neg(&self) -> Self {
         self * &RuntimeNumber::from(-1)
     }
+
+    pub fn abs(&self) -> Self {
+        match self {
+            SmallInt(i) => SmallInt(i.abs()),
+            BigInt(i) => BigInt(Rc::new(i.as_ref().clone().abs())),
+            Float(f) => Float(f.abs()),
+        }
+    }
 }
 
 // Macro for types that always fit in isize

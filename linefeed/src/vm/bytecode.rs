@@ -94,6 +94,7 @@ pub enum Bytecode {
     AnyTrue(usize),
     Max(usize),
     Min(usize),
+    Abs,
     ToCounter(usize),
 
     // Methods
@@ -174,7 +175,9 @@ impl Bytecode {
             Instruction::Index => Bytecode::Index,
             Instruction::SetIndex => Bytecode::SetIndex,
             Instruction::NextIter => Bytecode::NextIter,
-            Instruction::NextIterOrJump(label) => Bytecode::NextIterOrJump(label_mapper.get(label)?),
+            Instruction::NextIterOrJump(label) => {
+                Bytecode::NextIterOrJump(label_mapper.get(label)?)
+            }
             Instruction::ToIter => Bytecode::ToIter,
             Instruction::IsIn => Bytecode::IsIn,
             Instruction::CreateTuple(size) => Bytecode::CreateTuple(size),
@@ -194,6 +197,7 @@ impl Bytecode {
                 StdlibFn::All => Bytecode::AllTrue(num_args),
                 StdlibFn::Any => Bytecode::AnyTrue(num_args),
                 StdlibFn::Max => Bytecode::Max(num_args),
+                StdlibFn::Abs => Bytecode::Abs,
                 StdlibFn::Min => Bytecode::Min(num_args),
             },
             Instruction::MethodCall(method, num_args) => match method {

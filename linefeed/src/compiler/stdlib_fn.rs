@@ -19,6 +19,7 @@ pub enum StdlibFn {
     Any,
     Max,
     Min,
+    Abs,
     Counter,
 }
 
@@ -39,6 +40,7 @@ impl StdlibFn {
         Any => "any",
         Max => "max",
         Min => "min",
+        Abs => "abs",
         Counter => "counter",
     }
 
@@ -60,6 +62,7 @@ impl StdlibFn {
             Self::Any => 1..=usize::MAX,
             Self::Max => 1..=usize::MAX,
             Self::Min => 1..=usize::MAX,
+            Self::Abs => 1..=1,
             Self::Counter => 0..=1,
         }
     }
