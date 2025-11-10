@@ -63,4 +63,48 @@ impl RuntimeTuple {
 
         Ok(RuntimeTuple::from_vec(result?))
     }
+
+    pub fn rot(&self, times: &RuntimeValue) -> Result<Self, RuntimeError> {
+        let (x, y) = match self.as_slice() {
+            [RuntimeValue::Num(x), RuntimeValue::Num(y)] => (x, y),
+            [a, b] => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "rotation requires tuple elements to be numbers, got '{}' and '{}'",
+                    a.kind_str(),
+                    b.kind_str()
+                )))
+            }
+            _ => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "rotation only works on 2D numeric tuples, but got tuple with {} elements",
+                    self.len()
+                )))
+            }
+        };
+
+        let rotation_count = match times {
+            RuntimeValue::Num(n) => n.floor_int(),
+            other => {
+                return Err(RuntimeError::TypeMismatch(format!(
+                    "rotation requires a numeric argument, got '{}'",
+                    other.kind_str()
+                )))
+            }
+        };
+
+        let normalized = ((rotation_count % 4) + 4) % 4;
+
+        let (new_x, new_y) = match normalized {
+            0 => (x.clone(), y.clone()), // 0 degrees: no rotation
+            1 => (y.clone(), x.neg()),   // 90 degrees clockwise
+            2 => (x.neg(), y.neg()),     // 180 degrees
+            3 => (y.neg(), x.clone()),   // 270 degrees clockwise (= 90 counter-clockwise)
+            _ => unreachable!(),
+        };
+
+        Ok(RuntimeTuple::from_vec(vec![
+            RuntimeValue::Num(new_x),
+            RuntimeValue::Num(new_y),
+        ]))
+    }
 }

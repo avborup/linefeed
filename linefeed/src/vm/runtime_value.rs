@@ -730,4 +730,12 @@ impl RuntimeValue {
             _ => Err(RuntimeError::invalid_method_for_type(Method::Values, self)),
         }
     }
+
+    pub fn rot(&self, times: &Self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Tuple(tuple) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Rot, self));
+        };
+
+        Ok(RuntimeValue::Tuple(tuple.rot(times)?))
+    }
 }

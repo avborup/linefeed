@@ -19,6 +19,7 @@ pub enum Method {
     Enumerate,
     GetAll,
     Values,
+    Rot,
 }
 
 impl Method {
@@ -40,6 +41,7 @@ impl Method {
         Enumerate => "enumerate",
         GetAll => "get_all",
         Values => "values",
+        Rot => "rot",
     }
 
     /// Returns the number of arguments this method expects.
@@ -62,6 +64,7 @@ impl Method {
             Self::Enumerate => 0..=0,
             Self::GetAll => 1..=1,
             Self::Values => 0..=0,
+            Self::Rot => 1..=1,
         }
     }
 }
