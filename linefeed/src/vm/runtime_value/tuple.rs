@@ -57,6 +57,25 @@ impl RuntimeTuple {
         Ok(RuntimeTuple::from_vec(result?))
     }
 
+    pub fn element_wise_sub(&self, other: &Self) -> Result<Self, RuntimeError> {
+        if self.len() != other.len() {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot subtract tuples of different lengths: {} and {}",
+                self.len(),
+                other.len()
+            )));
+        }
+
+        let result: Result<Vec<RuntimeValue>, RuntimeError> = self
+            .0
+            .iter()
+            .zip(other.0.iter())
+            .map(|(a, b)| a.sub(b))
+            .collect();
+
+        Ok(RuntimeTuple::from_vec(result?))
+    }
+
     pub fn scalar_multiply(&self, scalar: &RuntimeValue) -> Result<Self, RuntimeError> {
         let result: Result<Vec<RuntimeValue>, RuntimeError> =
             self.0.iter().map(|elem| elem.mul(scalar)).collect();

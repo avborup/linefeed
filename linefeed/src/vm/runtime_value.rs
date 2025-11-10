@@ -107,6 +107,9 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a - b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a - b)),
+            (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
+                Ok(RuntimeValue::Tuple(a.element_wise_sub(b)?))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
             )),

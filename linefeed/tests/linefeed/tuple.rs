@@ -80,6 +80,50 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
+    tuple_element_wise_subtraction_basic,
+    indoc! {r#"
+        a = (10, 20, 30);
+        b = (4, 5, 6);
+        print(a - b);
+    "#},
+    equals("(6, 15, 24)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_subtraction_floats,
+    indoc! {r#"
+        a = (5.5, 10.0);
+        b = (2.5, 3.0);
+        print(a - b);
+    "#},
+    equals("(3, 7)\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_element_wise_subtraction_nested,
+    indoc! {r#"
+        a = ((10, 20), (30, 40));
+        b = ((5, 6), (7, 8));
+        print(a - b);
+    "#},
+    equals("((5, 14), (23, 32))\n"),
+    empty()
+);
+
+eval_and_assert!(
+    tuple_subtraction_mismatched_length_error,
+    indoc! {r#"
+        a = (10, 20);
+        b = (3, 4, 5);
+        print(a - b);
+    "#},
+    empty(),
+    contains("Cannot subtract tuples of different lengths")
+);
+
+eval_and_assert!(
     tuple_scalar_multiplication_basic,
     indoc! {r#"
         a = (1, 2, 3);
