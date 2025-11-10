@@ -1,0 +1,33 @@
+moves = [line.find(r/(\w)(\d+)/n) for line in input().lines()];
+
+x, y = 0, 0;
+dx, dy = 1, 0;
+
+for action, amount in moves {
+  match action {
+    "N" => y += amount,
+    "S" => y -= amount,
+    "E" => x += amount,
+    "W" => x -= amount,
+    "L" => {
+      for _ in 1 ..= (amount / 90) {
+        dx, dy = -dy, dx;
+      }
+    },
+    "R" => {
+      for _ in 1 ..= (amount / 90) {
+        dx, dy = dy, -dx;
+      }
+    },
+    "F" => {
+      x += dx * amount;
+      y += dy * amount;
+    }
+  };
+};
+
+part1 = abs(x) + abs(y);
+part2 = "?";
+
+print("Part 1:", part1);
+print("Part 2:", part2);
