@@ -1,7 +1,7 @@
 moves = [line.find(r/(\w)(\d+)/n) for line in input().lines()];
 
-pos, dir = (0, 0), (1, 0);
-for action, amount in moves {
+fn apply(move, pos, dir) {
+  action, amount = move;
   match action {
     "N" => pos += (0, amount),
     "S" => pos -= (0, amount),
@@ -11,10 +11,28 @@ for action, amount in moves {
     "R" => { dir = dir.rot(amount / 90) },
     "F" => pos += amount * dir
   };
+  return (pos, dir);
 };
 
-part1 = sum([abs(x) for x in pos]);
-part2 = "?";
+ship1, dir = (0, 0), (1, 0);
+ship2, wp = (0, 0), (10, 1);
+for move in moves {
+  ship1, dir = apply(move, ship1, dir);
+
+  action, amount = move;
+  match action {
+    "N" => wp += (0, amount),
+    "S" => wp -= (0, amount),
+    "E" => wp += (amount, 0),
+    "W" => wp -= (amount, 0),
+    "L" => { wp = wp.rot(-amount / 90) },
+    "R" => { wp = wp.rot(amount / 90) },
+    "F" => { ship2 += amount * wp }
+  };
+};
+
+part1 = sum([abs(x) for x in ship1]);
+part2 = sum([abs(x) for x in ship2]);
 
 print("Part 1:", part1);
 print("Part 2:", part2);
