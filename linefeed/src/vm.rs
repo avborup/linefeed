@@ -465,7 +465,9 @@ where
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
             Bytecode::CreateTuple(size) => {
                 let value = if *size == 2 {
-                    RuntimeValue::from((self.pop_stack(), self.pop_stack()))
+                    let b = self.pop_stack();
+                    let a = self.pop_stack();
+                    RuntimeValue::from((a, b))
                 } else {
                     let items = self.pop_args(*size);
                     RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
