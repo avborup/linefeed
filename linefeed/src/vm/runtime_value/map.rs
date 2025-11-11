@@ -214,7 +214,6 @@ impl Iterator for MapIterator {
     fn next(&mut self) -> Option<Self::Item> {
         self.cell
             .with_iter_mut(|it| it.next())
-            // Use From implementation to automatically optimize to Vec2 when possible
             .map(|(k, v)| RuntimeValue::from((k.clone(), v.clone())))
     }
 }

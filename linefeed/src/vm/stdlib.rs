@@ -196,20 +196,15 @@ pub fn abs(val: RuntimeValue) -> RuntimeResult {
 }
 
 pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let diff = match args.as_slice() {
-        [RuntimeValue::Tuple(t)] => t.clone(),
-        [RuntimeValue::Vec2(v)] => v.to_tuple(),
-        [RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)] => a.element_wise_sub(b)?,
-        [RuntimeValue::Vec2(a), RuntimeValue::Vec2(b)] => {
-            // Subtract Vec2 values, convert result to tuple
-            match a.sub(b)? {
-                RuntimeValue::Vec2(result) => result.to_tuple(),
-                RuntimeValue::Tuple(t) => t,
-                _ => unreachable!("Vec2 subtraction should only produce Vec2 or Tuple"),
-            }
-        }
-        [RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)] => v.to_tuple().element_wise_sub(t)?,
-        [RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)] => t.element_wise_sub(&v.to_tuple())?,
+    let diff = match (args.first(), args.get(1)) {
+        (Some(a), None) => a.clone(),
+        (Some(a), Some(b)) => a.sub(b)?,
+        (None, _) => unreachable!("manhattan function called with no arguments"),
+    };
+
+    let diff = match diff {
+        RuntimeValue::Tuple(t) => t,
+        RuntimeValue::Vec2(v) => v.to_tuple(),
         _ => {
             return Err(RuntimeError::TypeMismatch(format!(
                 "cannot calculate manhattan distance for arguments of types: {}",
