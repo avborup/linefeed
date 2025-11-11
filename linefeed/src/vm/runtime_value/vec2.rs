@@ -178,8 +178,6 @@ impl RuntimeVec2 {
     }
 }
 
-/// Try to create a RuntimeVec2 from two RuntimeValues
-/// Returns None if either value is not a SmallInt
 impl TryFrom<(RuntimeValue, RuntimeValue)> for RuntimeVec2 {
     type Error = ();
 
@@ -192,28 +190,17 @@ impl TryFrom<(&RuntimeValue, &RuntimeValue)> for RuntimeVec2 {
     type Error = ();
 
     fn try_from((v1, v2): (&RuntimeValue, &RuntimeValue)) -> Result<Self, Self::Error> {
-        match (v1, v2) {
-            (
-                RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
-                RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
-            ) => match (i32::try_from(*x), i32::try_from(*y)) {
-                (Ok(xi), Ok(yi)) => Ok(RuntimeVec2::new(xi, yi)),
-                _ => Err(()),
-            },
-            _ => Err(()),
-        }
+        v1.to_i32()
+            .zip(v2.to_i32())
+            .map(|(x, y)| RuntimeVec2::new(x, y))
+            .ok_or(())
     }
 }
 
-/// Create a RuntimeValue from two RuntimeValues
-/// Tries to create a Vec2 if both are SmallInts, otherwise creates a Tuple
 impl From<(RuntimeValue, RuntimeValue)> for RuntimeValue {
     fn from((v1, v2): (RuntimeValue, RuntimeValue)) -> Self {
-        if let Ok(vec2) = RuntimeVec2::try_from((&v1, &v2)) {
-            RuntimeValue::Vec2(vec2)
-        } else {
-            // Fall back to tuple
-            RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![v1, v2]))
-        }
+        RuntimeVec2::try_from((&v1, &v2))
+            .map(RuntimeValue::Vec2)
+            .unwrap_or_else(|_| RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![v1, v2])))
     }
 }
