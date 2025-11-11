@@ -464,44 +464,13 @@ where
             Bytecode::ToList => stdlib_fn!(self, to_list),
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
             Bytecode::CreateTuple(size) => {
-                // Fast path for 2-element tuples with small integers
-                if *size == 2 && self.stack.len() >= 2 {
-                    let len = self.stack.len();
-
-                    // Copy values first to avoid borrow checker issues
-                    let v1 = self.stack[len - 2].clone();
-                    let v2 = self.stack[len - 1].clone();
-
-                    // Check if both are SmallInt - if so, try to create Vec2 directly
-                    if let (
-                        RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
-                        RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
-                    ) = (&v1, &v2)
-                    {
-                        // Try safe conversion to i32
-                        match (i32::try_from(*x), i32::try_from(*y)) {
-                            (Ok(xi), Ok(yi)) => {
-                                // Pop the two values
-                                self.stack.truncate(len - 2);
-                                // Push Vec2 directly
-                                self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(xi, yi)));
-                            }
-                            _ => {
-                                // Values don't fit in i32, fall back to tuple
-                                let items = self.pop_args(*size);
-                                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
-                            }
-                        }
-                    } else {
-                        // Fall back to tuple creation
-                        let items = self.pop_args(*size);
-                        self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
-                    }
+                let value = if *size == 2 {
+                    RuntimeValue::from((self.pop_stack(), self.pop_stack()))
                 } else {
-                    // Regular tuple creation for non-2-element tuples
                     let items = self.pop_args(*size);
-                    self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
-                }
+                    RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+                };
+                self.push_stack(value);
             }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
