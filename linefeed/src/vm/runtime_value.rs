@@ -62,7 +62,6 @@ pub enum RuntimeValue {
 const _: () = {
     // Just to make sure that we don't accidentally change the size of RuntimeValue and make
     // cloning super expensive.
-    // Note: Size increased from 16 to 24 bytes to accommodate inline Vec2 (2 x isize = 16 bytes)
     const SIZE: usize = std::mem::size_of::<RuntimeValue>();
     assert!(SIZE == 16);
 };
@@ -104,12 +103,10 @@ impl RuntimeValue {
             }
             (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => v1.add(v2),
             (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
-                let vec_as_tuple = v.to_tuple();
-                Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_add(t)?))
+                Ok(RuntimeValue::Tuple(v.to_tuple().element_wise_add(t)?))
             }
             (RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)) => {
-                let vec_as_tuple = v.to_tuple();
-                Ok(RuntimeValue::Tuple(t.element_wise_add(&vec_as_tuple)?))
+                Ok(RuntimeValue::Tuple(t.element_wise_add(&v.to_tuple())?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
@@ -126,12 +123,10 @@ impl RuntimeValue {
             }
             (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => v1.sub(v2),
             (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
-                let vec_as_tuple = v.to_tuple();
-                Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_sub(t)?))
+                Ok(RuntimeValue::Tuple(v.to_tuple().element_wise_sub(t)?))
             }
             (RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)) => {
-                let vec_as_tuple = v.to_tuple();
-                Ok(RuntimeValue::Tuple(t.element_wise_sub(&vec_as_tuple)?))
+                Ok(RuntimeValue::Tuple(t.element_wise_sub(&v.to_tuple())?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
@@ -446,7 +441,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => !s.is_empty(),
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Tuple(xs) => !xs.as_slice().is_empty(),
-            RuntimeValue::Vec2(_) => true, // Vec2 always has 2 elements, so always truthy
+            RuntimeValue::Vec2(_) => true,
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
             RuntimeValue::Map(m) => !m.is_empty(),
             RuntimeValue::Function(_) => true,
@@ -467,7 +462,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
-            RuntimeValue::Vec2(v) => RuntimeValue::Vec2(*v), // Copy type, just dereference
+            RuntimeValue::Vec2(v) => RuntimeValue::Vec2(*v),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
@@ -514,7 +509,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, ")")
             }
             RuntimeValue::Vec2(v) => {
-                write!(f, "({}, {})", v.x, v.y)
+                write!(f, "v({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
@@ -599,7 +594,7 @@ impl std::cmp::PartialOrd for RuntimeValue {
             (RuntimeValue::Str(a), RuntimeValue::Str(b)) => a.partial_cmp(b),
             (RuntimeValue::List(a), RuntimeValue::List(b)) => a.partial_cmp(b),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => a.partial_cmp(b),
-            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Some(v1.cmp(v2)),
+            (RuntimeValue::Vec2(a), RuntimeValue::Vec2(b)) => a.partial_cmp(b),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => a.partial_cmp(b),
             _ => None,
         }

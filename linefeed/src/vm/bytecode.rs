@@ -119,7 +119,6 @@ pub enum Bytecode {
 }
 
 const _: () = {
-    // Size increased from 16 to 24 bytes due to RuntimeValue growth (Vec2 addition)
     const SIZE: usize = std::mem::size_of::<Bytecode>();
     assert!(SIZE == 16);
 };
