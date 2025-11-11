@@ -50,7 +50,7 @@ pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         )));
     };
 
-    Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
+    Ok(RuntimeTuple::from_vec(iter.to_vec()))
 }
 
 pub fn map_with_default(default_value: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
@@ -196,9 +196,15 @@ pub fn abs(val: RuntimeValue) -> RuntimeResult {
 }
 
 pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
-    let diff = match args.as_slice() {
-        [RuntimeValue::Tuple(t)] => t.clone(),
-        [RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)] => a.element_wise_sub(b)?,
+    let diff = match (args.first(), args.get(1)) {
+        (Some(a), None) => a.clone(),
+        (Some(a), Some(b)) => a.sub(b)?,
+        (None, _) => unreachable!("manhattan function called with no arguments"),
+    };
+
+    let diff = match diff {
+        RuntimeValue::Tuple(t) => t,
+        RuntimeValue::Vec2(v) => v.to_tuple(),
         _ => {
             return Err(RuntimeError::TypeMismatch(format!(
                 "cannot calculate manhattan distance for arguments of types: {}",

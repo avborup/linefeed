@@ -138,7 +138,7 @@ impl Iterator for EnumeratedListIterator {
     fn next(&mut self) -> Option<Self::Item> {
         let value = self.list.as_slice().get(self.index).cloned()?;
         let index_val = RuntimeValue::Num(RuntimeNumber::from(self.index));
-        let enumerated = RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![index_val, value]));
+        let enumerated = RuntimeValue::from((index_val, value));
         self.index += 1;
         Some(enumerated)
     }

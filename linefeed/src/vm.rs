@@ -441,6 +441,19 @@ where
             }
 
             Bytecode::ToIter => unary_mapper_method!(self, to_iter),
+
+            Bytecode::CreateTuple(size) => {
+                let value = if *size == 2 {
+                    let b = self.pop_stack();
+                    let a = self.pop_stack();
+                    RuntimeValue::from((a, b))
+                } else {
+                    let items = self.pop_args(*size);
+                    RuntimeValue::Tuple(RuntimeTuple::from_vec_inner(items))
+                };
+                self.push_stack(value);
+            }
+
             Bytecode::ToUpperCase => unary_mapper_method!(self, to_uppercase),
             Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
             Bytecode::Split => binary_op!(self, split),
@@ -461,10 +474,6 @@ where
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
-            Bytecode::CreateTuple(size) => {
-                let items = self.pop_args(*size);
-                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
-            }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),
             Bytecode::ToSet(num_args) => stdlib_fn_with_optional_arg!(self, to_set, *num_args),

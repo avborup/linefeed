@@ -253,7 +253,7 @@ impl Bytecode {
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
                     .collect::<Result<_, _>>()?;
 
-                RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+                RuntimeTuple::from_vec(items)
             }
             IrValue::Set(xs) => {
                 let items = xs

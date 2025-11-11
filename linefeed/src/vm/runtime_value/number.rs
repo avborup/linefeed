@@ -17,6 +17,14 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn to_i32(&self) -> Option<i32> {
+        match self {
+            SmallInt(i) => i32::try_from(*i).ok(),
+            BigInt(i) => i.to_i32(),
+            _ => None,
+        }
+    }
+
     pub fn floor(&self) -> Self {
         match self {
             SmallInt(i) => SmallInt(*i),
