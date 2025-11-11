@@ -194,3 +194,28 @@ pub fn abs(val: RuntimeValue) -> RuntimeResult {
         ))),
     }
 }
+
+pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
+    let diff = match args.as_slice() {
+        [RuntimeValue::Tuple(t)] => t.clone(),
+        [RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)] => a.element_wise_sub(b)?,
+        _ => {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "cannot calculate manhattan distance for arguments of types: {}",
+                args.iter()
+                    .map(|v| v.kind_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )))
+        }
+    };
+
+    let sum = diff
+        .as_slice()
+        .iter()
+        .try_fold(RuntimeNumber::from(0), |acc, value| {
+            Ok(acc + value.unwrap_num()?.abs())
+        })?;
+
+    Ok(RuntimeValue::Num(sum))
+}

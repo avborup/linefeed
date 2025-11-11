@@ -24,8 +24,5 @@ for action, amount in moves {
   };
 };
 
-part1 = sum([abs(x) for x in ship1]);
-part2 = sum([abs(x) for x in ship2]);
-
-print("Part 1:", part1);
-print("Part 2:", part2);
+print("Part 1:", manhattan(ship1));
+print("Part 2:", manhattan(ship2));

@@ -58,3 +58,40 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    manhattan_distance_single_tuple,
+    indoc::indoc! {r#"
+        print(manhattan((3, 4)));
+        print(manhattan((-3, -4)));
+        print(manhattan((1, 2, 3)));
+    "#},
+    equals(indoc::indoc! {r#"
+        7
+        7
+        6
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    manhattan_distance_two_tuples,
+    indoc::indoc! {r#"
+        print(manhattan((1, 2), (4, 6)));
+        print(manhattan((0, 0), (3, 4)));
+        print(manhattan((5, 5, 5), (2, 3, 1)));
+    "#},
+    equals(indoc::indoc! {r#"
+        7
+        7
+        9
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    manhattan_distance_error_non_tuple,
+    "print(manhattan(5))",
+    empty(),
+    crate::helpers::output::contains("cannot calculate manhattan distance")
+);

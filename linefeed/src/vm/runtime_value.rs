@@ -741,4 +741,14 @@ impl RuntimeValue {
 
         Ok(RuntimeValue::Tuple(tuple.rot(times)?))
     }
+
+    pub fn unwrap_num(&self) -> Result<&RuntimeNumber, RuntimeError> {
+        match self {
+            RuntimeValue::Num(num) => Ok(num),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Expected number, found '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
 }
