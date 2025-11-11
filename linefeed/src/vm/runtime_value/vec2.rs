@@ -5,21 +5,21 @@ use crate::vm::runtime_value::{RuntimeNumber, RuntimeTuple, RuntimeValue};
 /// Gracefully falls back to RuntimeTuple when operations overflow or encounter type mismatches.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct RuntimeVec2 {
-    pub x: isize,
-    pub y: isize,
+    pub x: i32,
+    pub y: i32,
 }
 
 impl RuntimeVec2 {
     /// Creates a new Vec2
-    pub fn new(x: isize, y: isize) -> Self {
+    pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
     }
 
     /// Converts this Vec2 to a RuntimeTuple
     pub fn to_tuple(&self) -> RuntimeTuple {
         RuntimeTuple::from_vec(vec![
-            RuntimeValue::Num(RuntimeNumber::SmallInt(self.x)),
-            RuntimeValue::Num(RuntimeNumber::SmallInt(self.y)),
+            RuntimeValue::Num(RuntimeNumber::SmallInt(self.x as isize)),
+            RuntimeValue::Num(RuntimeNumber::SmallInt(self.y as isize)),
         ])
     }
 
@@ -59,10 +59,10 @@ impl RuntimeVec2 {
             return Ok(RuntimeValue::Tuple(tuple.scalar_multiply(scalar)?));
         };
 
-        match num {
-            RuntimeNumber::SmallInt(s) => {
+        match num.try_into_i32() {
+            Some(s) => {
                 // Try checked multiplication
-                match (self.x.checked_mul(*s), self.y.checked_mul(*s)) {
+                match (self.x.checked_mul(s), self.y.checked_mul(s)) {
                     (Some(new_x), Some(new_y)) => {
                         Ok(RuntimeValue::Vec2(RuntimeVec2::new(new_x, new_y)))
                     }
@@ -91,9 +91,9 @@ impl RuntimeVec2 {
             return tuple_val.div(scalar);
         };
 
-        match num {
-            RuntimeNumber::SmallInt(s) => {
-                if *s == 0 {
+        match num.try_into_i32() {
+            Some(s) => {
+                if s == 0 {
                     return Err(RuntimeError::Plain("Division by zero".to_string()));
                 }
                 // Try checked division - only succeeds if result is exact
@@ -117,15 +117,24 @@ impl RuntimeVec2 {
 
     /// Attempts to compute Vec2 modulo a scalar
     pub fn scalar_rem(&self, scalar: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-        // Extract the scalar value
-        let RuntimeValue::Num(RuntimeNumber::SmallInt(s)) = scalar else {
+        let RuntimeValue::Num(n) = scalar else {
             // Not a small int, fall back to tuple
             let tuple = self.to_tuple();
             let tuple_val = RuntimeValue::Tuple(tuple);
             return tuple_val.modulo(scalar);
         };
 
-        if *s == 0 {
+        let s = match n.try_into_i32() {
+            Some(v) => v,
+            None => {
+                // BigInt or Float, fall back to tuple
+                let tuple = self.to_tuple();
+                let tuple_val = RuntimeValue::Tuple(tuple);
+                return tuple_val.modulo(scalar);
+            }
+        };
+
+        if s == 0 {
             return Err(RuntimeError::Plain("Division by zero".to_string()));
         }
 
@@ -163,8 +172,8 @@ impl RuntimeVec2 {
         let normalized_idx = if *idx < 0 { 2 + idx } else { *idx };
 
         match normalized_idx {
-            0 => Ok(RuntimeValue::Num(RuntimeNumber::SmallInt(self.x))),
-            1 => Ok(RuntimeValue::Num(RuntimeNumber::SmallInt(self.y))),
+            0 => Ok(RuntimeValue::Num(RuntimeNumber::SmallInt(self.x as isize))),
+            1 => Ok(RuntimeValue::Num(RuntimeNumber::SmallInt(self.y as isize))),
             _ => Err(RuntimeError::IndexOutOfBounds(*idx, 2)),
         }
     }
@@ -174,7 +183,7 @@ impl RuntimeVec2 {
         let RuntimeValue::Num(RuntimeNumber::SmallInt(v)) = value else {
             return false;
         };
-        self.x == *v || self.y == *v
+        self.x as isize == *v || self.y as isize == *v
     }
 
     /// Compares two Vec2 values lexicographically
@@ -209,7 +218,10 @@ impl TryFrom<(&RuntimeValue, &RuntimeValue)> for RuntimeVec2 {
             (
                 RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
                 RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
-            ) => Ok(RuntimeVec2::new(*x, *y)),
+            ) => match (i32::try_from(*x), i32::try_from(*y)) {
+                (Ok(xi), Ok(yi)) => Ok(RuntimeVec2::new(xi, yi)),
+                _ => Err(()),
+            },
             _ => Err(()),
         }
     }

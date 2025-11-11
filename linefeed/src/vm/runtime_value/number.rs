@@ -17,6 +17,26 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn try_into_i32(&self) -> Option<i32> {
+        match self {
+            SmallInt(i) => {
+                if *i >= i32::MIN as isize && *i <= i32::MAX as isize {
+                    Some(*i as i32)
+                } else {
+                    None
+                }
+            }
+            BigInt(i) => i.to_i32(),
+            Float(f) => {
+                let floored = f.floor();
+                if floored < (i32::MIN as f64) || floored > (i32::MAX as f64) {
+                    return None;
+                }
+                Some(floored as i32)
+            }
+        }
+    }
+
     pub fn floor(&self) -> Self {
         match self {
             SmallInt(i) => SmallInt(*i),

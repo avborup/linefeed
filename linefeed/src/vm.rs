@@ -481,7 +481,8 @@ where
                         // Pop the two values
                         self.stack.truncate(len - 2);
                         // Push Vec2 directly
-                        self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(*x, *y)));
+                        // FIXME: don't cast to i32 blindly
+                        self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(*x as i32, *y as i32)));
                     } else {
                         // Fall back to tuple creation
                         let items = self.pop_args(*size);

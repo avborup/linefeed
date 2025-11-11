@@ -64,7 +64,7 @@ const _: () = {
     // cloning super expensive.
     // Note: Size increased from 16 to 24 bytes to accommodate inline Vec2 (2 x isize = 16 bytes)
     const SIZE: usize = std::mem::size_of::<RuntimeValue>();
-    assert!(SIZE == 24);
+    assert!(SIZE == 16);
 };
 
 impl RuntimeValue {
