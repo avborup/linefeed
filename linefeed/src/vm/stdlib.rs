@@ -50,7 +50,7 @@ pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         )));
     };
 
-    Ok(RuntimeValue::Tuple(RuntimeTuple::from_vec(iter.to_vec())))
+    Ok(RuntimeTuple::from_vec_optimized(iter.to_vec()))
 }
 
 pub fn map_with_default(default_value: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
@@ -208,12 +208,8 @@ pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
                 _ => unreachable!("Vec2 subtraction should only produce Vec2 or Tuple"),
             }
         }
-        [RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)] => {
-            v.to_tuple().element_wise_sub(t)?
-        }
-        [RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)] => {
-            t.element_wise_sub(&v.to_tuple())?
-        }
+        [RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)] => v.to_tuple().element_wise_sub(t)?,
+        [RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)] => t.element_wise_sub(&v.to_tuple())?,
         _ => {
             return Err(RuntimeError::TypeMismatch(format!(
                 "cannot calculate manhattan distance for arguments of types: {}",

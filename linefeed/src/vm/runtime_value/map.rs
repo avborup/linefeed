@@ -4,9 +4,7 @@ use ouroboros::self_referencing;
 use rustc_hash::FxHashMap;
 
 use crate::vm::{
-    runtime_value::{
-        iterator::RuntimeIterator, number::RuntimeNumber, tuple::RuntimeTuple, RuntimeValue,
-    },
+    runtime_value::{iterator::RuntimeIterator, number::RuntimeNumber, RuntimeValue},
     RuntimeError,
 };
 
@@ -216,6 +214,7 @@ impl Iterator for MapIterator {
     fn next(&mut self) -> Option<Self::Item> {
         self.cell
             .with_iter_mut(|it| it.next())
-            .map(|(k, v)| RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![k.clone(), v.clone()])))
+            // Use From implementation to automatically optimize to Vec2 when possible
+            .map(|(k, v)| RuntimeValue::from((k.clone(), v.clone())))
     }
 }

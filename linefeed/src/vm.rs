@@ -473,8 +473,11 @@ where
                     let v2 = self.stack[len - 1].clone();
 
                     // Check if both are SmallInt - if so, create Vec2 directly
-                    if let (RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
-                            RuntimeValue::Num(RuntimeNumber::SmallInt(y))) = (&v1, &v2) {
+                    if let (
+                        RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
+                        RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
+                    ) = (&v1, &v2)
+                    {
                         // Pop the two values
                         self.stack.truncate(len - 2);
                         // Push Vec2 directly

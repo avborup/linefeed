@@ -63,7 +63,9 @@ impl RuntimeVec2 {
             RuntimeNumber::SmallInt(s) => {
                 // Try checked multiplication
                 match (self.x.checked_mul(*s), self.y.checked_mul(*s)) {
-                    (Some(new_x), Some(new_y)) => Ok(RuntimeValue::Vec2(RuntimeVec2::new(new_x, new_y))),
+                    (Some(new_x), Some(new_y)) => {
+                        Ok(RuntimeValue::Vec2(RuntimeVec2::new(new_x, new_y)))
+                    }
                     _ => {
                         // Overflow, fall back to tuple
                         let tuple = self.to_tuple();
@@ -143,10 +145,10 @@ impl RuntimeVec2 {
         let normalized = n.rem_euclid(4);
 
         match normalized {
-            0 => Ok(RuntimeValue::Vec2(*self)),           // No rotation
-            1 => Ok(RuntimeValue::Vec2(RuntimeVec2::new(self.y, -self.x))),  // 90 degrees clockwise
+            0 => Ok(RuntimeValue::Vec2(*self)), // No rotation
+            1 => Ok(RuntimeValue::Vec2(RuntimeVec2::new(self.y, -self.x))), // 90 degrees clockwise
             2 => Ok(RuntimeValue::Vec2(RuntimeVec2::new(-self.x, -self.y))), // 180 degrees
-            3 => Ok(RuntimeValue::Vec2(RuntimeVec2::new(-self.y, self.x))),  // 270 degrees clockwise (= 90 ccw)
+            3 => Ok(RuntimeValue::Vec2(RuntimeVec2::new(-self.y, self.x))), // 270 degrees clockwise (= 90 ccw)
             _ => unreachable!("rem_euclid(4) should only return 0-3"),
         }
     }
@@ -158,11 +160,7 @@ impl RuntimeVec2 {
         };
 
         // Support negative indexing
-        let normalized_idx = if *idx < 0 {
-            2 + idx
-        } else {
-            *idx
-        };
+        let normalized_idx = if *idx < 0 { 2 + idx } else { *idx };
 
         match normalized_idx {
             0 => Ok(RuntimeValue::Num(RuntimeNumber::SmallInt(self.x))),
@@ -199,10 +197,19 @@ impl TryFrom<(RuntimeValue, RuntimeValue)> for RuntimeVec2 {
     type Error = ();
 
     fn try_from((v1, v2): (RuntimeValue, RuntimeValue)) -> Result<Self, Self::Error> {
+        Self::try_from((&v1, &v2))
+    }
+}
+
+impl TryFrom<(&RuntimeValue, &RuntimeValue)> for RuntimeVec2 {
+    type Error = ();
+
+    fn try_from((v1, v2): (&RuntimeValue, &RuntimeValue)) -> Result<Self, Self::Error> {
         match (v1, v2) {
-            (RuntimeValue::Num(RuntimeNumber::SmallInt(x)), RuntimeValue::Num(RuntimeNumber::SmallInt(y))) => {
-                Ok(RuntimeVec2::new(x, y))
-            }
+            (
+                RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
+                RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
+            ) => Ok(RuntimeVec2::new(*x, *y)),
             _ => Err(()),
         }
     }
@@ -212,8 +219,7 @@ impl TryFrom<(RuntimeValue, RuntimeValue)> for RuntimeVec2 {
 /// Tries to create a Vec2 if both are SmallInts, otherwise creates a Tuple
 impl From<(RuntimeValue, RuntimeValue)> for RuntimeValue {
     fn from((v1, v2): (RuntimeValue, RuntimeValue)) -> Self {
-        // Try to create Vec2 first
-        if let Ok(vec2) = RuntimeVec2::try_from((v1.clone(), v2.clone())) {
+        if let Ok(vec2) = RuntimeVec2::try_from((&v1, &v2)) {
             RuntimeValue::Vec2(vec2)
         } else {
             // Fall back to tuple
