@@ -472,17 +472,26 @@ where
                     let v1 = self.stack[len - 2].clone();
                     let v2 = self.stack[len - 1].clone();
 
-                    // Check if both are SmallInt - if so, create Vec2 directly
+                    // Check if both are SmallInt - if so, try to create Vec2 directly
                     if let (
                         RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
                         RuntimeValue::Num(RuntimeNumber::SmallInt(y)),
                     ) = (&v1, &v2)
                     {
-                        // Pop the two values
-                        self.stack.truncate(len - 2);
-                        // Push Vec2 directly
-                        // FIXME: don't cast to i32 blindly
-                        self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(*x as i32, *y as i32)));
+                        // Try safe conversion to i32
+                        match (i32::try_from(*x), i32::try_from(*y)) {
+                            (Ok(xi), Ok(yi)) => {
+                                // Pop the two values
+                                self.stack.truncate(len - 2);
+                                // Push Vec2 directly
+                                self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(xi, yi)));
+                            }
+                            _ => {
+                                // Values don't fit in i32, fall back to tuple
+                                let items = self.pop_args(*size);
+                                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+                            }
+                        }
                     } else {
                         // Fall back to tuple creation
                         let items = self.pop_args(*size);

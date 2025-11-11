@@ -520,7 +520,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, ")")
             }
             RuntimeValue::Vec2(v) => {
-                write!(f, "v({}, {})", v.x, v.y)
+                write!(f, "({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
@@ -789,6 +789,13 @@ impl RuntimeValue {
                 "Expected number, found '{}'",
                 self.kind_str()
             ))),
+        }
+    }
+
+    pub fn to_i32(&self) -> Option<i32> {
+        match self {
+            RuntimeValue::Num(n) => n.to_i32(),
+            _ => None,
         }
     }
 }

@@ -52,14 +52,7 @@ impl RuntimeVec2 {
 
     /// Attempts to multiply Vec2 by a scalar, falling back to tuple multiplication on overflow
     pub fn scalar_mul(&self, scalar: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-        // Extract the scalar value
-        let RuntimeValue::Num(num) = scalar else {
-            // Not a number, fall back to tuple
-            let tuple = self.to_tuple();
-            return Ok(RuntimeValue::Tuple(tuple.scalar_multiply(scalar)?));
-        };
-
-        match num.try_into_i32() {
+        match scalar.to_i32() {
             Some(s) => {
                 // Try checked multiplication
                 match (self.x.checked_mul(s), self.y.checked_mul(s)) {
@@ -73,8 +66,8 @@ impl RuntimeVec2 {
                     }
                 }
             }
-            _ => {
-                // BigInt or Float, fall back to tuple
+            None => {
+                // Not a number, BigInt, or Float - fall back to tuple
                 let tuple = self.to_tuple();
                 Ok(RuntimeValue::Tuple(tuple.scalar_multiply(scalar)?))
             }
@@ -83,15 +76,7 @@ impl RuntimeVec2 {
 
     /// Attempts to divide Vec2 by a scalar, falling back to tuple division on overflow or non-integer result
     pub fn scalar_div(&self, scalar: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-        // Extract the scalar value
-        let RuntimeValue::Num(num) = scalar else {
-            // Not a number, convert to tuple and delegate
-            let tuple = self.to_tuple();
-            let tuple_val = RuntimeValue::Tuple(tuple);
-            return tuple_val.div(scalar);
-        };
-
-        match num.try_into_i32() {
+        match scalar.to_i32() {
             Some(s) => {
                 if s == 0 {
                     return Err(RuntimeError::Plain("Division by zero".to_string()));
@@ -106,8 +91,8 @@ impl RuntimeVec2 {
                     tuple_val.div(scalar)
                 }
             }
-            _ => {
-                // BigInt or Float, fall back to tuple
+            None => {
+                // Not a number, BigInt, or Float - fall back to tuple
                 let tuple = self.to_tuple();
                 let tuple_val = RuntimeValue::Tuple(tuple);
                 tuple_val.div(scalar)
@@ -117,17 +102,10 @@ impl RuntimeVec2 {
 
     /// Attempts to compute Vec2 modulo a scalar
     pub fn scalar_rem(&self, scalar: &RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
-        let RuntimeValue::Num(n) = scalar else {
-            // Not a small int, fall back to tuple
-            let tuple = self.to_tuple();
-            let tuple_val = RuntimeValue::Tuple(tuple);
-            return tuple_val.modulo(scalar);
-        };
-
-        let s = match n.try_into_i32() {
+        let s = match scalar.to_i32() {
             Some(v) => v,
             None => {
-                // BigInt or Float, fall back to tuple
+                // Not a number, BigInt, or Float - fall back to tuple
                 let tuple = self.to_tuple();
                 let tuple_val = RuntimeValue::Tuple(tuple);
                 return tuple_val.modulo(scalar);
