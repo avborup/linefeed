@@ -36,8 +36,8 @@ pub mod regex;
 pub mod set;
 pub mod string;
 pub mod tuple;
-pub mod vec2;
 mod utils;
+pub mod vec2;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum RuntimeValue {
@@ -520,7 +520,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, ")")
             }
             RuntimeValue::Vec2(v) => {
-                write!(f, "({}, {})", v.x, v.y)
+                write!(f, "v({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
