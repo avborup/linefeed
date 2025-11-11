@@ -161,7 +161,6 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a / b)),
-            (RuntimeValue::Vec2(v), _) => v.scalar_div(other),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
@@ -172,10 +171,6 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.div_floor(b))),
-            (RuntimeValue::Vec2(v), _) => {
-                // For floor division, we use regular div which handles fallback to tuple if needed
-                v.scalar_div(other)
-            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
@@ -186,7 +181,6 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a % b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.modulo(b))),
-            (RuntimeValue::Vec2(v), _) => v.scalar_rem(other),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "modulo", self, other,
             )),
