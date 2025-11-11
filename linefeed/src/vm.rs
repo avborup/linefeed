@@ -10,8 +10,10 @@ use crate::{
         bytecode::Bytecode,
         runtime_value::{
             function::{MemoizationKey, RuntimeFunction},
+            number::RuntimeNumber,
             string::RuntimeString,
             tuple::RuntimeTuple,
+            vec2::RuntimeVec2,
             RuntimeValue,
         },
     },
@@ -462,8 +464,31 @@ where
             Bytecode::ToList => stdlib_fn!(self, to_list),
             Bytecode::ToTuple => stdlib_fn!(self, to_tuple),
             Bytecode::CreateTuple(size) => {
-                let items = self.pop_args(*size);
-                self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+                // Fast path for 2-element tuples with small integers
+                if *size == 2 && self.stack.len() >= 2 {
+                    let len = self.stack.len();
+
+                    // Copy values first to avoid borrow checker issues
+                    let v1 = self.stack[len - 2].clone();
+                    let v2 = self.stack[len - 1].clone();
+
+                    // Check if both are SmallInt - if so, create Vec2 directly
+                    if let (RuntimeValue::Num(RuntimeNumber::SmallInt(x)),
+                            RuntimeValue::Num(RuntimeNumber::SmallInt(y))) = (&v1, &v2) {
+                        // Pop the two values
+                        self.stack.truncate(len - 2);
+                        // Push Vec2 directly
+                        self.push_stack(RuntimeValue::Vec2(RuntimeVec2::new(*x, *y)));
+                    } else {
+                        // Fall back to tuple creation
+                        let items = self.pop_args(*size);
+                        self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+                    }
+                } else {
+                    // Regular tuple creation for non-2-element tuples
+                    let items = self.pop_args(*size);
+                    self.push_stack(RuntimeValue::Tuple(RuntimeTuple::from_vec(items)));
+                }
             }
             Bytecode::ToMap => stdlib_fn!(self, to_map),
             Bytecode::MapWithDefault => stdlib_fn!(self, map_with_default),

@@ -1,7 +1,7 @@
 use std::rc::Rc;
 
 use crate::vm::{
-    runtime_value::{number::RuntimeNumber, utils::resolve_index, RuntimeValue},
+    runtime_value::{number::RuntimeNumber, utils::resolve_index, vec2::RuntimeVec2, RuntimeValue},
     RuntimeError,
 };
 
@@ -11,6 +11,20 @@ pub struct RuntimeTuple(Rc<Vec<RuntimeValue>>);
 impl RuntimeTuple {
     pub fn from_vec(vec: Vec<RuntimeValue>) -> Self {
         Self(Rc::new(vec))
+    }
+
+    /// Creates a RuntimeValue from a vec, optimizing 2-element small integer tuples to Vec2
+    pub fn from_vec_optimized(vec: Vec<RuntimeValue>) -> RuntimeValue {
+        // Try to optimize to Vec2 if it's a 2-element tuple with small integers
+        if vec.len() == 2 {
+            if let (Some(v1), Some(v2)) = (vec.get(0), vec.get(1)) {
+                if let Ok(vec2) = RuntimeVec2::try_from((v1.clone(), v2.clone())) {
+                    return RuntimeValue::Vec2(vec2);
+                }
+            }
+        }
+        // Otherwise, create a regular tuple
+        RuntimeValue::Tuple(Self::from_vec(vec))
     }
 
     pub fn as_slice(&self) -> &[RuntimeValue] {

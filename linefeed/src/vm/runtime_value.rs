@@ -18,6 +18,7 @@ use crate::{
             set::RuntimeSet,
             string::RuntimeString,
             tuple::RuntimeTuple,
+            vec2::RuntimeVec2,
         },
         RuntimeError,
     },
@@ -35,6 +36,7 @@ pub mod regex;
 pub mod set;
 pub mod string;
 pub mod tuple;
+pub mod vec2;
 mod utils;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,6 +50,7 @@ pub enum RuntimeValue {
     Regex(RuntimeRegex),
     List(RuntimeList),
     Tuple(RuntimeTuple),
+    Vec2(RuntimeVec2),
     Set(RuntimeSet),
     Map(RuntimeMap),
     Counter(RuntimeCounter),
@@ -59,8 +62,9 @@ pub enum RuntimeValue {
 const _: () = {
     // Just to make sure that we don't accidentally change the size of RuntimeValue and make
     // cloning super expensive.
+    // Note: Size increased from 16 to 24 bytes to accommodate inline Vec2 (2 x isize = 16 bytes)
     const SIZE: usize = std::mem::size_of::<RuntimeValue>();
-    assert!(SIZE == 16);
+    assert!(SIZE == 24);
 };
 
 impl RuntimeValue {
@@ -75,6 +79,7 @@ impl RuntimeValue {
             RuntimeValue::Regex(_) => "regex",
             RuntimeValue::List(_) => "list",
             RuntimeValue::Tuple(_) => "tuple",
+            RuntimeValue::Vec2(_) => "vector2",
             RuntimeValue::Set(_) => "set",
             RuntimeValue::Function(_) => "function",
             RuntimeValue::Range(_) => "range",
@@ -97,6 +102,15 @@ impl RuntimeValue {
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_add(b)?))
             }
+            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Ok(v1.add(v2)),
+            (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
+                let vec_as_tuple = v.to_tuple();
+                Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_add(t)?))
+            }
+            (RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)) => {
+                let vec_as_tuple = v.to_tuple();
+                Ok(RuntimeValue::Tuple(t.element_wise_add(&vec_as_tuple)?))
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "add", self, other,
             )),
@@ -109,6 +123,15 @@ impl RuntimeValue {
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a - b)),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_sub(b)?))
+            }
+            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Ok(v1.sub(v2)),
+            (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
+                let vec_as_tuple = v.to_tuple();
+                Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_sub(t)?))
+            }
+            (RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)) => {
+                let vec_as_tuple = v.to_tuple();
+                Ok(RuntimeValue::Tuple(t.element_wise_sub(&vec_as_tuple)?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
@@ -126,6 +149,8 @@ impl RuntimeValue {
             (RuntimeValue::Num(_), RuntimeValue::Tuple(t)) => {
                 Ok(RuntimeValue::Tuple(t.scalar_multiply(self)?))
             }
+            (RuntimeValue::Vec2(v), _) => v.scalar_mul(other),
+            (_, RuntimeValue::Vec2(v)) => v.scalar_mul(self),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "multiply", self, other,
             )),
@@ -136,6 +161,7 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a / b)),
+            (RuntimeValue::Vec2(v), _) => v.scalar_div(other),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
@@ -146,6 +172,10 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a / b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.div_floor(b))),
+            (RuntimeValue::Vec2(v), _) => {
+                // For floor division, we use regular div which handles fallback to tuple if needed
+                v.scalar_div(other)
+            }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "divide", self, other,
             )),
@@ -156,6 +186,7 @@ impl RuntimeValue {
         match (self, other) {
             (RuntimeValue::Int(a), RuntimeValue::Int(b)) => Ok(RuntimeValue::Int(a % b)),
             (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.modulo(b))),
+            (RuntimeValue::Vec2(v), _) => v.scalar_rem(other),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "modulo", self, other,
             )),
@@ -212,6 +243,7 @@ impl RuntimeValue {
                 RuntimeValue::List(list.slice(r)?)
             }
             (RuntimeValue::Tuple(tuple), RuntimeValue::Num(i)) => tuple.index(i)?,
+            (RuntimeValue::Vec2(v), RuntimeValue::Num(i)) => v.index(i)?,
             (RuntimeValue::Str(s), RuntimeValue::Num(i)) => RuntimeValue::Str(s.index(i)?),
             (RuntimeValue::Str(s), RuntimeValue::Range(r)) => RuntimeValue::Str(s.substr(r)?),
             (RuntimeValue::Map(map), index) => map.get(index),
@@ -250,6 +282,7 @@ impl RuntimeValue {
             RuntimeValue::Range(range) => RuntimeIterator::from(range.deref().clone()),
             RuntimeValue::List(list) => RuntimeIterator::from(list.clone()),
             RuntimeValue::Tuple(tuple) => RuntimeIterator::from(tuple.clone()),
+            RuntimeValue::Vec2(v) => RuntimeIterator::from(v.to_tuple()),
             RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             _ => {
@@ -419,6 +452,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => !s.is_empty(),
             RuntimeValue::List(xs) => !xs.as_slice().is_empty(),
             RuntimeValue::Tuple(xs) => !xs.as_slice().is_empty(),
+            RuntimeValue::Vec2(_) => true, // Vec2 always has 2 elements, so always truthy
             RuntimeValue::Set(xs) => !xs.borrow().is_empty(),
             RuntimeValue::Map(m) => !m.is_empty(),
             RuntimeValue::Function(_) => true,
@@ -439,6 +473,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeValue::Str(s.clone()),
             RuntimeValue::List(xs) => RuntimeValue::List(xs.deep_clone()),
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
+            RuntimeValue::Vec2(v) => RuntimeValue::Vec2(*v), // Copy type, just dereference
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
             RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
@@ -483,6 +518,9 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, "(")?;
                 write_items(f, xs.as_slice().iter(), |f, x| x.repr_fmt(f))?;
                 write!(f, ")")
+            }
+            RuntimeValue::Vec2(v) => {
+                write!(f, "({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
@@ -567,6 +605,7 @@ impl std::cmp::PartialOrd for RuntimeValue {
             (RuntimeValue::Str(a), RuntimeValue::Str(b)) => a.partial_cmp(b),
             (RuntimeValue::List(a), RuntimeValue::List(b)) => a.partial_cmp(b),
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => a.partial_cmp(b),
+            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Some(v1.cmp(v2)),
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => a.partial_cmp(b),
             _ => None,
         }
@@ -699,6 +738,7 @@ impl RuntimeValue {
             (RuntimeValue::List(l), v) => l.contains(v),
             (RuntimeValue::Set(l), v) => l.contains(v),
             (RuntimeValue::Tuple(t), v) => t.contains(v),
+            (RuntimeValue::Vec2(v), item) => v.contains(item),
             (RuntimeValue::Range(r), RuntimeValue::Num(n)) => r.contains(n),
             (RuntimeValue::Str(s1), RuntimeValue::Str(s2)) => s1.contains(s2),
             _ => {
@@ -735,11 +775,11 @@ impl RuntimeValue {
     }
 
     pub fn rot(&self, times: &Self) -> Result<Self, RuntimeError> {
-        let RuntimeValue::Tuple(tuple) = self else {
-            return Err(RuntimeError::invalid_method_for_type(Method::Rot, self));
-        };
-
-        Ok(RuntimeValue::Tuple(tuple.rot(times)?))
+        match self {
+            RuntimeValue::Tuple(tuple) => Ok(RuntimeValue::Tuple(tuple.rot(times)?)),
+            RuntimeValue::Vec2(v) => v.rot(times),
+            _ => Err(RuntimeError::invalid_method_for_type(Method::Rot, self)),
+        }
     }
 
     pub fn unwrap_num(&self) -> Result<&RuntimeNumber, RuntimeError> {

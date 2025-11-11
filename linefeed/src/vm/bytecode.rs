@@ -119,8 +119,9 @@ pub enum Bytecode {
 }
 
 const _: () = {
+    // Size increased from 16 to 24 bytes due to RuntimeValue growth (Vec2 addition)
     const SIZE: usize = std::mem::size_of::<Bytecode>();
-    assert!(SIZE == 16);
+    assert!(SIZE == 24);
 };
 
 impl Bytecode {
@@ -253,7 +254,8 @@ impl Bytecode {
                     .map(|item| Self::into_runtime_value_with_mapper(item, label_mapper))
                     .collect::<Result<_, _>>()?;
 
-                RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+                // Use optimized version that converts to Vec2 when possible
+                RuntimeTuple::from_vec_optimized(items)
             }
             IrValue::Set(xs) => {
                 let items = xs
