@@ -202,7 +202,7 @@ pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
         [RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)] => a.element_wise_sub(b)?,
         [RuntimeValue::Vec2(a), RuntimeValue::Vec2(b)] => {
             // Subtract Vec2 values, convert result to tuple
-            match a.sub(b) {
+            match a.sub(b)? {
                 RuntimeValue::Vec2(result) => result.to_tuple(),
                 RuntimeValue::Tuple(t) => t,
                 _ => unreachable!("Vec2 subtraction should only produce Vec2 or Tuple"),

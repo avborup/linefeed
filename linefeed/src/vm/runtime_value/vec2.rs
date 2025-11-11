@@ -24,28 +24,27 @@ impl RuntimeVec2 {
     }
 
     /// Attempts to add two Vec2 values, falling back to tuple addition on overflow
-    pub fn add(&self, other: &Self) -> RuntimeValue {
+    pub fn add(&self, other: &Self) -> Result<RuntimeValue, RuntimeError> {
         match (self.x.checked_add(other.x), self.y.checked_add(other.y)) {
-            (Some(x), Some(y)) => RuntimeValue::Vec2(RuntimeVec2::new(x, y)),
+            (Some(x), Some(y)) => Ok(RuntimeValue::Vec2(RuntimeVec2::new(x, y))),
             _ => {
                 // Overflow occurred, fall back to tuple addition
                 let t1 = self.to_tuple();
                 let t2 = other.to_tuple();
-                // element_wise_add cannot fail for valid tuples of same length
-                RuntimeValue::Tuple(t1.element_wise_add(&t2).unwrap())
+                Ok(RuntimeValue::Tuple(t1.element_wise_add(&t2)?))
             }
         }
     }
 
     /// Attempts to subtract two Vec2 values, falling back to tuple subtraction on overflow
-    pub fn sub(&self, other: &Self) -> RuntimeValue {
+    pub fn sub(&self, other: &Self) -> Result<RuntimeValue, RuntimeError> {
         match (self.x.checked_sub(other.x), self.y.checked_sub(other.y)) {
-            (Some(x), Some(y)) => RuntimeValue::Vec2(RuntimeVec2::new(x, y)),
+            (Some(x), Some(y)) => Ok(RuntimeValue::Vec2(RuntimeVec2::new(x, y))),
             _ => {
                 // Overflow occurred, fall back to tuple subtraction
                 let t1 = self.to_tuple();
                 let t2 = other.to_tuple();
-                RuntimeValue::Tuple(t1.element_wise_sub(&t2).unwrap())
+                Ok(RuntimeValue::Tuple(t1.element_wise_sub(&t2)?))
             }
         }
     }

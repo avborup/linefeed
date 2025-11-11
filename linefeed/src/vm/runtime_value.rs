@@ -102,7 +102,7 @@ impl RuntimeValue {
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_add(b)?))
             }
-            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Ok(v1.add(v2)),
+            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => v1.add(v2),
             (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
                 let vec_as_tuple = v.to_tuple();
                 Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_add(t)?))
@@ -124,7 +124,7 @@ impl RuntimeValue {
             (RuntimeValue::Tuple(a), RuntimeValue::Tuple(b)) => {
                 Ok(RuntimeValue::Tuple(a.element_wise_sub(b)?))
             }
-            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => Ok(v1.sub(v2)),
+            (RuntimeValue::Vec2(v1), RuntimeValue::Vec2(v2)) => v1.sub(v2),
             (RuntimeValue::Vec2(v), RuntimeValue::Tuple(t)) => {
                 let vec_as_tuple = v.to_tuple();
                 Ok(RuntimeValue::Tuple(vec_as_tuple.element_wise_sub(t)?))
