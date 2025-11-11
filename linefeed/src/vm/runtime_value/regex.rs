@@ -93,7 +93,7 @@ impl RuntimeRegex {
         let full_match = group_values.remove(0);
         group_values.push(full_match);
 
-        RuntimeValue::Tuple(RuntimeTuple::from_vec(group_values))
+        RuntimeTuple::from_vec(group_values)
     }
 }
 

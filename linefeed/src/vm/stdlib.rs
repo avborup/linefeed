@@ -50,7 +50,7 @@ pub fn to_tuple(val: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {
         )));
     };
 
-    Ok(RuntimeTuple::from_vec_optimized(iter.to_vec()))
+    Ok(RuntimeTuple::from_vec(iter.to_vec()))
 }
 
 pub fn map_with_default(default_value: RuntimeValue) -> Result<RuntimeValue, RuntimeError> {

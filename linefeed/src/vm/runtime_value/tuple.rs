@@ -9,22 +9,18 @@ use crate::vm::{
 pub struct RuntimeTuple(Rc<Vec<RuntimeValue>>);
 
 impl RuntimeTuple {
-    pub fn from_vec(vec: Vec<RuntimeValue>) -> Self {
+    pub fn from_vec_inner(vec: Vec<RuntimeValue>) -> Self {
         Self(Rc::new(vec))
     }
 
-    /// Creates a RuntimeValue from a vec, optimizing 2-element small integer tuples to Vec2
-    pub fn from_vec_optimized(vec: Vec<RuntimeValue>) -> RuntimeValue {
-        // Try to optimize to Vec2 if it's a 2-element tuple with small integers
+    pub fn from_vec(vec: Vec<RuntimeValue>) -> RuntimeValue {
         if vec.len() == 2 {
-            if let (Some(v1), Some(v2)) = (vec.get(0), vec.get(1)) {
-                if let Ok(vec2) = RuntimeVec2::try_from((v1.clone(), v2.clone())) {
-                    return RuntimeValue::Vec2(vec2);
-                }
+            if let Ok(vec2) = RuntimeVec2::try_from((&vec[0], &vec[1])) {
+                return RuntimeValue::Vec2(vec2);
             }
         }
-        // Otherwise, create a regular tuple
-        RuntimeValue::Tuple(Self::from_vec(vec))
+
+        RuntimeValue::Tuple(Self::from_vec_inner(vec))
     }
 
     pub fn as_slice(&self) -> &[RuntimeValue] {
@@ -68,7 +64,7 @@ impl RuntimeTuple {
             .map(|(a, b)| a.add(b))
             .collect();
 
-        Ok(RuntimeTuple::from_vec(result?))
+        Ok(RuntimeTuple::from_vec_inner(result?))
     }
 
     pub fn element_wise_sub(&self, other: &Self) -> Result<Self, RuntimeError> {
@@ -87,14 +83,14 @@ impl RuntimeTuple {
             .map(|(a, b)| a.sub(b))
             .collect();
 
-        Ok(RuntimeTuple::from_vec(result?))
+        Ok(RuntimeTuple::from_vec_inner(result?))
     }
 
     pub fn scalar_multiply(&self, scalar: &RuntimeValue) -> Result<Self, RuntimeError> {
         let result: Result<Vec<RuntimeValue>, RuntimeError> =
             self.0.iter().map(|elem| elem.mul(scalar)).collect();
 
-        Ok(RuntimeTuple::from_vec(result?))
+        Ok(RuntimeTuple::from_vec_inner(result?))
     }
 
     pub fn rot(&self, times: &RuntimeValue) -> Result<Self, RuntimeError> {
@@ -135,7 +131,7 @@ impl RuntimeTuple {
             _ => unreachable!(),
         };
 
-        Ok(RuntimeTuple::from_vec(vec![
+        Ok(RuntimeTuple::from_vec_inner(vec![
             RuntimeValue::Num(new_x),
             RuntimeValue::Num(new_y),
         ]))

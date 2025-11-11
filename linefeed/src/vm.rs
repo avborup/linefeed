@@ -449,7 +449,7 @@ where
                     RuntimeValue::from((a, b))
                 } else {
                     let items = self.pop_args(*size);
-                    RuntimeValue::Tuple(RuntimeTuple::from_vec(items))
+                    RuntimeValue::Tuple(RuntimeTuple::from_vec_inner(items))
                 };
                 self.push_stack(value);
             }

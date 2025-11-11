@@ -27,7 +27,7 @@ impl RuntimeVec2 {
     }
 
     pub fn to_tuple(&self) -> RuntimeTuple {
-        RuntimeTuple::from_vec(vec![
+        RuntimeTuple::from_vec_inner(vec![
             RuntimeValue::Num(RuntimeNumber::SmallInt(self.x as isize)),
             RuntimeValue::Num(RuntimeNumber::SmallInt(self.y as isize)),
         ])
@@ -142,6 +142,6 @@ impl From<(RuntimeValue, RuntimeValue)> for RuntimeValue {
     fn from((v1, v2): (RuntimeValue, RuntimeValue)) -> Self {
         RuntimeVec2::try_from((&v1, &v2))
             .map(RuntimeValue::Vec2)
-            .unwrap_or_else(|_| RuntimeValue::Tuple(RuntimeTuple::from_vec(vec![v1, v2])))
+            .unwrap_or_else(|_| RuntimeValue::Tuple(RuntimeTuple::from_vec_inner(vec![v1, v2])))
     }
 }
