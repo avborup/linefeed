@@ -1,25 +1,18 @@
 moves = [line.find(r/(\w)(\d+)/n) for line in input().lines()];
 
-fn apply(move, pos, dir) {
-  action, amount = move;
-  match action {
-    "N" => pos += (0, amount),
-    "S" => pos -= (0, amount),
-    "E" => pos += (amount, 0),
-    "W" => pos -= (amount, 0),
-    "L" => { dir = dir.rot(-amount / 90) },
-    "R" => { dir = dir.rot(amount / 90) },
-    "F" => pos += amount * dir
-  };
-  return (pos, dir);
-};
-
 ship1, dir = (0, 0), (1, 0);
 ship2, wp = (0, 0), (10, 1);
-for move in moves {
-  ship1, dir = apply(move, ship1, dir);
+for action, amount in moves {
+  match action {
+    "N" => ship1 += (0, amount),
+    "S" => ship1 -= (0, amount),
+    "E" => ship1 += (amount, 0),
+    "W" => ship1 -= (amount, 0),
+    "L" => { dir = dir.rot(-amount / 90) },
+    "R" => { dir = dir.rot(amount / 90) },
+    "F" => ship1 += amount * dir
+  };
 
-  action, amount = move;
   match action {
     "N" => wp += (0, amount),
     "S" => wp -= (0, amount),
