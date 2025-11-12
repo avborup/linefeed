@@ -86,12 +86,17 @@ pub enum BinaryOp {
     Range,
     In,
     BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift,
 }
 
 #[derive(Clone, Debug)]
 pub enum UnaryOp {
     Neg,
     Not,
+    BitwiseNot,
 }
 
 #[derive(Debug, Clone)]

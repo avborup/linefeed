@@ -67,9 +67,14 @@ pub enum Instruction {
     Range,
     Xor,
     BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift,
 
     // Unary operations
     Not,
+    BitwiseNot,
 
     // Control flow
     Stop,
@@ -264,6 +269,7 @@ impl Compiler {
                 let to_add = match op {
                     UnaryOp::Not => vec![Not],
                     UnaryOp::Neg => vec![Value(IrValue::Num(RuntimeNumber::from(-1))), Mul],
+                    UnaryOp::BitwiseNot => vec![BitwiseNot],
                 };
 
                 program.then_instructions(to_add, expr.span())
@@ -322,6 +328,10 @@ impl Compiler {
                     BinaryOp::Xor => Xor,
                     BinaryOp::In => IsIn,
                     BinaryOp::BitwiseAnd => BitwiseAnd,
+                    BinaryOp::BitwiseOr => BitwiseOr,
+                    BinaryOp::BitwiseXor => BitwiseXor,
+                    BinaryOp::LeftShift => LeftShift,
+                    BinaryOp::RightShift => RightShift,
                     _ => {
                         return Err(CompileError::Spanned {
                             span: expr.span(),

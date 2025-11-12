@@ -121,6 +121,108 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn bitwise_and(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a & b)),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) & b.as_ref()))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() & rug::Integer::from(*b)))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() & b.as_ref()).into()))),
+            _ => Err(RuntimeError::TypeMismatch(
+                "Cannot use & on floating point numbers".to_string(),
+            )),
+        }
+    }
+
+    pub fn bitwise_or(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a | b)),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) | b.as_ref()))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() | rug::Integer::from(*b)))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() | b.as_ref()).into()))),
+            _ => Err(RuntimeError::TypeMismatch(
+                "Cannot use | on floating point numbers".to_string(),
+            )),
+        }
+    }
+
+    pub fn bitwise_xor(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a ^ b)),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) ^ b.as_ref()))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() ^ rug::Integer::from(*b)))),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() ^ b.as_ref()).into()))),
+            _ => Err(RuntimeError::TypeMismatch(
+                "Cannot use ^ on floating point numbers".to_string(),
+            )),
+        }
+    }
+
+    pub fn bitwise_not(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeNumber::SmallInt(a) => Ok(RuntimeNumber::SmallInt(!a)),
+            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new((!a.as_ref()).into()))),
+            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
+                "Cannot use ~ on floating point numbers".to_string(),
+            )),
+        }
+    }
+
+    pub fn left_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
+        let shift_amount = match other {
+            RuntimeNumber::SmallInt(b) if *b >= 0 => *b as u32,
+            RuntimeNumber::SmallInt(b) => {
+                return Err(RuntimeError::Plain(format!(
+                    "Cannot shift by negative amount: {}",
+                    b
+                )))
+            }
+            RuntimeNumber::BigInt(b) => b.to_u32().ok_or_else(|| {
+                RuntimeError::Plain(format!("Shift amount too large: {}", b))
+            })?,
+            RuntimeNumber::Float(_) => {
+                return Err(RuntimeError::TypeMismatch(
+                    "Cannot shift by floating point amount".to_string(),
+                ))
+            }
+        };
+
+        match self {
+            RuntimeNumber::SmallInt(a) => Ok(RuntimeNumber::SmallInt(a << shift_amount)),
+            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() << shift_amount).into()))),
+            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
+                "Cannot shift floating point numbers".to_string(),
+            )),
+        }
+    }
+
+    pub fn right_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
+        let shift_amount = match other {
+            RuntimeNumber::SmallInt(b) if *b >= 0 => *b as u32,
+            RuntimeNumber::SmallInt(b) => {
+                return Err(RuntimeError::Plain(format!(
+                    "Cannot shift by negative amount: {}",
+                    b
+                )))
+            }
+            RuntimeNumber::BigInt(b) => b.to_u32().ok_or_else(|| {
+                RuntimeError::Plain(format!("Shift amount too large: {}", b))
+            })?,
+            RuntimeNumber::Float(_) => {
+                return Err(RuntimeError::TypeMismatch(
+                    "Cannot shift by floating point amount".to_string(),
+                ))
+            }
+        };
+
+        match self {
+            RuntimeNumber::SmallInt(a) => Ok(RuntimeNumber::SmallInt(a >> shift_amount)),
+            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() >> shift_amount).into()))),
+            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
+                "Cannot shift floating point numbers".to_string(),
+            )),
+        }
+    }
+
     pub fn binary(&self) -> Result<String, RuntimeError> {
         match self {
             RuntimeNumber::SmallInt(a) => Ok(format!("{:b}", a)),

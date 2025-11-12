@@ -55,9 +55,14 @@ pub enum Bytecode {
     Range,
     Xor,
     BitwiseAnd,
+    BitwiseOr,
+    BitwiseXor,
+    LeftShift,
+    RightShift,
 
     // Logic
     Not,
+    BitwiseNot,
 
     // Control flow
     Stop,
@@ -159,7 +164,12 @@ impl Bytecode {
             Instruction::Range => Bytecode::Range,
             Instruction::Xor => Bytecode::Xor,
             Instruction::BitwiseAnd => Bytecode::BitwiseAnd,
+            Instruction::BitwiseOr => Bytecode::BitwiseOr,
+            Instruction::BitwiseXor => Bytecode::BitwiseXor,
+            Instruction::LeftShift => Bytecode::LeftShift,
+            Instruction::RightShift => Bytecode::RightShift,
             Instruction::Not => Bytecode::Not,
+            Instruction::BitwiseNot => Bytecode::BitwiseNot,
             Instruction::Stop => Bytecode::Stop,
             Instruction::Goto(label) => Bytecode::Goto(label_mapper.get(label)?),
             Instruction::IfTrue(label) => Bytecode::IfTrue(label_mapper.get(label)?),

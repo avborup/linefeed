@@ -197,10 +197,19 @@ where
             Bytecode::Range => binary_op!(self, range),
             Bytecode::Xor => binary_op!(self, xor),
             Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
+            Bytecode::BitwiseOr => binary_op!(self, bitwise_or),
+            Bytecode::BitwiseXor => binary_op!(self, bitwise_xor),
+            Bytecode::LeftShift => binary_op!(self, left_shift),
+            Bytecode::RightShift => binary_op!(self, right_shift),
 
             Bytecode::Not => {
                 let val = self.pop_stack();
                 self.push_stack(RuntimeValue::Bool(!val.bool()));
+            }
+
+            Bytecode::BitwiseNot => {
+                let val = self.pop_stack();
+                self.push_stack(val.bitwise_not()?);
             }
 
             Bytecode::Load => {
