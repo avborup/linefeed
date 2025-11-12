@@ -3,39 +3,18 @@ import re
 import statistics
 import subprocess
 import sys
-from typing import Dict, List, Optional, Tuple
 
-
-# --- Configuration ---
 
 # Number of times to run each benchmark
 RUNS = 3
 
-# List of benchmarks to run. Each entry is a tuple:
-# (path_to_linefeed_script, path_to_stdin_file)
-
-def make_pair_for_day(day: int) -> Tuple[str, str]:
+def make_pair_for_day(day: int) -> tuple[str, str]:
     script_path = f"tests/linefeed/advent_of_code_2020/day{day:02d}.lf"
     input_path = f"tests/linefeed/advent_of_code_2020/inputs/day{day:02d}-secret.txt"
     return (script_path, input_path)
 
-BENCHMARKS: List[Tuple[str, str]] = [
-    # (
-    #     "tests/linefeed/advent_of_code_2020/day01.lf",
-    #     "tests/linefeed/advent_of_code_2020/inputs/day01-secret.txt",
-    # ),
-    # (
-    #     "tests/linefeed/advent_of_code_2020/day02.lf",
-    #     "tests/linefeed/advent_of_code_2020/inputs/day02-secret.txt",
-    # ),
-    # (
-    #     "tests/linefeed/advent_of_code_2020/day03.lf",
-    #     "tests/linefeed/advent_of_code_2020/inputs/day03-secret.txt",
-    # ),
-    # (
-    #     "tests/linefeed/advent_of_code_2020/day11.lf",
-    #     "tests/linefeed/advent_of_code_2020/inputs/day11-secret.txt",
-    # ),
+
+BENCHMARKS: list[tuple[str, str]] = [
     make_pair_for_day(day) for day in range(1, 13)
 ]
 
@@ -44,7 +23,7 @@ def run_benchmark(
     linefeed_script: str,
     stdin_file: str,
     runs: int
-) -> Optional[List[float]]:
+) -> list[float] | None:
     """
     Runs the benchmark for the given Linefeed script.
 
@@ -56,8 +35,9 @@ def run_benchmark(
     Returns:
         A list of run times in milliseconds, or None if an error occurred.
     """
-    run_times: List[float] = []
-    print(f"\nBenchmarking '{linefeed_script}' with stdin from '{stdin_file}'...")
+    run_times: list[float] = []
+    print(
+        f"\nBenchmarking '{linefeed_script}' with stdin from '{stdin_file}'...")
 
     for i in range(runs):
         try:
@@ -84,12 +64,12 @@ def run_benchmark(
             if match:
                 value_str, unit = match.groups()
                 value = float(value_str)
-                
+
                 if unit == "ms":
                     run_time = value
                 elif unit == "µs":
                     run_time = value / 1_000
-                else: # seconds
+                else:  # seconds
                     run_time = value * 1_000
 
                 run_times.append(run_time)
@@ -103,7 +83,8 @@ def run_benchmark(
                 return None
 
         except FileNotFoundError:
-            print(f"Error: Input file '{stdin_file}' not found.", file=sys.stderr)
+            print(
+                f"Error: Input file '{stdin_file}' not found.", file=sys.stderr)
             return None
         except subprocess.CalledProcessError as e:
             print(f"Error running Linefeed script: {e}", file=sys.stderr)
@@ -115,7 +96,8 @@ def run_benchmark(
 
     return run_times
 
-def calculate_and_print_statistics(run_times: List[float]) -> Optional[Dict[str, float]]:
+
+def calculate_and_print_statistics(run_times: list[float]) -> dict[str, float | str] | None:
     """
     Calculates and prints the statistics for the given run times.
 
@@ -134,7 +116,7 @@ def calculate_and_print_statistics(run_times: List[float]) -> Optional[Dict[str,
         stdev = statistics.stdev(run_times)
     else:
         stdev = 0
-    
+
     stats = {
         "min": min(run_times),
         "max": max(run_times),
@@ -152,7 +134,8 @@ def calculate_and_print_statistics(run_times: List[float]) -> Optional[Dict[str,
     print("  ------------------")
     return stats
 
-def print_summary_table(summary_data: List[Dict]):
+
+def print_summary_table(summary_data: list[dict[str, float | str]]):
     """
     Prints a summary table of all benchmark results.
 
@@ -161,7 +144,7 @@ def print_summary_table(summary_data: List[Dict]):
                       for one benchmark.
     """
     print("\n--- Benchmark Summary ---")
-    
+
     # Header
     header = f"| {'File':<25} | {'Mean (ms)':>10} | {'Min (ms)':>10} | {'Max (ms)':>10} | {'Std Dev':>14} |"
     print(header)
@@ -177,7 +160,7 @@ def print_summary_table(summary_data: List[Dict]):
             f"| {result['stdev']:>14.3f} |"
         )
         print(row)
-    
+
     print("-------------------------\n")
 
 
@@ -187,7 +170,7 @@ def main():
     """
     summary_data = []
     print(f"Starting benchmark suite. Running each benchmark {RUNS} times.")
-    
+
     for linefeed_script, stdin_file in BENCHMARKS:
         run_times = run_benchmark(linefeed_script, stdin_file, RUNS)
         if run_times:
@@ -198,7 +181,7 @@ def main():
 
     if summary_data:
         print_summary_table(summary_data)
-    
+
     print("Benchmark suite finished.")
 
 
