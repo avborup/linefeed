@@ -1,3 +1,4 @@
+import argparse
 import os
 import re
 import statistics
@@ -19,7 +20,7 @@ class SummaryData(BenchmarkStats):
 
 
 # Number of times to run each benchmark
-RUNS = 5
+RUNS = 4
 
 
 def make_pair_for_day(day: int) -> tuple[str, str]:
@@ -178,10 +179,55 @@ def print_summary_table(summary_data: list[SummaryData]):
     print("-------------------------\n")
 
 
+def write_summary_csv(summary_data: list[SummaryData], file_path: str):
+    """
+    Writes the benchmark summary to a padded CSV file.
+
+    Args:
+        summary_data: A list of benchmark result dictionaries.
+        file_path: The path to the output CSV file.
+    """
+    header = ["File", "Mean (ms)", "Min (ms)", "Max (ms)", "Std Dev (ms)"]
+
+    data_grid = [header] + [
+        [
+            d['file_name'],
+            f"{d['mean']:>9.3f}",
+            f"{d['min']:>9.3f}",
+            f"{d['max']:>9.3f}",
+            f"{d['stdev']:>9.3f}",
+        ]
+        for d in summary_data
+    ]
+
+    col_widths = [max(len(item) for item in col) for col in zip(*data_grid)]
+
+    try:
+        with open(file_path, 'w', newline='') as f:
+            for row in data_grid:
+                formatted_cells = [cell.ljust(width)
+                                   for cell, width in zip(row, col_widths)]
+                line = ", ".join(formatted_cells)
+                f.write(line + '\n')
+        print(f"\nSuccessfully wrote benchmark summary to '{file_path}'")
+    except IOError as e:
+        print(f"\nError writing to file '{file_path}': {e}", file=sys.stderr)
+
+
 def main():
     """
     Main function to run all configured benchmarks.
     """
+    parser = argparse.ArgumentParser(
+        description="A benchmark script for Linefeed scripts."
+    )
+    parser.add_argument(
+        "--csv",
+        type=str,
+        help="Path to write the benchmark summary to a CSV file.",
+    )
+    args = parser.parse_args()
+
     summary_data: list[SummaryData] = []
     print(f"Starting benchmark suite. Running each benchmark {RUNS} times.")
 
@@ -196,6 +242,8 @@ def main():
 
     if summary_data:
         print_summary_table(summary_data)
+        if args.csv:
+            write_summary_csv(summary_data, args.csv)
 
     print("Benchmark suite finished.")
 
