@@ -1,8 +1,8 @@
-nums = [m[0] for m in input().find_all(r/\d+/n)];
-earliest, ids = nums[0], nums[1..];
+matches = [m[0] for m in input().find_all(r/\d+|x/n)];
+earliest, buses = matches[0], [(b, i) for i, b in matches[1..].enumerate() if b != "x"];
 
 min_wait_time, bus_id = 10000000, null;
-for id in ids {
+for id, _ in buses {
   wait_time = id - (earliest % id);
   if wait_time < min_wait_time {
     min_wait_time = wait_time;
@@ -12,5 +12,40 @@ for id in ids {
 
 part1 = min_wait_time * bus_id;
 
+fn mul_inv(a, b) {
+  b0 = b;
+  x0, x1 = 0, 1;
+  return 1 if b == 1;
+
+  while a > 1 {
+    q = a // b;
+    a, b = b, a % b;
+    x0, x1 = x1 - q * x0, x0;
+  };
+
+  if x1 < 0 {
+    x1 += b0;
+  };
+
+  return x1;
+};
+
+fn chinese_remainder(n, a) {
+  sum, prod = 0, mul(n);
+
+  for i in 0..n.len() {
+    n_i, a_i = n[i], a[i];
+    p = prod // n_i;
+    sum += a_i * mul_inv(p, n_i) * p;
+  };
+
+  return sum % prod;
+};
+
+part2 = chinese_remainder(
+  [id for id, _ in buses],
+  [(id - i) % id for id, i in buses]
+);
+
 print("Part 1:", part1);
-print("Part 2:", "???");
+print("Part 2:", part2);
