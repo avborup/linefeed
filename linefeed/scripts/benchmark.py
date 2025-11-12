@@ -3,10 +3,24 @@ import re
 import statistics
 import subprocess
 import sys
+from typing import TypedDict
+
+
+class BenchmarkStats(TypedDict):
+    min: float
+    max: float
+    mean: float
+    stdev: float
+    runs: int
+
+
+class SummaryData(BenchmarkStats):
+    file_name: str
 
 
 # Number of times to run each benchmark
-RUNS = 3
+RUNS = 5
+
 
 def make_pair_for_day(day: int) -> tuple[str, str]:
     script_path = f"tests/linefeed/advent_of_code_2020/day{day:02d}.lf"
@@ -97,7 +111,7 @@ def run_benchmark(
     return run_times
 
 
-def calculate_and_print_statistics(run_times: list[float]) -> dict[str, float | str] | None:
+def calculate_and_print_statistics(run_times: list[float]) -> BenchmarkStats | None:
     """
     Calculates and prints the statistics for the given run times.
 
@@ -117,7 +131,7 @@ def calculate_and_print_statistics(run_times: list[float]) -> dict[str, float | 
     else:
         stdev = 0
 
-    stats = {
+    stats: BenchmarkStats = {
         "min": min(run_times),
         "max": max(run_times),
         "mean": mean,
@@ -135,7 +149,7 @@ def calculate_and_print_statistics(run_times: list[float]) -> dict[str, float | 
     return stats
 
 
-def print_summary_table(summary_data: list[dict[str, float | str]]):
+def print_summary_table(summary_data: list[SummaryData]):
     """
     Prints a summary table of all benchmark results.
 
@@ -168,7 +182,7 @@ def main():
     """
     Main function to run all configured benchmarks.
     """
-    summary_data = []
+    summary_data: list[SummaryData] = []
     print(f"Starting benchmark suite. Running each benchmark {RUNS} times.")
 
     for linefeed_script, stdin_file in BENCHMARKS:
@@ -176,8 +190,9 @@ def main():
         if run_times:
             stats = calculate_and_print_statistics(run_times)
             if stats:
-                stats['file_name'] = os.path.basename(linefeed_script)
-                summary_data.append(stats)
+                summary_item = SummaryData(
+                    file_name=os.path.basename(linefeed_script), **stats)
+                summary_data.append(summary_item)
 
     if summary_data:
         print_summary_table(summary_data)
