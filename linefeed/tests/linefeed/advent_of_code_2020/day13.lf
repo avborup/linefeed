@@ -1,0 +1,16 @@
+nums = [m[0] for m in input().find_all(r/\d+/n)];
+earliest, ids = nums[0], nums[1..];
+
+min_wait_time, bus_id = 10000000, null;
+for id in ids {
+  wait_time = id - (earliest % id);
+  if wait_time < min_wait_time {
+    min_wait_time = wait_time;
+    bus_id = id;
+  };
+};
+
+part1 = min_wait_time * bus_id;
+
+print("Part 1:", part1);
+print("Part 2:", "???");
