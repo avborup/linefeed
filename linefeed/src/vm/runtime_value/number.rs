@@ -121,6 +121,16 @@ impl RuntimeNumber {
         }
     }
 
+    pub fn binary(&self) -> Result<String, RuntimeError> {
+        match self {
+            RuntimeNumber::SmallInt(a) => Ok(format!("{:b}", a)),
+            RuntimeNumber::BigInt(a) => Ok(a.to_string_radix(2)),
+            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
+                "Cannot call .binary() on floating point numbers".to_string(),
+            )),
+        }
+    }
+
     pub fn neg(&self) -> Self {
         self * &RuntimeNumber::from(-1)
     }

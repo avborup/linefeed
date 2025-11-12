@@ -211,6 +211,19 @@ impl RuntimeValue {
         }
     }
 
+    pub fn binary(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Num(a) => {
+                let binary_str = a.binary()?;
+                Ok(RuntimeValue::Str(RuntimeString::new(binary_str)))
+            }
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot call .binary() on type '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
+
     pub fn int(&self) -> Result<isize, RuntimeError> {
         let res = match self {
             RuntimeValue::Int(val) => *val,

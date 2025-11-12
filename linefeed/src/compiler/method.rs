@@ -20,6 +20,7 @@ pub enum Method {
     GetAll,
     Values,
     Rot,
+    Binary,
 }
 
 impl Method {
@@ -42,6 +43,7 @@ impl Method {
         GetAll => "get_all",
         Values => "values",
         Rot => "rot",
+        Binary => "binary",
     }
 
     /// Returns the number of arguments this method expects.
@@ -65,6 +67,7 @@ impl Method {
             Self::GetAll => 1..=1,
             Self::Values => 0..=0,
             Self::Rot => 1..=1,
+            Self::Binary => 0..=0,
         }
     }
 }

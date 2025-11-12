@@ -117,6 +117,7 @@ pub enum Bytecode {
     GetAll,
     Values,
     Rot,
+    Binary,
 }
 
 const _: () = {
@@ -223,6 +224,7 @@ impl Bytecode {
                 Method::GetAll => Bytecode::GetAll,
                 Method::Values => Bytecode::Values,
                 Method::Rot => Bytecode::Rot,
+                Method::Binary => Bytecode::Binary,
             },
         };
 

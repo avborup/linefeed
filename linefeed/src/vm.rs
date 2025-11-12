@@ -470,6 +470,10 @@ where
             Bytecode::GetAll => binary_op!(self, get_all),
             Bytecode::Values => unary_mapper_method!(self, values),
             Bytecode::Rot => binary_op!(self, rot),
+            Bytecode::Binary => {
+                let val = self.pop_stack();
+                self.push_stack(val.binary()?);
+            }
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),
