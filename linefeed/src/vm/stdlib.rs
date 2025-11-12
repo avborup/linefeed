@@ -225,3 +225,81 @@ pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
 
     Ok(RuntimeValue::Num(sum))
 }
+
+pub fn mod_inv(args: Vec<RuntimeValue>) -> RuntimeResult {
+    let (Some(a_val), Some(m_val)) = (args.first(), args.get(1)) else {
+        return Err(RuntimeError::Plain(
+            "mod_inv requires exactly 2 arguments".to_string(),
+        ));
+    };
+
+    let RuntimeValue::Num(a) = a_val else {
+        return Err(RuntimeError::TypeMismatch(format!(
+            "mod_inv first argument must be a number, got {}",
+            a_val.kind_str()
+        )));
+    };
+
+    let RuntimeValue::Num(m) = m_val else {
+        return Err(RuntimeError::TypeMismatch(format!(
+            "mod_inv second argument must be a number, got {}",
+            m_val.kind_str()
+        )));
+    };
+
+    // Extended Euclidean Algorithm
+    // First normalize 'a' into the range [0, m)
+    let m_abs = m.abs();
+    let mut a_normalized = a.modulo(&m_abs);
+    let zero = RuntimeNumber::from(0);
+    if a_normalized < zero {
+        a_normalized = &a_normalized + &m_abs;
+    }
+
+    let mut a = a_normalized;
+    let mut b = m_abs.clone();
+    let mut x0 = RuntimeNumber::from(0);
+    let mut x1 = RuntimeNumber::from(1);
+    let one = RuntimeNumber::from(1);
+
+    if b == one {
+        return Ok(RuntimeValue::Num(one));
+    }
+
+    while a > one {
+        if b == zero {
+            return Err(RuntimeError::Plain(
+                "Modular inverse does not exist (gcd is not 1)".to_string(),
+            ));
+        }
+
+        let q = a.div_floor(&b);
+
+        let temp_a = b.clone();
+        let temp_b = a.modulo(&b);
+        a = temp_a;
+        b = temp_b;
+
+        let temp_x0 = &x1 - &(&q * &x0);
+        let temp_x1 = x0;
+        x0 = temp_x0;
+        x1 = temp_x1;
+    }
+
+    if a != one {
+        return Err(RuntimeError::Plain(
+            "Modular inverse does not exist (gcd is not 1)".to_string(),
+        ));
+    }
+
+    if x1 < zero {
+        x1 = x1 + &m_abs;
+    }
+
+    // Adjust for negative modulus
+    if m < &zero {
+        x1 = x1.neg();
+    }
+
+    Ok(RuntimeValue::Num(x1))
+}

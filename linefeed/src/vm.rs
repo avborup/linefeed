@@ -488,6 +488,7 @@ where
             Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
             Bytecode::Abs => stdlib_fn!(self, abs),
             Bytecode::Manhattan(num_args) => stdlib_fn!(self, manhattan, *num_args),
+            Bytecode::ModInv(num_args) => stdlib_fn!(self, mod_inv, *num_args),
 
             Bytecode::PrintValue(num_args) => {
                 let vals = self.pop_args(*num_args);

@@ -22,6 +22,7 @@ pub enum StdlibFn {
     Abs,
     Counter,
     Manhattan,
+    ModInv,
 }
 
 impl StdlibFn {
@@ -44,6 +45,7 @@ impl StdlibFn {
         Abs => "abs",
         Counter => "counter",
         Manhattan => "manhattan",
+        ModInv => "mod_inv",
     }
 
     /// Returns the number of arguments this function expects.
@@ -67,6 +69,7 @@ impl StdlibFn {
             Self::Abs => 1..=1,
             Self::Counter => 0..=1,
             Self::Manhattan => 1..=2,
+            Self::ModInv => 2..=2,
         }
     }
 }

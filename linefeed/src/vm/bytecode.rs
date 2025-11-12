@@ -97,6 +97,7 @@ pub enum Bytecode {
     Abs,
     ToCounter(usize),
     Manhattan(usize),
+    ModInv(usize),
 
     // Methods
     Append,
@@ -202,6 +203,7 @@ impl Bytecode {
                 StdlibFn::Abs => Bytecode::Abs,
                 StdlibFn::Min => Bytecode::Min(num_args),
                 StdlibFn::Manhattan => Bytecode::Manhattan(num_args),
+                StdlibFn::ModInv => Bytecode::ModInv(num_args),
             },
             Instruction::MethodCall(method, num_args) => match method {
                 Method::Append | Method::Add => Bytecode::Append,
