@@ -1,22 +1,14 @@
 matches = [m[0] for m in input().find_all(r/\d+|x/n)];
 earliest, buses = matches[0], [(b, i) for i, b in matches[1..].enumerate() if b != "x"];
 
-min_wait_time, bus_id = 10000000, null;
-for id, _ in buses {
-  if (wait_time = id - (earliest % id)) < min_wait_time {
-    min_wait_time = wait_time;
-    bus_id = id;
-  };
-};
-
-part1 = min_wait_time * bus_id;
+with_wait_times = [(id - (earliest % id), id) for id, _ in buses];
+part1 = mul(min(with_wait_times));
 
 fn chinese_remainder(n, a) {
   sum, prod = 0, mul(n);
   for i in 0..n.len() {
-    n_i, a_i = n[i], a[i];
-    p = prod // n_i;
-    sum += a_i * mod_inv(p, n_i) * p;
+    p = prod // n[i];
+    sum += a[i] * mod_inv(p, n[i]) * p;
   };
   return sum % prod;
 };
