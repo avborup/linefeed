@@ -168,27 +168,13 @@ impl RuntimeNumber {
     }
 
     pub fn left_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
-        let shift_amount = match other {
-            RuntimeNumber::SmallInt(b) if *b >= 0 => *b as u32,
-            RuntimeNumber::SmallInt(b) => {
-                return Err(RuntimeError::Plain(format!(
-                    "Cannot shift by negative amount: {}",
-                    b
-                )))
-            }
-            RuntimeNumber::BigInt(b) => b.to_u32().ok_or_else(|| {
-                RuntimeError::Plain(format!("Shift amount too large: {}", b))
-            })?,
-            RuntimeNumber::Float(_) => {
-                return Err(RuntimeError::TypeMismatch(
-                    "Cannot shift by floating point amount".to_string(),
-                ))
-            }
-        };
+        let shift_amount = other.to_shift_amount()?;
 
         match self {
             RuntimeNumber::SmallInt(a) => Ok(RuntimeNumber::SmallInt(a << shift_amount)),
-            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() << shift_amount).into()))),
+            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new(
+                (a.as_ref() << shift_amount).into(),
+            ))),
             RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
                 "Cannot shift floating point numbers".to_string(),
             )),
@@ -196,39 +182,41 @@ impl RuntimeNumber {
     }
 
     pub fn right_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
-        let shift_amount = match other {
-            RuntimeNumber::SmallInt(b) if *b >= 0 => *b as u32,
-            RuntimeNumber::SmallInt(b) => {
-                return Err(RuntimeError::Plain(format!(
-                    "Cannot shift by negative amount: {}",
-                    b
-                )))
-            }
-            RuntimeNumber::BigInt(b) => b.to_u32().ok_or_else(|| {
-                RuntimeError::Plain(format!("Shift amount too large: {}", b))
-            })?,
-            RuntimeNumber::Float(_) => {
-                return Err(RuntimeError::TypeMismatch(
-                    "Cannot shift by floating point amount".to_string(),
-                ))
-            }
-        };
+        let shift_amount = other.to_shift_amount()?;
 
         match self {
             RuntimeNumber::SmallInt(a) => Ok(RuntimeNumber::SmallInt(a >> shift_amount)),
-            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() >> shift_amount).into()))),
+            RuntimeNumber::BigInt(a) => Ok(RuntimeNumber::BigInt(Rc::new(
+                (a.as_ref() >> shift_amount).into(),
+            ))),
             RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
                 "Cannot shift floating point numbers".to_string(),
             )),
         }
     }
 
+    fn to_shift_amount(&self) -> Result<u32, RuntimeError> {
+        match self {
+            RuntimeNumber::SmallInt(b) if *b >= 0 => u32::try_from(*b)
+                .map_err(|_| RuntimeError::Plain(format!("Shift amount too large: {b}"))),
+            RuntimeNumber::SmallInt(b) => Err(RuntimeError::Plain(format!(
+                "Cannot shift by negative amount: {b}",
+            ))),
+            RuntimeNumber::BigInt(b) => b
+                .to_u32()
+                .ok_or_else(|| RuntimeError::Plain(format!("Shift amount too large: {b}"))),
+            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
+                "Cannot shift by floating point amount".to_string(),
+            )),
+        }
+    }
+
     pub fn binary(&self) -> Result<String, RuntimeError> {
         match self {
-            RuntimeNumber::SmallInt(a) => Ok(format!("{:b}", a)),
-            RuntimeNumber::BigInt(a) => Ok(a.to_string_radix(2)),
+            RuntimeNumber::SmallInt(n) => Ok(format!("{n:b}")),
+            RuntimeNumber::BigInt(n) => Ok(n.to_string_radix(2)),
             RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
-                "Cannot call .binary() on floating point numbers".to_string(),
+                "Cannot convert floating point numbers to binary".to_string(),
             )),
         }
     }
