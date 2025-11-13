@@ -216,12 +216,8 @@ impl RuntimeValue {
 
     pub fn bitwise_or(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
-                Ok(RuntimeValue::Num(a.bitwise_or(b)?))
-            }
-            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
-                Ok(RuntimeValue::Set(a.union(b)))
-            }
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.bitwise_or(b)?)),
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "use | on", self, other,
             )),
@@ -254,11 +250,11 @@ impl RuntimeValue {
 
     pub fn left_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
-                Ok(RuntimeValue::Num(a.left_shift(b)?))
-            }
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.left_shift(b)?)),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
-                "use << on", self, other,
+                "use << on",
+                self,
+                other,
             )),
         }
     }
@@ -269,7 +265,9 @@ impl RuntimeValue {
                 Ok(RuntimeValue::Num(a.right_shift(b)?))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
-                "use >> on", self, other,
+                "use >> on",
+                self,
+                other,
             )),
         }
     }

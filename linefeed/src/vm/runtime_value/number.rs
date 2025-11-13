@@ -123,10 +123,18 @@ impl RuntimeNumber {
 
     pub fn bitwise_and(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a & b)),
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) & b.as_ref()))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() & rug::Integer::from(*b)))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() & b.as_ref()).into()))),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => {
+                Ok(RuntimeNumber::SmallInt(a & b))
+            }
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(rug::Integer::from(*a) & b.as_ref()),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(a.as_ref() & rug::Integer::from(*b)),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new((a.as_ref() & b.as_ref()).into()),
+            )),
             _ => Err(RuntimeError::TypeMismatch(
                 "Cannot use & on floating point numbers".to_string(),
             )),
@@ -135,10 +143,18 @@ impl RuntimeNumber {
 
     pub fn bitwise_or(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a | b)),
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) | b.as_ref()))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() | rug::Integer::from(*b)))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() | b.as_ref()).into()))),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => {
+                Ok(RuntimeNumber::SmallInt(a | b))
+            }
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(rug::Integer::from(*a) | b.as_ref()),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(a.as_ref() | rug::Integer::from(*b)),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new((a.as_ref() | b.as_ref()).into()),
+            )),
             _ => Err(RuntimeError::TypeMismatch(
                 "Cannot use | on floating point numbers".to_string(),
             )),
@@ -147,10 +163,18 @@ impl RuntimeNumber {
 
     pub fn bitwise_xor(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::SmallInt(a ^ b)),
-            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(rug::Integer::from(*a) ^ b.as_ref()))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new(a.as_ref() ^ rug::Integer::from(*b)))),
-            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(Rc::new((a.as_ref() ^ b.as_ref()).into()))),
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::SmallInt(b)) => {
+                Ok(RuntimeNumber::SmallInt(a ^ b))
+            }
+            (RuntimeNumber::SmallInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(rug::Integer::from(*a) ^ b.as_ref()),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::SmallInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new(a.as_ref() ^ rug::Integer::from(*b)),
+            )),
+            (RuntimeNumber::BigInt(a), RuntimeNumber::BigInt(b)) => Ok(RuntimeNumber::BigInt(
+                Rc::new((a.as_ref() ^ b.as_ref()).into()),
+            )),
             _ => Err(RuntimeError::TypeMismatch(
                 "Cannot use ^ on floating point numbers".to_string(),
             )),
