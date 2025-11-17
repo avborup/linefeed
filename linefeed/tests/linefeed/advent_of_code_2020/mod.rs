@@ -305,24 +305,43 @@ eval_and_assert!(
 );
 
 eval_and_assert!(
-    day14,
-    include_str!("day14.lf"),
-    include_str!("inputs/day14.txt"),
+    day14_part1,
+    include_str!("day14_part1.lf"),
+    include_str!("inputs/day14-part1.txt"),
     equals(indoc! {r#"
         Part 1: 165
-        Part 2: ???
     "#}),
     empty()
 );
 
 #[cfg(feature = "aoc-secret")]
 eval_and_assert!(
-    day14_secret,
-    include_str!("day14.lf"),
+    day14_part1_secret,
+    include_str!("day14_part1.lf"),
     include_str!("inputs/day14-secret.txt"),
     equals(indoc! {r#"
         Part 1: 13496669152158
-        Part 2: ???
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    day14_part2,
+    include_str!("day14_part2.lf"),
+    include_str!("inputs/day14-part2.txt"),
+    equals(indoc! {r#"
+        Part 2: 208
+    "#}),
+    empty()
+);
+
+#[cfg(feature = "aoc-secret")]
+eval_and_assert!(
+    day14_part2_secret,
+    include_str!("day14_part2.lf"),
+    include_str!("inputs/day14-secret.txt"),
+    equals(indoc! {r#"
+        Part 2: 3278997609887
     "#}),
     empty()
 );

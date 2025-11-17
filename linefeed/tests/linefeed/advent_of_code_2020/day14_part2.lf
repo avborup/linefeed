@@ -14,23 +14,14 @@ fn eval_floating(out, mask, addr, i) {
   out
 };
 
-mem1, mem2, mask = {}, {}, null;
+mem, mask = {}, null;
 for instr in input().lines() {
   new_mask, addr, val = instr.find(r/mask = ([01X]+)|mem\[(\d+)\] = (\d+)/n);
-
   (mask = new_mask; continue) if new_mask;
 
-  val1 = val;
-  mem1[addr] = for i in 0..36 {
-    val1 &= ~(1 << (35 - i)) if mask[i] == "0";
-    val1 |=  (1 << (35 - i)) if mask[i] == "1";
-    val1
-  };
-
   for masked in eval_floating([], mask, addr, 0) {
-    mem2[masked] = val;
+    mem[masked] = val;
   };
 };
 
-print("Part 1:", sum(mem1.values()));
-print("Part 2:", sum(mem2.values()));
+print("Part 2:", sum(mem.values()));
