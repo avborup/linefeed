@@ -67,7 +67,7 @@ impl Method {
             Self::GetAll => 1..=1,
             Self::Values => 0..=0,
             Self::Rot => 1..=1,
-            Self::Binary => 0..=0,
+            Self::Binary => 0..=1,
         }
     }
 }

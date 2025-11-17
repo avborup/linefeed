@@ -235,14 +235,23 @@ impl RuntimeNumber {
         }
     }
 
-    pub fn binary(&self) -> Result<String, RuntimeError> {
-        match self {
-            RuntimeNumber::SmallInt(n) => Ok(format!("{n:b}")),
-            RuntimeNumber::BigInt(n) => Ok(n.to_string_radix(2)),
-            RuntimeNumber::Float(_) => Err(RuntimeError::TypeMismatch(
-                "Cannot convert floating point numbers to binary".to_string(),
-            )),
-        }
+    pub fn binary(&self, padding: Option<usize>) -> Result<String, RuntimeError> {
+        let str = match self {
+            RuntimeNumber::SmallInt(n) => {
+                padding.map_or_else(|| format!("{n:b}"), |width| format!("{n:0width$b}"))
+            }
+            RuntimeNumber::BigInt(n) => padding.map_or_else(
+                || n.to_string_radix(2),
+                |width| format!("{:0>width$}", n.to_string_radix(2)),
+            ),
+            RuntimeNumber::Float(_) => {
+                return Err(RuntimeError::TypeMismatch(
+                    "Cannot convert floating point numbers to binary".to_string(),
+                ))
+            }
+        };
+
+        Ok(str)
     }
 
     pub fn neg(&self) -> Self {

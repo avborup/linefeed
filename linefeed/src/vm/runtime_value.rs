@@ -272,14 +272,26 @@ impl RuntimeValue {
         }
     }
 
-    pub fn binary(&self) -> Result<Self, RuntimeError> {
+    pub fn binary(&self, padding: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Num(a) => {
-                let binary_str = a.binary()?;
+                let padding_size = if let Some(pad) = padding {
+                    let width = pad.to_i32().filter(|n| *n >= 0).ok_or_else(|| {
+                        RuntimeError::TypeMismatch(
+                            "Padding size must be a positive, small integer".to_string(),
+                        )
+                    })?;
+
+                    Some(width as usize)
+                } else {
+                    None
+                };
+
+                let binary_str = a.binary(padding_size)?;
                 Ok(RuntimeValue::Str(RuntimeString::new(binary_str)))
             }
             _ => Err(RuntimeError::TypeMismatch(format!(
-                "Cannot call .binary() on type '{}'",
+                "Cannot convert type '{}' to binary",
                 self.kind_str()
             ))),
         }
