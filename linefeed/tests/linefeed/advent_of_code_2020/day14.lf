@@ -1,15 +1,36 @@
-mem, mask = {}, null;
+fn eval_floating(out, mask, addr, i) {
+  return out.append(addr) if i > 35;
+
+  set_0, set_1 = addr & ~(1 << (35 - i)), addr | (1 << (35 - i));
+  match mask[i] {
+    "0" => eval_floating(out, mask, addr, i + 1),
+    "1" => eval_floating(out, mask, set_1, i + 1),
+    "X" => {
+      eval_floating(out, mask, set_0, i + 1);
+      eval_floating(out, mask, set_1, i + 1);
+    },
+  };
+
+  out
+};
+
+mem1, mem2, mask = {}, {}, null;
 for instr in input().lines() {
   new_mask, addr, val = instr.find(r/mask = ([01X]+)|mem\[(\d+)\] = (\d+)/n);
 
   (mask = new_mask; continue) if new_mask;
 
-  mem[addr] = for i in 0..36 {
-    val &= ~(1 << (35 - i)) if mask[i] == "0";
-    val |=  (1 << (35 - i)) if mask[i] == "1";
-    val
+  val1 = val;
+  mem1[addr] = for i in 0..36 {
+    val1 &= ~(1 << (35 - i)) if mask[i] == "0";
+    val1 |=  (1 << (35 - i)) if mask[i] == "1";
+    val1
+  };
+
+  for masked in eval_floating([], mask, addr, 0) {
+    mem2[masked] = val;
   };
 };
 
-print("Part 1:", sum(mem.values()));
-print("Part 2:", "???");
+print("Part 1:", sum(mem1.values()));
+print("Part 2:", sum(mem2.values()));
