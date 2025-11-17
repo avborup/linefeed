@@ -583,7 +583,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, ")")
             }
             RuntimeValue::Vec2(v) => {
-                write!(f, "v({}, {})", v.x, v.y)
+                write!(f, "({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;
