@@ -1,20 +1,23 @@
 start = [m[0] for m in input().find_all(r/\d+/n)];
 
-spoken_at = {};
-for turn, n in start.enumerate() {
-  spoken_at[n] = turn + 1;
-};
-
-last_spoken = start[-1];
-for turn in start.len()..2020 {
-  last_spoken = if last_spoken not in spoken_at {
-    spoken_at[last_spoken] = turn;
-    0
-  } else {
-    diff = turn - spoken_at[last_spoken];
-    spoken_at[last_spoken] = turn;
-    diff
+fn run(iters) {
+  spoken_at = {};
+  for turn, n in start.enumerate() {
+    spoken_at[n] = turn + 1;
   };
+
+  last_spoken = start[-1];
+  for turn in start.len()..iters {
+    last_spoken = if last_spoken not in spoken_at {
+      spoken_at[last_spoken] = turn;
+      0
+    } else {
+      diff = turn - spoken_at[last_spoken];
+      spoken_at[last_spoken] = turn;
+      diff
+    };
+  }
 };
 
-print("Part 1:", last_spoken);
+print("Part 1:", run(2020));
+print("Part 2:", run(30000000));
