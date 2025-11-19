@@ -122,6 +122,7 @@ pub enum Bytecode {
     GetAll,
     Values,
     Keys,
+    Remove,
     Rot,
     Binary(usize),
 }
@@ -235,6 +236,7 @@ impl Bytecode {
                 Method::GetAll => Bytecode::GetAll,
                 Method::Values => Bytecode::Values,
                 Method::Keys => Bytecode::Keys,
+                Method::Remove => Bytecode::Remove,
                 Method::Rot => Bytecode::Rot,
                 Method::Binary => Bytecode::Binary(num_args),
             },

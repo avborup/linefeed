@@ -1,0 +1,107 @@
+use crate::helpers::{
+    eval_and_assert,
+    output::{empty, equals},
+};
+
+use indoc::indoc;
+
+eval_and_assert!(
+    set_remove_existing_element,
+    indoc! {r#"
+        s = set([1, 2, 3, 4, 5]);
+        s.remove(3);
+        print(s.len());
+        print(3 in s);
+    "#},
+    equals(indoc! {r#"
+        4
+        false
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_non_existent_element,
+    indoc! {r#"
+        s = set([1, 2, 3]);
+        s.remove(10);
+        print(s.len());
+    "#},
+    equals("3"),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_from_empty_set,
+    indoc! {r#"
+        s = set();
+        s.remove(42);
+        print(s.len());
+    "#},
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_string_element,
+    indoc! {r#"
+        s = set(["apple", "banana", "cherry"]);
+        s.remove("banana");
+        print(s.len());
+        print("banana" in s);
+        print("apple" in s);
+    "#},
+    equals(indoc! {r#"
+        2
+        false
+        true
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_all_elements,
+    indoc! {r#"
+        s = set([1, 2]);
+        s.remove(1);
+        s.remove(2);
+        print(s.len());
+    "#},
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_and_add,
+    indoc! {r#"
+        s = set([1, 2, 3]);
+        s.remove(2);
+        s.append(4);
+        print(s.len());
+        print(2 in s);
+        print(4 in s);
+    "#},
+    equals(indoc! {r#"
+        3
+        false
+        true
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    set_remove_multiple_times,
+    indoc! {r#"
+        s = set([1, 2, 3]);
+        s.remove(2);
+        s.remove(2);
+        s.remove(2);
+        print(s.len());
+        print(2 in s);
+    "#},
+    equals(indoc! {r#"
+        2
+        false
+    "#}),
+    empty()
+);

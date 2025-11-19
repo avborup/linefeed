@@ -26,6 +26,7 @@ mod print;
 mod regex;
 mod return_;
 mod scope;
+mod set;
 mod sort;
 mod string;
 mod tuple;

@@ -380,6 +380,12 @@ where
                 into.append(val)?;
             }
 
+            Bytecode::Remove => {
+                let val = self.pop_stack();
+                let from = self.peek_stack_mut()?;
+                from.remove(val)?;
+            }
+
             Bytecode::Index => {
                 let index = self.pop_stack();
                 let into = self.peek_stack_mut()?;

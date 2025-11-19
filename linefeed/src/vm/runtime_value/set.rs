@@ -62,6 +62,10 @@ impl RuntimeSet {
     pub fn contains(&self, value: &RuntimeValue) -> bool {
         self.0.borrow().contains(value)
     }
+
+    pub fn remove(&mut self, value: RuntimeValue) {
+        self.0.borrow_mut().remove(&value);
+    }
 }
 
 impl Default for RuntimeSet {

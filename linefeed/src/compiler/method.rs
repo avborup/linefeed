@@ -20,6 +20,7 @@ pub enum Method {
     GetAll,
     Values,
     Keys,
+    Remove,
     Rot,
     Binary,
 }
@@ -44,6 +45,7 @@ impl Method {
         GetAll => "get_all",
         Values => "values",
         Keys => "keys",
+        Remove => "remove",
         Rot => "rot",
         Binary => "binary",
     }
@@ -69,6 +71,7 @@ impl Method {
             Self::GetAll => 1..=1,
             Self::Values => 0..=0,
             Self::Keys => 0..=0,
+            Self::Remove => 1..=1,
             Self::Rot => 1..=1,
             Self::Binary => 0..=1,
         }

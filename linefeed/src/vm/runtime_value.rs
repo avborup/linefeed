@@ -700,6 +700,15 @@ impl RuntimeValue {
         Ok(())
     }
 
+    pub fn remove(&mut self, val: Self) -> Result<(), RuntimeError> {
+        match self {
+            RuntimeValue::Set(set) => set.remove(val),
+            _ => return Err(RuntimeError::invalid_method_for_type(Method::Remove, self)),
+        };
+
+        Ok(())
+    }
+
     pub fn to_uppercase(&self) -> Result<Self, RuntimeError> {
         let RuntimeValue::Str(s) = self else {
             return Err(RuntimeError::invalid_method_for_type(
