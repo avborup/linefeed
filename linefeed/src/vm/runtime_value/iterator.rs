@@ -6,6 +6,7 @@ use crate::vm::runtime_value::{
     map::{MapIterator, RuntimeMap},
     number::RuntimeNumber,
     range::{RangeIterator, RuntimeRange},
+    set::{RuntimeSet, SetIterator},
     string::RuntimeString,
     tuple::RuntimeTuple,
     RuntimeValue,
@@ -19,6 +20,7 @@ enum IteratorKind {
     Tuple(TupleIterator),
     Range(RangeIterator),
     Map(MapIterator),
+    Set(SetIterator),
     Enumerated(EnumeratedListIterator),
     String(StringIterator),
     Empty,
@@ -31,6 +33,7 @@ impl RuntimeIterator {
             IteratorKind::Tuple(iter) => iter.next(),
             IteratorKind::Range(iter) => iter.next(),
             IteratorKind::Map(iter) => iter.next(),
+            IteratorKind::Set(iter) => iter.next(),
             IteratorKind::Enumerated(iter) => iter.next(),
             IteratorKind::String(iter) => iter.next(),
             IteratorKind::Empty => None,
@@ -47,6 +50,7 @@ impl RuntimeIterator {
             IteratorKind::Tuple(iter) => iter.tuple.len().saturating_sub(iter.index),
             IteratorKind::Range(iter) => iter.len().unwrap_or(usize::MAX),
             IteratorKind::Map(iter) => iter.len(),
+            IteratorKind::Set(iter) => iter.len(),
             IteratorKind::Enumerated(iter) => iter.list.len().saturating_sub(iter.index),
             IteratorKind::String(iter) => iter.chars.len().saturating_sub(iter.index),
             IteratorKind::Empty => 0,
@@ -210,6 +214,14 @@ impl From<RuntimeMap> for RuntimeIterator {
     fn from(map: RuntimeMap) -> Self {
         Self(Rc::new(RefCell::new(IteratorKind::Map(MapIterator::from(
             map,
+        )))))
+    }
+}
+
+impl From<RuntimeSet> for RuntimeIterator {
+    fn from(set: RuntimeSet) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::Set(SetIterator::from(
+            set,
         )))))
     }
 }

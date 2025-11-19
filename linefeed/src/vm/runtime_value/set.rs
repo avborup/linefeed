@@ -1,5 +1,6 @@
 use std::{cell::RefCell, rc::Rc};
 
+use ouroboros::self_referencing;
 use rustc_hash::FxHashSet;
 
 use crate::vm::{
@@ -118,5 +119,57 @@ impl LfAppend for RuntimeSet {
     fn append(&mut self, other: RuntimeValue) -> Result<(), RuntimeError> {
         self.0.borrow_mut().insert(other);
         Ok(())
+    }
+}
+
+#[self_referencing]
+struct SetIterCell {
+    owner: RuntimeSet,
+    #[borrows(owner)]
+    #[covariant]
+    guard: std::cell::Ref<'this, FxHashSet<RuntimeValue>>,
+    #[borrows(guard)]
+    #[covariant]
+    iter: std::collections::hash_set::Iter<'this, RuntimeValue>,
+}
+
+pub struct SetIterator {
+    cell: SetIterCell,
+    len: usize,
+}
+
+impl SetIterator {
+    fn new(set: RuntimeSet) -> Self {
+        let len = set.borrow().len();
+        let cell = SetIterCellBuilder {
+            owner: set,
+            guard_builder: |owner| owner.borrow(),
+            iter_builder: |guard| guard.iter(),
+        }
+        .build();
+
+        Self { cell, len }
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+
+impl From<RuntimeSet> for SetIterator {
+    fn from(set: RuntimeSet) -> Self {
+        Self::new(set)
+    }
+}
+
+impl Iterator for SetIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.cell.with_iter_mut(|it| it.next()).map(|v| v.clone())
     }
 }

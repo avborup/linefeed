@@ -105,3 +105,72 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    set_iterate_basic,
+    indoc! {r#"
+        s = set([1, 2, 3]);
+        count = 0;
+        for val in s {
+            count = count + 1;
+        };
+        print(count);
+    "#},
+    equals("3"),
+    empty()
+);
+
+eval_and_assert!(
+    set_iterate_empty,
+    indoc! {r#"
+        s = set();
+        count = 0;
+        for val in s {
+            count = count + 1;
+        };
+        print(count);
+    "#},
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    set_iterate_with_break,
+    indoc! {r#"
+        s = set([1, 2, 3, 4, 5]);
+        count = 0;
+        for val in s {
+            count = count + 1;
+            if count == 3 {
+                break;
+            };
+        };
+        print(count);
+    "#},
+    equals("3"),
+    empty()
+);
+
+eval_and_assert!(
+    set_iterate_membership,
+    indoc! {r#"
+        s = set(["apple", "banana", "cherry"]);
+        found_apple = false;
+        found_banana = false;
+        found_cherry = false;
+        for item in s {
+            if item == "apple" {
+                found_apple = true;
+            };
+            if item == "banana" {
+                found_banana = true;
+            };
+            if item == "cherry" {
+                found_cherry = true;
+            };
+        };
+        print(found_apple and found_banana and found_cherry);
+    "#},
+    equals("true"),
+    empty()
+);
