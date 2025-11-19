@@ -474,6 +474,7 @@ where
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
             Bytecode::GetAll => binary_op!(self, get_all),
             Bytecode::Values => unary_mapper_method!(self, values),
+            Bytecode::Keys => unary_mapper_method!(self, keys),
             Bytecode::Rot => binary_op!(self, rot),
             Bytecode::Binary(num_args) => method_with_optional_arg!(self, binary, *num_args),
 

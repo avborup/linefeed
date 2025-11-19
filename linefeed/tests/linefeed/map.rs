@@ -240,3 +240,64 @@ eval_and_assert!(
     equals("[10, 10, 20]"),
     empty()
 );
+
+eval_and_assert!(
+    map_keys_basic,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        };
+
+        keys = map.keys();
+        sorted_keys = keys.sort();
+        print(sorted_keys);
+    "#},
+    equals("[\"a\", \"b\", \"c\"]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_keys_empty,
+    indoc! {r#"
+        map = {};
+        keys = map.keys();
+        print(keys);
+    "#},
+    equals("[]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_keys_numeric,
+    indoc! {r#"
+        map = {
+            3: "three",
+            1: "one",
+            2: "two",
+        };
+
+        keys = map.keys();
+        sorted_keys = keys.sort();
+        print(sorted_keys);
+    "#},
+    equals("[1, 2, 3]"),
+    empty()
+);
+
+eval_and_assert!(
+    map_keys_mixed_types,
+    indoc! {r#"
+        map = {
+            "name": "Alice",
+            42: "answer",
+            (1, 2): "tuple",
+        };
+
+        keys = map.keys();
+        print(keys.len());
+    "#},
+    equals("3"),
+    empty()
+);

@@ -19,6 +19,7 @@ pub enum Method {
     Enumerate,
     GetAll,
     Values,
+    Keys,
     Rot,
     Binary,
 }
@@ -42,6 +43,7 @@ impl Method {
         Enumerate => "enumerate",
         GetAll => "get_all",
         Values => "values",
+        Keys => "keys",
         Rot => "rot",
         Binary => "binary",
     }
@@ -66,6 +68,7 @@ impl Method {
             Self::Enumerate => 0..=0,
             Self::GetAll => 1..=1,
             Self::Values => 0..=0,
+            Self::Keys => 0..=0,
             Self::Rot => 1..=1,
             Self::Binary => 0..=1,
         }

@@ -849,6 +849,16 @@ impl RuntimeValue {
         }
     }
 
+    pub fn keys(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Map(map) => {
+                let keys: Vec<RuntimeValue> = map.borrow().keys().cloned().collect();
+                Ok(RuntimeValue::List(RuntimeList::from_vec(keys)))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(Method::Keys, self)),
+        }
+    }
+
     pub fn rot(&self, times: &Self) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Tuple(tuple) => Ok(RuntimeValue::Tuple(tuple.rot(times)?)),
