@@ -202,12 +202,98 @@ impl RuntimeValue {
 
     pub fn bitwise_and(&self, other: &Self) -> Result<Self, RuntimeError> {
         match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Num(a.bitwise_and(b)?))
+            }
             (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
                 Ok(RuntimeValue::Set(a.intersection(b)))
             }
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "use & on", self, other,
             )),
+        }
+    }
+
+    pub fn bitwise_or(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.bitwise_or(b)?)),
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.union(b))),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "use | on", self, other,
+            )),
+        }
+    }
+
+    pub fn bitwise_xor(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Num(a.bitwise_xor(b)?))
+            }
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => {
+                Ok(RuntimeValue::Set(a.symmetric_difference(b)))
+            }
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "use ^ on", self, other,
+            )),
+        }
+    }
+
+    pub fn bitwise_not(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Num(a) => Ok(RuntimeValue::Num(a.bitwise_not()?)),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot use ~ on type '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
+
+    pub fn left_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => Ok(RuntimeValue::Num(a.left_shift(b)?)),
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "use << on",
+                self,
+                other,
+            )),
+        }
+    }
+
+    pub fn right_shift(&self, other: &Self) -> Result<Self, RuntimeError> {
+        match (self, other) {
+            (RuntimeValue::Num(a), RuntimeValue::Num(b)) => {
+                Ok(RuntimeValue::Num(a.right_shift(b)?))
+            }
+            _ => Err(RuntimeError::invalid_binary_op_for_types(
+                "use >> on",
+                self,
+                other,
+            )),
+        }
+    }
+
+    pub fn binary(&self, padding: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::Num(a) => {
+                let padding_size = if let Some(pad) = padding {
+                    let width = pad.to_i32().filter(|n| *n >= 0).ok_or_else(|| {
+                        RuntimeError::TypeMismatch(
+                            "Padding size must be a positive, small integer".to_string(),
+                        )
+                    })?;
+
+                    Some(width as usize)
+                } else {
+                    None
+                };
+
+                let binary_str = a.binary(padding_size)?;
+                Ok(RuntimeValue::Str(RuntimeString::new(binary_str)))
+            }
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot convert type '{}' to binary",
+                self.kind_str()
+            ))),
         }
     }
 
@@ -509,7 +595,7 @@ impl std::fmt::Display for RuntimeValue {
                 write!(f, ")")
             }
             RuntimeValue::Vec2(v) => {
-                write!(f, "v({}, {})", v.x, v.y)
+                write!(f, "({}, {})", v.x, v.y)
             }
             RuntimeValue::Set(xs) => {
                 write!(f, "{{")?;

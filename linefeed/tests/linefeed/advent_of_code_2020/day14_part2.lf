@@ -1,0 +1,27 @@
+fn eval_floating(out, mask, addr, i) {
+  return out.append(addr) if i > 35;
+
+  set_0, set_1 = addr & ~(1 << (35 - i)), addr | (1 << (35 - i));
+  match mask[i] {
+    "0" => eval_floating(out, mask, addr, i + 1),
+    "1" => eval_floating(out, mask, set_1, i + 1),
+    "X" => {
+      eval_floating(out, mask, set_0, i + 1);
+      eval_floating(out, mask, set_1, i + 1);
+    },
+  };
+
+  out
+};
+
+mem, mask = {}, null;
+for instr in input().lines() {
+  new_mask, addr, val = instr.find(r/mask = ([01X]+)|mem\[(\d+)\] = (\d+)/n);
+  (mask = new_mask; continue) if new_mask;
+
+  for masked in eval_floating([], mask, addr, 0) {
+    mem[masked] = val;
+  };
+};
+
+print("Part 2:", sum(mem.values()));

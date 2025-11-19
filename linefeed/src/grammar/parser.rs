@@ -159,6 +159,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                 just(Token::Op("/=")).to("/="),
                 just(Token::Op("%=")).to("%="),
                 just(Token::Op("&=")).to("&="),
+                just(Token::Op("|=")).to("|="),
             ));
 
             let update_assign = ident
@@ -175,6 +176,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                                 "/=" => BinaryOp::Div,
                                 "%=" => BinaryOp::Mod,
                                 "&=" => BinaryOp::BitwiseAnd,
+                                "|=" => BinaryOp::BitwiseOr,
                                 _ => unreachable!(),
                             },
                             Box::new(val),
@@ -337,7 +339,13 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                     Spanned(Expr::Unary(UnaryOp::Not, Box::new(rhs)), e.span())
                 });
 
-            let unary = neg.or(not).memoized().boxed();
+            let bitwise_not = just(Token::Op("~"))
+                .repeated()
+                .foldr_with(with_method_call.clone(), |_op, rhs, e| {
+                    Spanned(Expr::Unary(UnaryOp::BitwiseNot, Box::new(rhs)), e.span())
+                });
+
+            let unary = neg.or(not).or(bitwise_not).memoized().boxed();
 
             // The order in the chain corresponds to operator precedence: earlier in the chain,
             // higher precedence
@@ -347,6 +355,7 @@ pub fn expr_parser<'src, I: ParserInput<'src>>() -> impl Parser<'src, I, Spanned
                     pow_parser,
                     product_parser,
                     sum_parser,
+                    shift_parser,
                     bitwise_parser,
                     compare_parser,
                     contains_parser,
@@ -582,10 +591,30 @@ fn contains_parser<'src, I>(
         .boxed()
 }
 
+fn shift_parser<'src, I: ParserInput<'src>>(
+    prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
+) -> BoxedParser<'src, 'src, I> {
+    let shift_op = choice((
+        just(Token::Op("<<")).to(BinaryOp::LeftShift),
+        just(Token::Op(">>")).to(BinaryOp::RightShift),
+    ));
+
+    prev.clone()
+        .foldl_with(shift_op.then(prev).repeated(), |a, (op, b), e| {
+            Spanned(Expr::Binary(Box::new(a), op, Box::new(b)), e.span())
+        })
+        .memoized()
+        .boxed()
+}
+
 fn bitwise_parser<'src, I: ParserInput<'src>>(
     prev: impl Parser<'src, I, Spanned<Expr<'src>>>,
 ) -> BoxedParser<'src, 'src, I> {
-    let bitwise_op = just(Token::Op("&")).to(BinaryOp::BitwiseAnd);
+    let bitwise_op = choice((
+        just(Token::Op("&")).to(BinaryOp::BitwiseAnd),
+        just(Token::Op("|")).to(BinaryOp::BitwiseOr),
+        just(Token::Op("^")).to(BinaryOp::BitwiseXor),
+    ));
 
     prev.clone()
         .foldl_with(bitwise_op.then(prev).repeated(), |a, (op, b), e| {

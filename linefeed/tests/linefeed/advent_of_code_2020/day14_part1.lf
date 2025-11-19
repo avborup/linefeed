@@ -1,0 +1,14 @@
+mem, mask = {}, null;
+for instr in input().lines() {
+  new_mask, addr, val = instr.find(r/mask = ([01X]+)|mem\[(\d+)\] = (\d+)/n);
+
+  (mask = new_mask; continue) if new_mask;
+
+  mem[addr] = for i in 0..36 {
+    val &= ~(1 << (35 - i)) if mask[i] == "0";
+    val |=  (1 << (35 - i)) if mask[i] == "1";
+    val
+  };
+};
+
+print("Part 1:", sum(mem.values()));

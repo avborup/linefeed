@@ -197,6 +197,11 @@ where
             Bytecode::Range => binary_op!(self, range),
             Bytecode::Xor => binary_op!(self, xor),
             Bytecode::BitwiseAnd => binary_op!(self, bitwise_and),
+            Bytecode::BitwiseOr => binary_op!(self, bitwise_or),
+            Bytecode::BitwiseXor => binary_op!(self, bitwise_xor),
+            Bytecode::LeftShift => binary_op!(self, left_shift),
+            Bytecode::RightShift => binary_op!(self, right_shift),
+            Bytecode::BitwiseNot => unary_mapper_method!(self, bitwise_not),
 
             Bytecode::Not => {
                 let val = self.pop_stack();
@@ -470,6 +475,7 @@ where
             Bytecode::GetAll => binary_op!(self, get_all),
             Bytecode::Values => unary_mapper_method!(self, values),
             Bytecode::Rot => binary_op!(self, rot),
+            Bytecode::Binary(num_args) => method_with_optional_arg!(self, binary, *num_args),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),

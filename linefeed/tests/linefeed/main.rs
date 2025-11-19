@@ -3,6 +3,7 @@ pub mod helpers;
 mod advent_of_code_2020;
 mod all_any;
 mod big_ints;
+mod bitwise;
 mod comparison;
 mod count;
 mod counter;
