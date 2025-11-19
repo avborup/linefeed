@@ -390,6 +390,7 @@ impl RuntimeValue {
             RuntimeValue::List(list) => RuntimeValue::Num(RuntimeNumber::from(list.len())),
             RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
             RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
+            RuntimeValue::Map(m) => RuntimeValue::Num(RuntimeNumber::from(m.len())),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",

@@ -301,3 +301,27 @@ eval_and_assert!(
     equals("3"),
     empty()
 );
+
+eval_and_assert!(
+    map_len_empty,
+    indoc! {r#"
+        map = {};
+        print(map.len());
+    "#},
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    map_len_basic,
+    indoc! {r#"
+        map = {
+            "a": 1,
+            "b": 2,
+            "c": 3,
+        };
+        print(map.len());
+    "#},
+    equals("3"),
+    empty()
+);
