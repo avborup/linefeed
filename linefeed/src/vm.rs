@@ -476,6 +476,7 @@ where
             Bytecode::Find => binary_op!(self, find),
             Bytecode::IsMatch => binary_op!(self, is_match),
             Bytecode::Contains => binary_op!(self, contains),
+            Bytecode::StartsWith => binary_op!(self, starts_with),
             Bytecode::IsIn => binary_op_swapped!(self, contains),
             Bytecode::Enumerate => unary_mapper_method!(self, enumerate),
             Bytecode::GetAll => binary_op!(self, get_all),

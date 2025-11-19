@@ -837,6 +837,18 @@ impl RuntimeValue {
         Ok(RuntimeValue::Bool(contains))
     }
 
+    pub fn starts_with(&self, prefix: &Self) -> Result<Self, RuntimeError> {
+        match (self, prefix) {
+            (RuntimeValue::Str(s), RuntimeValue::Str(p)) => {
+                Ok(RuntimeValue::Bool(s.starts_with(p)))
+            }
+            _ => Err(RuntimeError::invalid_method_for_type(
+                Method::StartsWith,
+                self,
+            )),
+        }
+    }
+
     pub fn get_all(&self, iterable: &Self) -> Result<Self, RuntimeError> {
         match self {
             RuntimeValue::Map(map) => {

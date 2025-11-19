@@ -156,3 +156,35 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    starts_with_returns_true,
+    indoc! {r#"
+        text = "hello world";
+        print(text.starts_with("hello"));
+        print(text.starts_with("h"));
+        print(text.starts_with(""));
+    "#},
+    equals(indoc! {r#"
+        true
+        true
+        true
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    starts_with_returns_false,
+    indoc! {r#"
+        text = "hello world";
+        print(text.starts_with("world"));
+        print(text.starts_with("Hello"));
+        print(text.starts_with("goodbye"));
+    "#},
+    equals(indoc! {r#"
+        false
+        false
+        false
+    "#}),
+    empty()
+);

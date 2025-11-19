@@ -91,6 +91,10 @@ impl RuntimeString {
         self.as_str().contains(substr.as_str())
     }
 
+    pub fn starts_with(&self, prefix: &RuntimeString) -> bool {
+        self.as_str().starts_with(prefix.as_str())
+    }
+
     pub fn substr(&self, range: &RuntimeRange) -> Result<Self, RuntimeError> {
         let (start, end) = resolve_slice_indices(self.len(), range)?;
         Ok(Self::new(&self.as_str()[start..end + 1]))
