@@ -503,6 +503,17 @@ impl Compiler {
                     .then_instructions(vec![SwapPop, Goto(iter_label)], expr.span())
                     .then_instruction(Instruction::Label(end_label), expr.span());
 
+                // Drop the iterator by setting it to Null. This releases any Rc references,
+                // allowing ouroboros-borrowed iterators (like Set/Map) to release their borrows.
+                let cleanup_iterator = self.compile_var_assign(
+                    expr,
+                    &loop_vars.iterator_var,
+                    Program::from_instructions(vec![Value(IrValue::Null)], expr.span()),
+                )?;
+                let program = program
+                    .then_program(cleanup_iterator)
+                    .then_instruction(Pop, expr.span());
+
                 self.loop_stack.pop();
 
                 debug_assert!(

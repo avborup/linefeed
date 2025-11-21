@@ -174,3 +174,17 @@ eval_and_assert!(
     equals("true"),
     empty()
 );
+
+eval_and_assert!(
+    set_mutation_after_iteration,
+    indoc! {r#"
+        s = set([1, 2, 3]);
+        for item in s {
+            item;
+        };
+        s.add(4);
+        print(s.len());
+    "#},
+    equals("4"),
+    empty()
+);
