@@ -12,17 +12,18 @@ fn is_valid(n, rule) n in rule[0] or n in rule[1];
 
 part1, valid = 0, [own];
 for ticket in nearby {
-  for n in ticket {
-    if not any([is_valid(n, r) for r in rules.values()]) {
-      part1 += n;
-    } else {
-      valid.append(ticket);
-    };
+  invalid_values = [n for n in ticket if not any([is_valid(n, r) for r in rules.values()])];
+  if invalid_values.len() > 0 {
+    part1 += sum(invalid_values);
+  } else {
+    valid.append(ticket);
   };
 };
 
 candidates, indices, taken = set(rules.keys()), {}, set();
 for _ in 0..rules.len() {
+  found_name = null;
+  found_index = null;
   for name in candidates {
     rule = rules[name];
     possible_indices = [
@@ -31,15 +32,16 @@ for _ in 0..rules.len() {
       if i not in taken and all([is_valid(t[i], rule) for t in valid])
     ];
 
-    print("    ", name, "possible indices:", possible_indices);
-
-    break if possible_indices.len() == 1;
+    if possible_indices.len() == 1 {
+      found_name = name;
+      found_index = possible_indices[0];
+      break;
+    };
   };
-  
-  print("Determined", name, "is index", possible_indices[0]);
 
-  taken.add(possible_indices[0]);
-  indices[name] = possible_indices[0];
+  taken.add(found_index);
+  indices[found_name] = found_index;
+  candidates.remove(found_name);
 };
 
 part2 = mul([
