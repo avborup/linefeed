@@ -312,24 +312,17 @@ impl Bytecode {
         Ok(res)
     }
 
-    /// Returns a human-readable name for this bytecode instruction.
-    /// Used by the profiler to display instruction statistics.
     #[cfg(feature = "profile-vm")]
     pub fn name(&self) -> &'static str {
         match self {
-            // Variables
             Bytecode::Load => "Load",
             Bytecode::Store => "Store",
             Bytecode::LoadLocal(_) => "LoadLocal",
             Bytecode::StoreLocal(_) => "StoreLocal",
             Bytecode::LoadGlobal(_) => "LoadGlobal",
             Bytecode::StoreGlobal(_) => "StoreGlobal",
-
-            // Values
             Bytecode::Value(_) => "Value",
             Bytecode::ConstantInt(_) => "ConstantInt",
-
-            // Stack manipulation
             Bytecode::Pop => "Pop",
             Bytecode::RemoveIndex => "RemoveIndex",
             Bytecode::Swap => "Swap",
@@ -337,12 +330,8 @@ impl Bytecode {
             Bytecode::Dup => "Dup",
             Bytecode::GetStackPtr => "GetStackPtr",
             Bytecode::SetStackPtr => "SetStackPtr",
-
-            // Register manipulation
             Bytecode::SetRegister(_) => "SetRegister",
             Bytecode::GetRegister(_) => "GetRegister",
-
-            // Binary operations
             Bytecode::Add => "Add",
             Bytecode::Sub => "Sub",
             Bytecode::Mul => "Mul",
@@ -363,24 +352,16 @@ impl Bytecode {
             Bytecode::BitwiseXor => "BitwiseXor",
             Bytecode::LeftShift => "LeftShift",
             Bytecode::RightShift => "RightShift",
-
-            // Logic
             Bytecode::Not => "Not",
             Bytecode::BitwiseNot => "BitwiseNot",
-
-            // Control flow
             Bytecode::Stop => "Stop",
             Bytecode::Goto(_) => "Goto",
             Bytecode::IfTrue(_) => "IfTrue",
             Bytecode::IfFalse(_) => "IfFalse",
             Bytecode::RuntimeError(_) => "RuntimeError",
-
-            // Functions
             Bytecode::GetBasePtr => "GetBasePtr",
             Bytecode::Call(_) => "Call",
             Bytecode::Return => "Return",
-
-            // Builtins
             Bytecode::PrintValue(_) => "PrintValue",
             Bytecode::ReadInput => "ReadInput",
             Bytecode::Index => "Index",
@@ -407,8 +388,6 @@ impl Bytecode {
             Bytecode::ToCounter(_) => "ToCounter",
             Bytecode::Manhattan(_) => "Manhattan",
             Bytecode::ModInv(_) => "ModInv",
-
-            // Methods
             Bytecode::Append => "Append",
             Bytecode::ToUpperCase => "ToUpperCase",
             Bytecode::ToLowerCase => "ToLowerCase",

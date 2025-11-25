@@ -7,37 +7,24 @@ use crate::grammar::ast::Span;
 
 use super::bytecode::Bytecode;
 
-/// Environment variable to specify output file for full profiler data
 const PROFILE_OUTPUT_ENV: &str = "LINEFEED_PROFILE_OUTPUT";
 
 type BytecodeDiscriminant = std::mem::Discriminant<Bytecode>;
 
-/// Runtime profiler for the Linefeed VM.
-///
-/// Collects timing and frequency data for instructions and source spans.
 pub struct Profiler {
-    /// Count of each instruction type executed
     instruction_counts: FxHashMap<BytecodeDiscriminant, u64>,
-    /// Total time spent in each instruction type
     instruction_times: FxHashMap<BytecodeDiscriminant, Duration>,
-    /// Representative bytecode for each discriminant (for naming)
     instruction_examples: FxHashMap<BytecodeDiscriminant, Bytecode>,
 
-    /// Total time spent in each source span
     span_times: FxHashMap<Span, Duration>,
-    /// Count of instructions executed for each source span
     span_counts: FxHashMap<Span, u64>,
 
-    /// Function call counts by PC location
     function_counts: FxHashMap<usize, u64>,
-    /// Total time in functions (exclusive, not including nested calls)
     function_times: FxHashMap<usize, Duration>,
-    /// Call stack for tracking function entry/exit: (function_pc, entry_time, accumulated_child_time)
+    /// (function_pc, entry_time, accumulated_child_time)
     call_stack: Vec<(usize, Instant, Duration)>,
 
-    /// Total time spent executing
     total_time: Duration,
-    /// When profiling started
     start_time: Option<Instant>,
 }
 
@@ -63,62 +50,51 @@ impl Profiler {
         }
     }
 
-    /// Call at the start of VM execution
     pub fn start(&mut self) {
         self.start_time = Some(Instant::now());
     }
 
-    /// Call at the end of VM execution
     pub fn stop(&mut self) {
         if let Some(start) = self.start_time.take() {
             self.total_time = start.elapsed();
         }
     }
 
-    /// Record execution of a single instruction
     pub fn record(&mut self, bytecode: &Bytecode, span: Span, elapsed: Duration) {
         let discriminant = std::mem::discriminant(bytecode);
 
-        // Instruction stats
         *self.instruction_counts.entry(discriminant).or_insert(0) += 1;
         *self.instruction_times.entry(discriminant).or_insert(Duration::ZERO) += elapsed;
         self.instruction_examples
             .entry(discriminant)
             .or_insert_with(|| bytecode.clone());
 
-        // Span stats
         *self.span_counts.entry(span).or_insert(0) += 1;
         *self.span_times.entry(span).or_insert(Duration::ZERO) += elapsed;
     }
 
-    /// Record a function call (Call instruction)
     pub fn record_call(&mut self, function_pc: usize) {
         *self.function_counts.entry(function_pc).or_insert(0) += 1;
         self.call_stack
             .push((function_pc, Instant::now(), Duration::ZERO));
     }
 
-    /// Record a function return
     pub fn record_return(&mut self) {
         if let Some((function_pc, entry_time, child_time)) = self.call_stack.pop() {
             let total_time = entry_time.elapsed();
-            // Exclusive time = total time - time spent in child calls
             let exclusive_time = total_time.saturating_sub(child_time);
             *self
                 .function_times
                 .entry(function_pc)
                 .or_insert(Duration::ZERO) += exclusive_time;
 
-            // Add our total time to parent's child time
             if let Some((_, _, parent_child_time)) = self.call_stack.last_mut() {
                 *parent_child_time += total_time;
             }
         }
     }
 
-    /// Generate and print the profiling report
     pub fn print_report(&self, source: &str) {
-        // Always print truncated report to stderr
         eprintln!();
         eprintln!("================== VM Profiler Report ==================");
         eprintln!();
@@ -127,7 +103,6 @@ impl Profiler {
 
         eprintln!("=========================================================");
 
-        // If LINEFEED_PROFILE_OUTPUT is set, write full report to file
         if let Ok(output_path) = std::env::var(PROFILE_OUTPUT_ENV) {
             match std::fs::File::create(&output_path) {
                 Ok(file) => {
@@ -150,7 +125,6 @@ impl Profiler {
         }
     }
 
-    /// Write report to a writer. If `truncate` is true, limits output for readability.
     fn write_report_to(&self, w: &mut dyn Write, source: &str, truncate: bool) {
         self.write_instruction_stats(w, truncate);
         self.write_span_stats(w, source, truncate);
@@ -162,7 +136,6 @@ impl Profiler {
         let total_count: u64 = self.instruction_counts.values().sum();
         let total_time: Duration = self.instruction_times.values().sum();
 
-        // Collect and sort by total time (descending)
         let mut stats: Vec<_> = self
             .instruction_counts
             .iter()
@@ -226,7 +199,6 @@ impl Profiler {
 
         let total_time: Duration = self.span_times.values().sum();
 
-        // Collect and sort by total time (descending)
         let mut stats: Vec<_> = self
             .span_times
             .iter()
@@ -282,7 +254,6 @@ impl Profiler {
             return;
         }
 
-        // Collect and sort by total time (descending)
         let mut stats: Vec<_> = self
             .function_counts
             .iter()
@@ -352,7 +323,6 @@ impl Profiler {
     }
 }
 
-/// Format a count with thousand separators
 fn format_count(n: u64) -> String {
     let s = n.to_string();
     let mut result = String::new();
@@ -365,7 +335,6 @@ fn format_count(n: u64) -> String {
     result.chars().rev().collect()
 }
 
-/// Format a duration in human-readable form
 fn format_duration(d: Duration) -> String {
     let nanos = d.as_nanos();
     if nanos < 1_000 {
@@ -379,9 +348,7 @@ fn format_duration(d: Duration) -> String {
     }
 }
 
-/// Format a source span as a location string
 fn format_span(span: Span, source: &str) -> String {
-    // Calculate line and column from byte offset
     let (line, col) = byte_offset_to_line_col(source, span.start);
     let (end_line, end_col) = byte_offset_to_line_col(source, span.end);
 
@@ -396,7 +363,6 @@ fn format_span(span: Span, source: &str) -> String {
     }
 }
 
-/// Convert a byte offset to (line, column), both 1-indexed
 fn byte_offset_to_line_col(source: &str, offset: usize) -> (usize, usize) {
     let offset = offset.min(source.len());
     let mut line = 1;
