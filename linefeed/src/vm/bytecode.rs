@@ -12,6 +12,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "profile-vm", derive(strum::IntoStaticStr))]
 pub enum Bytecode {
     // Variables
     Load,

@@ -20,6 +20,8 @@ use crate::{
 pub use runtime_error::RuntimeError;
 
 pub mod bytecode;
+#[cfg(feature = "profile-vm")]
+pub mod profiler;
 pub mod runtime_error;
 pub mod runtime_value;
 pub mod stdlib;
@@ -37,6 +39,10 @@ pub struct BytecodeInterpreter<I, O, E> {
     pub instructions_executed: usize,
     memoized_functions: FxHashMap<MemoizationKey, RuntimeValue>,
     ongoing_memoizations: FxHashMap<usize, MemoizationKey>,
+    #[cfg(feature = "profile-vm")]
+    profiler: profiler::Profiler,
+    #[cfg(feature = "profile-vm")]
+    source: String,
 }
 
 impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
@@ -53,7 +59,17 @@ impl BytecodeInterpreter<std::io::Stdin, std::io::Stdout, std::io::Stderr> {
             instructions_executed: 0,
             memoized_functions: FxHashMap::default(),
             ongoing_memoizations: FxHashMap::default(),
+            #[cfg(feature = "profile-vm")]
+            profiler: profiler::Profiler::new(),
+            #[cfg(feature = "profile-vm")]
+            source: String::new(),
         }
+    }
+
+    #[cfg(feature = "profile-vm")]
+    pub fn with_source(mut self, source: impl Into<String>) -> Self {
+        self.source = source.into();
+        self
     }
 }
 
@@ -133,11 +149,18 @@ where
             instructions_executed: self.instructions_executed,
             memoized_functions: self.memoized_functions,
             ongoing_memoizations: self.ongoing_memoizations,
+            #[cfg(feature = "profile-vm")]
+            profiler: self.profiler,
+            #[cfg(feature = "profile-vm")]
+            source: self.source,
         }
     }
 
     pub fn run(&mut self) -> Result<(), (Span, RuntimeError)> {
-        self.run_inner().map_err(|err| {
+        #[cfg(feature = "profile-vm")]
+        self.profiler.start();
+
+        let result = self.run_inner().map_err(|err| {
             let source_span = self
                 .program
                 .source_map
@@ -146,7 +169,15 @@ where
                 .unwrap_or(Span::new(0, 0));
 
             (source_span, err)
-        })
+        });
+
+        #[cfg(feature = "profile-vm")]
+        {
+            self.profiler.stop();
+            self.profiler.print_report(&self.source);
+        }
+
+        result
     }
 
     fn run_inner(&mut self) -> Result<(), RuntimeError> {
@@ -162,12 +193,22 @@ where
         #[cfg(feature = "debug-vm")]
         self.dbg_print();
 
-        let instr = &self.program.instructions[self.pc];
+        #[cfg(feature = "profile-vm")]
+        let instr_start = std::time::Instant::now();
+
+        let pc = self.pc;
+        #[cfg(feature = "profile-vm")]
+        let span = self.program.source_map[pc];
         self.pc += 1;
         self.instructions_executed += 1;
 
-        match instr {
-            Bytecode::Stop => return Ok(ControlFlow::Stop),
+        match &self.program.instructions[pc] {
+            Bytecode::Stop => {
+                #[cfg(feature = "profile-vm")]
+                self.profiler
+                    .record(&self.program.instructions[pc], span, instr_start.elapsed());
+                return Ok(ControlFlow::Stop);
+            }
 
             Bytecode::ConstantInt(i) => {
                 self.push_stack(RuntimeValue::Int(*i));
@@ -356,9 +397,14 @@ where
                 // And then set the new base pointer and jump to the function
                 self.bp = new_bp;
                 self.pc = func_location;
+
+                #[cfg(feature = "profile-vm")]
+                self.profiler.record_call(func_location);
             }
 
             Bytecode::Return => {
+                #[cfg(feature = "profile-vm")]
+                self.profiler.record_return();
                 let return_val = self.pop_stack();
                 let frame_index = self.bp - 2;
 
@@ -543,6 +589,10 @@ where
                 return Err(RuntimeError::NotImplemented(to_implement.clone()));
             }
         }
+
+        #[cfg(feature = "profile-vm")]
+        self.profiler
+            .record(&self.program.instructions[pc], span, instr_start.elapsed());
 
         Ok(ControlFlow::Continue)
     }
