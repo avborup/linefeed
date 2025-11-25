@@ -142,7 +142,7 @@ impl Profiler {
             .map(|(disc, &count)| {
                 let time = self.instruction_times.get(disc).copied().unwrap_or_default();
                 let example = self.instruction_examples.get(disc);
-                let name = example.map(|b| b.name()).unwrap_or("???");
+                let name: &'static str = example.map(Into::into).unwrap_or("???");
                 (name, count, time)
             })
             .collect();

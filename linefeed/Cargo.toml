@@ -7,9 +7,10 @@ edition = "2021"
 default = []
 aoc-secret = []
 debug-vm = []
-profile-vm = []
+profile-vm = ["strum"]
 
 [dependencies]
+strum = { version = "0.27", features = ["derive"], optional = true }
 ariadne = "0.3.0"
 chumsky = { git = "https://github.com/zesterer/chumsky.git", rev = "282bf5e", features = ["memoization"] }
 ouroboros = "0.18.5"
