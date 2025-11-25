@@ -7,6 +7,7 @@ edition = "2021"
 default = []
 aoc-secret = []
 debug-vm = []
+profile-vm = []
 
 [dependencies]
 ariadne = "0.3.0"

@@ -65,8 +65,11 @@ pub fn run_with_handles(
 
     let run_start = Instant::now();
 
+    let bytecode_interpreter = BytecodeInterpreter::new(program);
+    #[cfg(feature = "profile-vm")]
+    let bytecode_interpreter = bytecode_interpreter.with_source(src);
     let mut bytecode_interpreter =
-        BytecodeInterpreter::new(program).with_handles(&mut stdin, &mut stdout, &mut stderr);
+        bytecode_interpreter.with_handles(&mut stdin, &mut stdout, &mut stderr);
 
     if let Err((span, err)) = bytecode_interpreter.run() {
         return pretty_print_errors(stderr, src, vec![Rich::<RuntimeError>::custom(span, err)]);

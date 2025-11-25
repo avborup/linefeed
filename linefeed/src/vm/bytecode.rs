@@ -311,6 +311,127 @@ impl Bytecode {
 
         Ok(res)
     }
+
+    /// Returns a human-readable name for this bytecode instruction.
+    /// Used by the profiler to display instruction statistics.
+    #[cfg(feature = "profile-vm")]
+    pub fn name(&self) -> &'static str {
+        match self {
+            // Variables
+            Bytecode::Load => "Load",
+            Bytecode::Store => "Store",
+            Bytecode::LoadLocal(_) => "LoadLocal",
+            Bytecode::StoreLocal(_) => "StoreLocal",
+            Bytecode::LoadGlobal(_) => "LoadGlobal",
+            Bytecode::StoreGlobal(_) => "StoreGlobal",
+
+            // Values
+            Bytecode::Value(_) => "Value",
+            Bytecode::ConstantInt(_) => "ConstantInt",
+
+            // Stack manipulation
+            Bytecode::Pop => "Pop",
+            Bytecode::RemoveIndex => "RemoveIndex",
+            Bytecode::Swap => "Swap",
+            Bytecode::SwapPop => "SwapPop",
+            Bytecode::Dup => "Dup",
+            Bytecode::GetStackPtr => "GetStackPtr",
+            Bytecode::SetStackPtr => "SetStackPtr",
+
+            // Register manipulation
+            Bytecode::SetRegister(_) => "SetRegister",
+            Bytecode::GetRegister(_) => "GetRegister",
+
+            // Binary operations
+            Bytecode::Add => "Add",
+            Bytecode::Sub => "Sub",
+            Bytecode::Mul => "Mul",
+            Bytecode::Div => "Div",
+            Bytecode::DivFloor => "DivFloor",
+            Bytecode::Mod => "Mod",
+            Bytecode::Pow => "Pow",
+            Bytecode::Eq => "Eq",
+            Bytecode::NotEq => "NotEq",
+            Bytecode::Less => "Less",
+            Bytecode::LessEq => "LessEq",
+            Bytecode::Greater => "Greater",
+            Bytecode::GreaterEq => "GreaterEq",
+            Bytecode::Range => "Range",
+            Bytecode::Xor => "Xor",
+            Bytecode::BitwiseAnd => "BitwiseAnd",
+            Bytecode::BitwiseOr => "BitwiseOr",
+            Bytecode::BitwiseXor => "BitwiseXor",
+            Bytecode::LeftShift => "LeftShift",
+            Bytecode::RightShift => "RightShift",
+
+            // Logic
+            Bytecode::Not => "Not",
+            Bytecode::BitwiseNot => "BitwiseNot",
+
+            // Control flow
+            Bytecode::Stop => "Stop",
+            Bytecode::Goto(_) => "Goto",
+            Bytecode::IfTrue(_) => "IfTrue",
+            Bytecode::IfFalse(_) => "IfFalse",
+            Bytecode::RuntimeError(_) => "RuntimeError",
+
+            // Functions
+            Bytecode::GetBasePtr => "GetBasePtr",
+            Bytecode::Call(_) => "Call",
+            Bytecode::Return => "Return",
+
+            // Builtins
+            Bytecode::PrintValue(_) => "PrintValue",
+            Bytecode::ReadInput => "ReadInput",
+            Bytecode::Index => "Index",
+            Bytecode::SetIndex => "SetIndex",
+            Bytecode::NextIter => "NextIter",
+            Bytecode::NextIterOrJump(_) => "NextIterOrJump",
+            Bytecode::ToIter => "ToIter",
+            Bytecode::ParseInt => "ParseInt",
+            Bytecode::ToList => "ToList",
+            Bytecode::ToTuple => "ToTuple",
+            Bytecode::CreateTuple(_) => "CreateTuple",
+            Bytecode::ToMap => "ToMap",
+            Bytecode::MapWithDefault => "MapWithDefault",
+            Bytecode::ToSet(_) => "ToSet",
+            Bytecode::Product => "Product",
+            Bytecode::Sum => "Sum",
+            Bytecode::ReprString => "ReprString",
+            Bytecode::IsIn => "IsIn",
+            Bytecode::AllTrue(_) => "AllTrue",
+            Bytecode::AnyTrue(_) => "AnyTrue",
+            Bytecode::Max(_) => "Max",
+            Bytecode::Min(_) => "Min",
+            Bytecode::Abs => "Abs",
+            Bytecode::ToCounter(_) => "ToCounter",
+            Bytecode::Manhattan(_) => "Manhattan",
+            Bytecode::ModInv(_) => "ModInv",
+
+            // Methods
+            Bytecode::Append => "Append",
+            Bytecode::ToUpperCase => "ToUpperCase",
+            Bytecode::ToLowerCase => "ToLowerCase",
+            Bytecode::Split => "Split",
+            Bytecode::SplitLines => "SplitLines",
+            Bytecode::Join(_) => "Join",
+            Bytecode::Length => "Length",
+            Bytecode::Count => "Count",
+            Bytecode::FindAll => "FindAll",
+            Bytecode::Find => "Find",
+            Bytecode::IsMatch => "IsMatch",
+            Bytecode::Contains => "Contains",
+            Bytecode::StartsWith => "StartsWith",
+            Bytecode::Sort(_) => "Sort",
+            Bytecode::Enumerate => "Enumerate",
+            Bytecode::GetAll => "GetAll",
+            Bytecode::Values => "Values",
+            Bytecode::Keys => "Keys",
+            Bytecode::Remove => "Remove",
+            Bytecode::Rot => "Rot",
+            Bytecode::Binary(_) => "Binary",
+        }
+    }
 }
 
 impl Program<Instruction> {
