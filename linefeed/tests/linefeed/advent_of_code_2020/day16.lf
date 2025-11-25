@@ -1,26 +1,52 @@
-fn parse() {
-  rules_str, own_str, nearby_str = input().split("\n\n");
+rules_str, own_str, nearby_str = input().split("\n\n");
 
-  rules = [];
-  for line in rules_str.lines() {
-    min1, max1, min2, max2 = line.find(r/(\d+)-(\d+) or (\d+)-(\d+)/n);
-    rules.append(((min1..=max1), (min2..=max2)));
-  };
-
-  own = [m[0] for m in own_str.find_all(r/(\d+)/n)];
-  nearby = [[m[0] for m in line.find_all(r/(\d+)/n)] for line in (nearby_str.lines())[1..]];
-
-  (rules, own, nearby)
+rules = {};
+for line in rules_str.lines() {
+  name, min1, max1, min2, max2 = line.find(r/(.*?): (\d+)-(\d+) or (\d+)-(\d+)/n);
+  rules[name] = ((min1..=max1), (min2..=max2));
 };
+own = [m[0] for m in own_str.find_all(r/(\d+)/n)];
+nearby = [[m[0] for m in line.find_all(r/(\d+)/n)] for line in (nearby_str.lines())[1..]];
 
-rules, own, nearby = parse();
+fn is_valid(n, rule) n in rule[0] or n in rule[1];
 
-part1 = 0;
+part1, valid = 0, [own];
 for ticket in nearby {
-  for value in ticket {
-    continue if any([(value in range1 or value in range2) for (range1, range2) in rules]);
-    part1 += value;
+  for n in ticket {
+    if not any([is_valid(n, r) for r in rules.values()]) {
+      part1 += n;
+    } else {
+      valid.append(ticket);
+    };
   };
 };
+
+candidates, indices, taken = set(rules.keys()), {}, set();
+for _ in 0..rules.len() {
+  for name in candidates {
+    rule = rules[name];
+    possible_indices = [
+      i
+      for i in 0..own.len()
+      if i not in taken and all([is_valid(t[i], rule) for t in valid])
+    ];
+
+    print("    ", name, "possible indices:", possible_indices);
+
+    break if possible_indices.len() == 1;
+  };
+  
+  print("Determined", name, "is index", possible_indices[0]);
+
+  taken.add(possible_indices[0]);
+  indices[name] = possible_indices[0];
+};
+
+part2 = mul([
+  own[indices[name]]
+  for name in indices.keys()
+  if name.starts_with("departure")
+]);
 
 print("Part 1:", part1);
+print("Part 2:", part2);
