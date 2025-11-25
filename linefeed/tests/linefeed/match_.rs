@@ -67,3 +67,53 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    match_catch_all_underscore,
+    indoc! {r#"
+        fn foo(n) {
+            match n {
+                0 => "zero",
+                _ => "other",
+            }
+        };
+        print(foo(0));
+        print(foo(5));
+    "#},
+    equals(indoc! {r#"
+        zero
+        other
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    match_catch_all_with_binding,
+    indoc! {r#"
+        fn foo(n) {
+            match n {
+                0 => 100,
+                x => x * 2,
+            }
+        };
+        print(foo(0));
+        print(foo(42));
+    "#},
+    equals(indoc! {r#"
+        100
+        84
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    match_underscore_binding_accessible,
+    indoc! {r#"
+        match 5 {
+            0 => print("zero"),
+            _ => print(_),
+        };
+    "#},
+    equals("5"),
+    empty()
+);

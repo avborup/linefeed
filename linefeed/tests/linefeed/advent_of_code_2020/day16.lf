@@ -13,10 +13,9 @@ fn is_valid(n, rule) n in rule[0] or n in rule[1];
 part1, valid = 0, [own];
 for ticket in nearby {
   invalid_values = [n for n in ticket if not any([is_valid(n, r) for r in rules.values()])];
-  if invalid_values.len() > 0 {
-    part1 += sum(invalid_values);
-  } else {
-    valid.append(ticket);
+  match invalid_values {
+    [] => valid.append(ticket),
+    _ => part1 += sum(invalid_values),
   };
 };
 

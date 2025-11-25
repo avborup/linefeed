@@ -627,7 +627,6 @@ impl Compiler {
                     let next_label = labels.get(i + 1).copied().unwrap_or(label_last);
 
                     // TODO: Implement more advanced constant types (e.g. lists, tuples, sets)
-                    // TODO: Implement catch-all (ident => body)
                     // TODO: Implement pattern matching (incl. binding values like (x, y) => x + y)
                     if let Some(constant) = constant_opt {
                         let arm_program = Program::from_instructions(
@@ -640,6 +639,17 @@ impl Compiler {
                             ],
                             pattern.span(),
                         )
+                        .then_program(self.compile_expr(body)?)
+                        .then_instruction(Goto(label_end), expr.span());
+
+                        program.extend(arm_program);
+                    } else if let Expr::Local(name) = &pattern.0 {
+                        // Catch-all identifier pattern - matches everything, binds value
+                        let arm_program = Program::from_instruction(
+                            Instruction::Label(cur_label),
+                            pattern.span(),
+                        )
+                        .then_program(self.compile_var_store(name, pattern)?)
                         .then_program(self.compile_expr(body)?)
                         .then_instruction(Goto(label_end), expr.span());
 

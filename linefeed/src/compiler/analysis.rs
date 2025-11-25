@@ -108,7 +108,9 @@ pub fn find_all_assignments(expr: &Spanned<Expr>) -> Vec<Spanned<String>> {
             Expr::Match(expr, arms) => {
                 let mut res = find_all_assignments_inner(expr);
                 for (cond, body) in arms {
-                    // TODO: assign arm variable here
+                    if let Expr::Local(name) = &cond.0 {
+                        res.push(Spanned(name.to_string(), cond.span()));
+                    }
                     res.extend(find_all_assignments_inner(cond));
                     res.extend(find_all_assignments_inner(body));
                 }
