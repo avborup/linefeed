@@ -52,6 +52,25 @@ linefeed_lsp = {
 
 See https://github.com/avborup/linefeed/issues/1 for a tracking issue.
 
+## Profiling
+
+Linefeed includes a built-in VM profiler to analyze runtime performance. Enable it by compiling with the `profile-vm` feature:
+
+```bash
+cargo run --bin linefeed --features profile-vm -- your_program.lf
+```
+
+This prints a summary to stderr showing:
+- Instruction frequency and timing
+- Source code hotspots
+- Function call statistics
+
+To export full (non-truncated) profiler data to a file, set the `LINEFEED_PROFILE_OUTPUT` environment variable:
+
+```bash
+LINEFEED_PROFILE_OUTPUT=profile.txt cargo run --bin linefeed --features profile-vm -- your_program.lf
+```
+
 ## Sample snippet
 
 For completeness sake, here's a sample Linefeed snippet with syntax highlight (from the language server):
