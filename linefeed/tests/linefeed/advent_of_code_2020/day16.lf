@@ -22,33 +22,21 @@ for ticket in nearby {
 
 candidates, indices, taken = set(rules.keys()), {}, set();
 for _ in 0..rules.len() {
-  found_name = null;
-  found_index = null;
   for name in candidates {
-    rule = rules[name];
     possible_indices = [
-      i
-      for i in 0..own.len()
-      if i not in taken and all([is_valid(t[i], rule) for t in valid])
+      i for i in 0..own.len()
+      if i not in taken and all([is_valid(t[i], rules[name]) for t in valid])
     ];
 
-    if possible_indices.len() == 1 {
-      found_name = name;
-      found_index = possible_indices[0];
-      break;
-    };
+    break if possible_indices.len() == 1;
   };
 
-  taken.add(found_index);
-  indices[found_name] = found_index;
-  candidates.remove(found_name);
+  taken.add(possible_indices[0]);
+  indices[name] = possible_indices[0];
+  candidates.remove(name);
 };
 
-part2 = mul([
-  own[indices[name]]
-  for name in indices.keys()
-  if name.starts_with("departure")
-]);
+part2 = mul([own[i] for name, i in indices if name.starts_with("departure")]);
 
 print("Part 1:", part1);
 print("Part 2:", part2);
