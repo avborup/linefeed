@@ -312,7 +312,6 @@ impl Bytecode {
 
         Ok(res)
     }
-
 }
 
 impl Program<Instruction> {

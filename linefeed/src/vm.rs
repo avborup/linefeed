@@ -205,7 +205,8 @@ where
         match &self.program.instructions[pc] {
             Bytecode::Stop => {
                 #[cfg(feature = "profile-vm")]
-                self.profiler.record(&self.program.instructions[pc], span, instr_start.elapsed());
+                self.profiler
+                    .record(&self.program.instructions[pc], span, instr_start.elapsed());
                 return Ok(ControlFlow::Stop);
             }
 
@@ -590,7 +591,8 @@ where
         }
 
         #[cfg(feature = "profile-vm")]
-        self.profiler.record(&self.program.instructions[pc], span, instr_start.elapsed());
+        self.profiler
+            .record(&self.program.instructions[pc], span, instr_start.elapsed());
 
         Ok(ControlFlow::Continue)
     }

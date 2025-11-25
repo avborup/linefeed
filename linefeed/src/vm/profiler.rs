@@ -64,7 +64,10 @@ impl Profiler {
         let discriminant = std::mem::discriminant(bytecode);
 
         *self.instruction_counts.entry(discriminant).or_insert(0) += 1;
-        *self.instruction_times.entry(discriminant).or_insert(Duration::ZERO) += elapsed;
+        *self
+            .instruction_times
+            .entry(discriminant)
+            .or_insert(Duration::ZERO) += elapsed;
         self.instruction_examples
             .entry(discriminant)
             .or_insert_with(|| bytecode.clone());
@@ -108,18 +111,29 @@ impl Profiler {
                 Ok(file) => {
                     let mut writer = std::io::BufWriter::new(file);
                     writeln!(writer).ok();
-                    writeln!(writer, "================== VM Profiler Report (Full) ==================").ok();
+                    writeln!(
+                        writer,
+                        "================== VM Profiler Report (Full) =================="
+                    )
+                    .ok();
                     writeln!(writer).ok();
 
                     self.write_report_to(&mut writer, source, false);
 
-                    writeln!(writer, "===============================================================").ok();
+                    writeln!(
+                        writer,
+                        "==============================================================="
+                    )
+                    .ok();
                     if writer.flush().is_ok() {
                         eprintln!("Full profiler data written to: {}", output_path);
                     }
                 }
                 Err(e) => {
-                    eprintln!("Warning: Could not write profile output to {}: {}", output_path, e);
+                    eprintln!(
+                        "Warning: Could not write profile output to {}: {}",
+                        output_path, e
+                    );
                 }
             }
         }
@@ -140,7 +154,11 @@ impl Profiler {
             .instruction_counts
             .iter()
             .map(|(disc, &count)| {
-                let time = self.instruction_times.get(disc).copied().unwrap_or_default();
+                let time = self
+                    .instruction_times
+                    .get(disc)
+                    .copied()
+                    .unwrap_or_default();
                 let example = self.instruction_examples.get(disc);
                 let name: &'static str = example.map(Into::into).unwrap_or("???");
                 (name, count, time)
@@ -152,10 +170,12 @@ impl Profiler {
         let limit = if truncate { 25 } else { stats.len() };
 
         writeln!(w, "INSTRUCTION PROFILE (by total time):").ok();
-        writeln!(w,
+        writeln!(
+            w,
             "  {:20} {:>12} {:>8} {:>12} {:>12}",
             "Instruction", "Count", "%", "Avg Time", "Total Time"
-        ).ok();
+        )
+        .ok();
         writeln!(w, "  {}", "-".repeat(68)).ok();
 
         for (name, count, time) in stats.iter().take(limit) {
@@ -169,14 +189,16 @@ impl Profiler {
             } else {
                 Duration::ZERO
             };
-            writeln!(w,
+            writeln!(
+                w,
                 "  {:20} {:>12} {:>7.1}% {:>12} {:>12}",
                 name,
                 format_count(*count),
                 pct,
                 format_duration(avg),
                 format_duration(*time)
-            ).ok();
+            )
+            .ok();
         }
 
         if truncate && stats.len() > 25 {
@@ -184,11 +206,13 @@ impl Profiler {
         }
 
         writeln!(w).ok();
-        writeln!(w,
+        writeln!(
+            w,
             "  Total: {} instructions in {}",
             format_count(total_count),
             format_duration(total_time)
-        ).ok();
+        )
+        .ok();
         writeln!(w).ok();
     }
 
@@ -213,10 +237,12 @@ impl Profiler {
         let limit = if truncate { 15 } else { stats.len() };
 
         writeln!(w, "SOURCE HOTSPOTS (by total time):").ok();
-        writeln!(w,
+        writeln!(
+            w,
             "  {:30} {:>12} {:>8} {:>12} {:>12}",
             "Location", "Count", "%", "Avg Time", "Total Time"
-        ).ok();
+        )
+        .ok();
         writeln!(w, "  {}", "-".repeat(78)).ok();
 
         for (span, count, time) in stats.iter().take(limit) {
@@ -232,14 +258,16 @@ impl Profiler {
             };
 
             let location = format_span(*span, source);
-            writeln!(w,
+            writeln!(
+                w,
                 "  {:30} {:>12} {:>7.1}% {:>12} {:>12}",
                 location,
                 format_count(*count),
                 pct,
                 format_duration(avg),
                 format_duration(*time)
-            ).ok();
+            )
+            .ok();
         }
 
         if truncate && stats.len() > 15 {
@@ -268,10 +296,12 @@ impl Profiler {
         let limit = if truncate { 15 } else { stats.len() };
 
         writeln!(w, "FUNCTION PROFILE (by exclusive time):").ok();
-        writeln!(w,
+        writeln!(
+            w,
             "  {:15} {:>12} {:>12} {:>12}",
             "Location", "Calls", "Avg Time", "Total Time"
-        ).ok();
+        )
+        .ok();
         writeln!(w, "  {}", "-".repeat(55)).ok();
 
         for (pc, count, time) in stats.iter().take(limit) {
@@ -280,13 +310,15 @@ impl Profiler {
             } else {
                 Duration::ZERO
             };
-            writeln!(w,
+            writeln!(
+                w,
                 "  @pc:{:<9} {:>12} {:>12} {:>12}",
                 pc,
                 format_count(*count),
                 format_duration(avg),
                 format_duration(*time)
-            ).ok();
+            )
+            .ok();
         }
 
         if truncate && stats.len() > 15 {
@@ -301,21 +333,37 @@ impl Profiler {
         let total_instr_time: Duration = self.instruction_times.values().sum();
 
         writeln!(w, "SUMMARY:").ok();
-        writeln!(w, "  Total instructions executed: {}", format_count(total_count)).ok();
-        writeln!(w,
+        writeln!(
+            w,
+            "  Total instructions executed: {}",
+            format_count(total_count)
+        )
+        .ok();
+        writeln!(
+            w,
             "  Total instruction time:      {}",
             format_duration(total_instr_time)
-        ).ok();
-        writeln!(w, "  Total wall-clock time:       {}", format_duration(self.total_time)).ok();
+        )
+        .ok();
+        writeln!(
+            w,
+            "  Total wall-clock time:       {}",
+            format_duration(self.total_time)
+        )
+        .ok();
 
         if total_count > 0 {
             let avg = total_instr_time / (total_count as u32);
             writeln!(w, "  Avg time per instruction:    {}", format_duration(avg)).ok();
 
             if !self.total_time.is_zero() {
-                let instr_per_sec =
-                    total_count as f64 / self.total_time.as_secs_f64();
-                writeln!(w, "  Instructions per second:     {:.2}M", instr_per_sec / 1_000_000.0).ok();
+                let instr_per_sec = total_count as f64 / self.total_time.as_secs_f64();
+                writeln!(
+                    w,
+                    "  Instructions per second:     {:.2}M",
+                    instr_per_sec / 1_000_000.0
+                )
+                .ok();
             }
         }
 
