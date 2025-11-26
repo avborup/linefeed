@@ -61,6 +61,7 @@ pub fn run_with_handles(
     };
     let compile_time = Instant::now().duration_since(compile_start);
 
+    #[cfg(feature = "debug-vm")]
     program.disassemble(src.as_ref());
 
     let run_start = Instant::now();
