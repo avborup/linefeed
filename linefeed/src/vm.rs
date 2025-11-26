@@ -189,6 +189,9 @@ where
         }
     }
 
+    // Force inline to reduce function call overhead, which matters in a tight loop. For example,
+    // this took a program that ran approx. 800 mil instructions from ~10s to ~7.8s.
+    #[inline(always)]
     fn execute_cur_instruction(&mut self) -> Result<ControlFlow, RuntimeError> {
         #[cfg(feature = "debug-vm")]
         self.dbg_print();
