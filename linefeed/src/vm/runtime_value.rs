@@ -758,6 +758,14 @@ impl RuntimeValue {
         Ok(RuntimeValue::List(s.lines()))
     }
 
+    pub fn nums(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::Str(s) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Nums, self));
+        };
+
+        Ok(RuntimeValue::List(s.nums()))
+    }
+
     pub fn join(&self, separator: Option<RuntimeValue>) -> Result<Self, RuntimeError> {
         let Ok(Self::Iterator(iter)) = self.to_iter() else {
             return Err(RuntimeError::invalid_method_for_type(Method::Join, self));

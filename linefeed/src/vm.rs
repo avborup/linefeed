@@ -515,6 +515,7 @@ where
             Bytecode::ToLowerCase => unary_mapper_method!(self, to_lowercase),
             Bytecode::Split => binary_op!(self, split),
             Bytecode::SplitLines => unary_mapper_method!(self, lines),
+            Bytecode::Nums => unary_mapper_method!(self, nums),
             Bytecode::Join(num_args) => method_with_optional_arg!(self, join, *num_args),
             Bytecode::Length => unary_mapper_method!(self, length),
             Bytecode::Count => binary_op!(self, count),

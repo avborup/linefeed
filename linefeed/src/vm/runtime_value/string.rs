@@ -1,4 +1,7 @@
 use std::rc::Rc;
+use std::sync::LazyLock;
+
+use regex::Regex;
 
 use crate::vm::{
     runtime_value::{
@@ -58,6 +61,28 @@ impl RuntimeString {
             .as_str()
             .lines()
             .map(|s| RuntimeValue::Str(Self::new(s)))
+            .collect();
+
+        RuntimeList::from_vec(parts)
+    }
+
+    pub fn nums(&self) -> RuntimeList {
+        static NUM_REGEX: LazyLock<Regex> =
+            LazyLock::new(|| Regex::new(r"-?\d+\.?\d*|-?\.\d+").unwrap());
+
+        let parts = NUM_REGEX
+            .find_iter(self.as_str())
+            .filter_map(|m| {
+                let s = m.as_str();
+                // Try integer first, fall back to float
+                if let Ok(i) = s.parse::<isize>() {
+                    Some(RuntimeValue::Num(RuntimeNumber::from(i)))
+                } else if let Ok(f) = s.parse::<f64>() {
+                    Some(RuntimeValue::Num(RuntimeNumber::Float(f)))
+                } else {
+                    None
+                }
+            })
             .collect();
 
         RuntimeList::from_vec(parts)

@@ -188,3 +188,48 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    nums_extracts_integers,
+    indoc! {r#"
+        print("1 2 3".nums());
+    "#},
+    equals("[1, 2, 3]"),
+    empty()
+);
+
+eval_and_assert!(
+    nums_extracts_negative_integers,
+    indoc! {r#"
+        print("x=-5 y=10".nums());
+    "#},
+    equals("[-5, 10]"),
+    empty()
+);
+
+eval_and_assert!(
+    nums_extracts_floats,
+    indoc! {r#"
+        print("3.14 and 42".nums());
+    "#},
+    equals("[3.14, 42]"),
+    empty()
+);
+
+eval_and_assert!(
+    nums_extracts_from_mixed_text,
+    indoc! {r#"
+        print("abc123def456".nums());
+    "#},
+    equals("[123, 456]"),
+    empty()
+);
+
+eval_and_assert!(
+    nums_empty_string,
+    indoc! {r#"
+        print("no numbers here".nums());
+    "#},
+    equals("[]"),
+    empty()
+);
