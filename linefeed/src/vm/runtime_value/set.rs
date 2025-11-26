@@ -170,6 +170,6 @@ impl Iterator for SetIterator {
     type Item = RuntimeValue;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.cell.with_iter_mut(|it| it.next()).map(|v| v.clone())
+        self.cell.with_iter_mut(|it| it.next()).cloned()
     }
 }
