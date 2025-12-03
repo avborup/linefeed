@@ -1,4 +1,4 @@
-start = [m[0] for m in input().find_all(r/\d+/n)];
+start = input().nums();
 
 fn run(iters) {
   spoken_at = {};
