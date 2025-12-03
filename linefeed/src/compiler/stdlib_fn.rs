@@ -8,6 +8,7 @@ pub enum StdlibFn {
     Input,
     ParseInt,
     Repr,
+    Stringify,
     ToList,
     ToTuple,
     ToMap,
@@ -31,6 +32,7 @@ impl StdlibFn {
         Input => "input",
         ParseInt => "int",
         Repr => "repr",
+        Stringify => "str",
         ToList => "list",
         ToTuple => "tuple",
         ToMap => "map",
@@ -55,6 +57,7 @@ impl StdlibFn {
             Self::Input => 0..=0, // TODO: in the future future, read from an optional file path here?
             Self::ParseInt => 1..=1,
             Self::Repr => 1..=1,
+            Self::Stringify => 1..=1,
             Self::ToList => 1..=1,
             Self::ToTuple => 1..=1,
             Self::ToMap => 1..=1,

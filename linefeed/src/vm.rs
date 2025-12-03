@@ -577,6 +577,12 @@ where
                 self.push_stack(RuntimeValue::Str(RuntimeString::new(repr)));
             }
 
+            Bytecode::Stringify => {
+                let val = self.pop_stack();
+                let s = val.to_string();
+                self.push_stack(RuntimeValue::Str(RuntimeString::new(s)));
+            }
+
             Bytecode::ReadInput => {
                 let mut input = String::new();
                 self.stdin
