@@ -60,6 +60,17 @@ impl RuntimeSet {
         Self::from_set(sym_diff)
     }
 
+    pub fn difference(&self, other: &Self) -> Self {
+        let diff = self
+            .0
+            .borrow()
+            .difference(&other.0.borrow())
+            .cloned()
+            .collect();
+
+        Self::from_set(diff)
+    }
+
     pub fn contains(&self, value: &RuntimeValue) -> bool {
         self.0.borrow().contains(value)
     }

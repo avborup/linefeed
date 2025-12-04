@@ -188,3 +188,55 @@ eval_and_assert!(
     equals("4"),
     empty()
 );
+
+eval_and_assert!(
+    set_difference,
+    indoc! {r#"
+        a = set([1, 2, 3, 4, 5]);
+        b = set([3, 4, 5, 6, 7]);
+        diff = a - b;
+        print(diff.len());
+        print(1 in diff);
+        print(2 in diff);
+        print(3 in diff);
+    "#},
+    equals(indoc! {r#"
+        2
+        true
+        true
+        false
+    "#}),
+    empty()
+);
+
+eval_and_assert!(
+    set_difference_empty_result,
+    indoc! {r#"
+        a = set([1, 2, 3]);
+        b = set([1, 2, 3, 4, 5]);
+        diff = a - b;
+        print(diff.len());
+    "#},
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    set_difference_no_overlap,
+    indoc! {r#"
+        a = set([1, 2, 3]);
+        b = set([4, 5, 6]);
+        diff = a - b;
+        print(diff.len());
+        print(1 in diff);
+        print(2 in diff);
+        print(3 in diff);
+    "#},
+    equals(indoc! {r#"
+        3
+        true
+        true
+        true
+    "#}),
+    empty()
+);

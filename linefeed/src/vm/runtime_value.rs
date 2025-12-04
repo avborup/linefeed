@@ -128,6 +128,7 @@ impl RuntimeValue {
             (RuntimeValue::Tuple(t), RuntimeValue::Vec2(v)) => {
                 Ok(RuntimeValue::Tuple(t.element_wise_sub(&v.to_tuple())?))
             }
+            (RuntimeValue::Set(a), RuntimeValue::Set(b)) => Ok(RuntimeValue::Set(a.difference(b))),
             _ => Err(RuntimeError::invalid_binary_op_for_types(
                 "subtract", self, other,
             )),
