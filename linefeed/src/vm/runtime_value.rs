@@ -8,7 +8,7 @@ use crate::{
         runtime_value::{
             counter::RuntimeCounter,
             function::RuntimeFunction,
-            iterator::{EnumeratedListIterator, RuntimeIterator},
+            iterator::{EnumeratedListIterator, EnumeratedStringIterator, RuntimeIterator},
             list::RuntimeList,
             map::{MapIterator, RuntimeMap},
             number::RuntimeNumber,
@@ -480,6 +480,9 @@ impl RuntimeValue {
         match self {
             RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
                 RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
+            ))),
+            RuntimeValue::Str(s) => Ok(RuntimeValue::Iterator(Box::new(
+                RuntimeIterator::from(EnumeratedStringIterator::new(s.clone())),
             ))),
             _ => Err(RuntimeError::invalid_method_for_type(
                 Method::Enumerate,

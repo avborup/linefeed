@@ -22,6 +22,7 @@ enum IteratorKind {
     Map(MapIterator),
     Set(SetIterator),
     Enumerated(EnumeratedListIterator),
+    EnumeratedString(EnumeratedStringIterator),
     String(StringIterator),
     Empty,
 }
@@ -35,6 +36,7 @@ impl RuntimeIterator {
             IteratorKind::Map(iter) => iter.next(),
             IteratorKind::Set(iter) => iter.next(),
             IteratorKind::Enumerated(iter) => iter.next(),
+            IteratorKind::EnumeratedString(iter) => iter.next(),
             IteratorKind::String(iter) => iter.next(),
             IteratorKind::Empty => None,
         }
@@ -52,6 +54,7 @@ impl RuntimeIterator {
             IteratorKind::Map(iter) => iter.len(),
             IteratorKind::Set(iter) => iter.len(),
             IteratorKind::Enumerated(iter) => iter.list.len().saturating_sub(iter.index),
+            IteratorKind::EnumeratedString(iter) => iter.string.len().saturating_sub(iter.index),
             IteratorKind::String(iter) => iter.chars.len().saturating_sub(iter.index),
             IteratorKind::Empty => 0,
         }
@@ -148,6 +151,31 @@ impl Iterator for EnumeratedListIterator {
     }
 }
 
+pub struct EnumeratedStringIterator {
+    string: RuntimeString,
+    index: usize,
+}
+
+impl EnumeratedStringIterator {
+    pub fn new(s: RuntimeString) -> Self {
+        Self { string: s, index: 0 }
+    }
+}
+
+impl Iterator for EnumeratedStringIterator {
+    type Item = RuntimeValue;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Use byte indexing (ASCII assumption per string.rs:103-104)
+        let byte = *self.string.as_str().as_bytes().get(self.index)?;
+        let ch = RuntimeString::new(char::from(byte));
+        let index_val = RuntimeValue::Num(RuntimeNumber::from(self.index));
+        let enumerated = RuntimeValue::from((index_val, RuntimeValue::Str(ch)));
+        self.index += 1;
+        Some(enumerated)
+    }
+}
+
 pub struct StringIterator {
     chars: Vec<RuntimeString>,
     index: usize,
@@ -207,6 +235,12 @@ impl From<RuntimeString> for RuntimeIterator {
 impl From<EnumeratedListIterator> for RuntimeIterator {
     fn from(iter: EnumeratedListIterator) -> Self {
         Self(Rc::new(RefCell::new(IteratorKind::Enumerated(iter))))
+    }
+}
+
+impl From<EnumeratedStringIterator> for RuntimeIterator {
+    fn from(iter: EnumeratedStringIterator) -> Self {
+        Self(Rc::new(RefCell::new(IteratorKind::EnumeratedString(iter))))
     }
 }
 

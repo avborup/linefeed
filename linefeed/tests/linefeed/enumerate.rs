@@ -122,3 +122,25 @@ eval_and_assert!(
     equals("0 100 \n 1 200 \n 2 300"),
     empty()
 );
+
+eval_and_assert!(
+    enumerate_string,
+    indoc! {r#"
+        for i, c in "abc".enumerate() {
+            print(i, c);
+        };
+    "#},
+    equals("0 a \n 1 b \n 2 c"),
+    empty()
+);
+
+eval_and_assert!(
+    enumerate_empty_string,
+    indoc! {r#"
+        for i, c in "".enumerate() {
+            print(i, c);
+        };
+    "#},
+    empty(),
+    empty()
+);
