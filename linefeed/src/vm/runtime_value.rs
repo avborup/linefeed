@@ -482,14 +482,30 @@ impl RuntimeValue {
             RuntimeValue::List(list) => Ok(RuntimeValue::Iterator(Box::new(
                 RuntimeIterator::from(EnumeratedListIterator::new(list.clone())),
             ))),
-            RuntimeValue::Str(s) => Ok(RuntimeValue::Iterator(Box::new(
-                RuntimeIterator::from(EnumeratedStringIterator::new(s.clone())),
-            ))),
+            RuntimeValue::Str(s) => Ok(RuntimeValue::Iterator(Box::new(RuntimeIterator::from(
+                EnumeratedStringIterator::new(s.clone()),
+            )))),
             _ => Err(RuntimeError::invalid_method_for_type(
                 Method::Enumerate,
                 self,
             )),
         }
+    }
+
+    pub fn flat(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::List(list) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Flat, self));
+        };
+
+        let iter = RuntimeIterator::from(list.clone());
+        let result = iter.try_fold(Vec::new(), |acc, item| {
+            Ok(item.to_iter_inner()?.fold(acc, |mut acc, val| {
+                acc.push(val);
+                acc
+            }))
+        })?;
+
+        Ok(RuntimeValue::List(RuntimeList::from_vec(result)))
     }
 
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {

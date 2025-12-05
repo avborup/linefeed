@@ -129,6 +129,7 @@ pub enum Bytecode {
     Remove,
     Rot,
     Binary(usize),
+    Flat,
 }
 
 const _: () = {
@@ -246,6 +247,7 @@ impl Bytecode {
                 Method::Remove => Bytecode::Remove,
                 Method::Rot => Bytecode::Rot,
                 Method::Binary => Bytecode::Binary(num_args),
+                Method::Flat => Bytecode::Flat,
             },
         };
 

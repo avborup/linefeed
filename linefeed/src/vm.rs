@@ -534,6 +534,7 @@ where
             Bytecode::Keys => unary_mapper_method!(self, keys),
             Bytecode::Rot => binary_op!(self, rot),
             Bytecode::Binary(num_args) => method_with_optional_arg!(self, binary, *num_args),
+            Bytecode::Flat => unary_mapper_method!(self, flat),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),

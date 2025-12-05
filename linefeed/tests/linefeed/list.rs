@@ -86,3 +86,43 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    flat_nested_lists,
+    indoc! {r#"
+        result = [[1, 2], [3, 4], [5]].flat();
+        print(result);
+    "#},
+    equals("[1, 2, 3, 4, 5]"),
+    empty()
+);
+
+eval_and_assert!(
+    flat_with_strings,
+    indoc! {r#"
+        result = ["ab", "cd"].flat();
+        print(result);
+    "#},
+    equals("[\"a\", \"b\", \"c\", \"d\"]"),
+    empty()
+);
+
+eval_and_assert!(
+    flat_empty_list,
+    indoc! {r#"
+        result = [].flat();
+        print(result);
+    "#},
+    equals("[]"),
+    empty()
+);
+
+eval_and_assert!(
+    flat_with_ranges,
+    indoc! {r#"
+        result = [0..3, 5..7].flat();
+        print(result);
+    "#},
+    equals("[0, 1, 2, 5, 6]"),
+    empty()
+);

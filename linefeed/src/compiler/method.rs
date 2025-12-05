@@ -25,6 +25,7 @@ pub enum Method {
     Remove,
     Rot,
     Binary,
+    Flat,
 }
 
 impl Method {
@@ -52,6 +53,7 @@ impl Method {
         Remove => "remove",
         Rot => "rot",
         Binary => "binary",
+        Flat => "flat",
     }
 
     /// Returns the number of arguments this method expects.
@@ -80,6 +82,7 @@ impl Method {
             Self::Remove => 1..=1,
             Self::Rot => 1..=1,
             Self::Binary => 0..=1,
+            Self::Flat => 0..=0,
         }
     }
 }
