@@ -126,3 +126,42 @@ eval_and_assert!(
     equals("[0, 1, 2, 5, 6]"),
     empty()
 );
+
+eval_and_assert!(
+    list_first,
+    r#"print([1, 2, 3].first());"#,
+    equals("1"),
+    empty()
+);
+
+eval_and_assert!(
+    list_last,
+    r#"print([1, 2, 3].last());"#,
+    equals("3"),
+    empty()
+);
+
+eval_and_assert!(
+    range_first,
+    r#"print((0..5).first());"#,
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(range_last, r#"print((0..5).last());"#, equals("4"), empty());
+
+eval_and_assert!(range_len, r#"print((0..5).len());"#, equals("5"), empty());
+
+eval_and_assert!(
+    range_reverse_first,
+    r#"print((5..0).first());"#,
+    equals("5"),
+    empty()
+);
+
+eval_and_assert!(
+    range_reverse_last,
+    r#"print((5..0).last());"#,
+    equals("1"),
+    empty()
+);

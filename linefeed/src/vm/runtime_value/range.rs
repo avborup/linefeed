@@ -33,6 +33,29 @@ impl RuntimeRange {
 
         lower && upper
     }
+
+    pub fn len(&self) -> Option<usize> {
+        match (self.start, self.end) {
+            (Some(start), Some(end)) => Some(start.abs_diff(end)),
+            _ => None,
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == Some(0)
+    }
+
+    pub fn first(&self) -> Option<isize> {
+        self.start
+    }
+
+    pub fn last(&self) -> Option<isize> {
+        match (self.start, self.end) {
+            (Some(start), Some(end)) if start <= end => Some(end - 1),
+            (Some(start), Some(end)) if start > end => Some(end + 1),
+            _ => None,
+        }
+    }
 }
 
 impl std::fmt::Display for RuntimeRange {

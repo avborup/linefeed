@@ -393,6 +393,12 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
             RuntimeValue::Set(s) => RuntimeValue::Num(RuntimeNumber::from(s.len())),
             RuntimeValue::Map(m) => RuntimeValue::Num(RuntimeNumber::from(m.len())),
+            RuntimeValue::Range(r) => {
+                let len = r.len().ok_or_else(|| {
+                    RuntimeError::TypeMismatch("Cannot get length of unbounded range".to_string())
+                })?;
+                RuntimeValue::Num(RuntimeNumber::from(len))
+            }
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot get length of '{}'",
@@ -506,6 +512,42 @@ impl RuntimeValue {
         })?;
 
         Ok(RuntimeValue::List(RuntimeList::from_vec(result)))
+    }
+
+    pub fn first(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => list.as_slice().first().cloned().ok_or_else(|| {
+                RuntimeError::TypeMismatch("Cannot get first of empty list".to_string())
+            }),
+            RuntimeValue::Range(r) => r
+                .first()
+                .map(|n| RuntimeValue::Num(RuntimeNumber::from(n)))
+                .ok_or_else(|| {
+                    RuntimeError::TypeMismatch("Cannot get first of unbounded range".to_string())
+                }),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot get first of '{}'",
+                self.kind_str()
+            ))),
+        }
+    }
+
+    pub fn last(&self) -> Result<Self, RuntimeError> {
+        match self {
+            RuntimeValue::List(list) => list.as_slice().last().cloned().ok_or_else(|| {
+                RuntimeError::TypeMismatch("Cannot get last of empty list".to_string())
+            }),
+            RuntimeValue::Range(r) => r
+                .last()
+                .map(|n| RuntimeValue::Num(RuntimeNumber::from(n)))
+                .ok_or_else(|| {
+                    RuntimeError::TypeMismatch("Cannot get last of unbounded range".to_string())
+                }),
+            _ => Err(RuntimeError::TypeMismatch(format!(
+                "Cannot get last of '{}'",
+                self.kind_str()
+            ))),
+        }
     }
 
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {

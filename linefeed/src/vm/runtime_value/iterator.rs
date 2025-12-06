@@ -158,7 +158,10 @@ pub struct EnumeratedStringIterator {
 
 impl EnumeratedStringIterator {
     pub fn new(s: RuntimeString) -> Self {
-        Self { string: s, index: 0 }
+        Self {
+            string: s,
+            index: 0,
+        }
     }
 }
 

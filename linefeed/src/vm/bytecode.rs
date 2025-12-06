@@ -130,6 +130,8 @@ pub enum Bytecode {
     Rot,
     Binary(usize),
     Flat,
+    First,
+    Last,
 }
 
 const _: () = {
@@ -248,6 +250,8 @@ impl Bytecode {
                 Method::Rot => Bytecode::Rot,
                 Method::Binary => Bytecode::Binary(num_args),
                 Method::Flat => Bytecode::Flat,
+                Method::First => Bytecode::First,
+                Method::Last => Bytecode::Last,
             },
         };
 

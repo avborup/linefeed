@@ -26,6 +26,8 @@ pub enum Method {
     Rot,
     Binary,
     Flat,
+    First,
+    Last,
 }
 
 impl Method {
@@ -54,6 +56,8 @@ impl Method {
         Rot => "rot",
         Binary => "binary",
         Flat => "flat",
+        First => "first",
+        Last => "last",
     }
 
     /// Returns the number of arguments this method expects.
@@ -83,6 +87,8 @@ impl Method {
             Self::Rot => 1..=1,
             Self::Binary => 0..=1,
             Self::Flat => 0..=0,
+            Self::First => 0..=0,
+            Self::Last => 0..=0,
         }
     }
 }
