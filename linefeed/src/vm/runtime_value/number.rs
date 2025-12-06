@@ -113,7 +113,7 @@ impl RuntimeNumber {
     }
 
     pub fn parse_int(s: &str) -> Result<Self, RuntimeError> {
-        match s.parse::<isize>() {
+        match s.trim().parse::<isize>() {
             Ok(i) => Ok(Self::from(i)),
             Err(err) => Err(RuntimeError::ParseError(format!(
                 "{s:?} is not a valid integer, {err}",
