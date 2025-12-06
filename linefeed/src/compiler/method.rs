@@ -28,6 +28,7 @@ pub enum Method {
     Flat,
     First,
     Last,
+    Transpose,
 }
 
 impl Method {
@@ -58,6 +59,7 @@ impl Method {
         Flat => "flat",
         First => "first",
         Last => "last",
+        Transpose => "transpose",
     }
 
     /// Returns the number of arguments this method expects.
@@ -89,6 +91,7 @@ impl Method {
             Self::Flat => 0..=0,
             Self::First => 0..=0,
             Self::Last => 0..=0,
+            Self::Transpose => 0..=0,
         }
     }
 }

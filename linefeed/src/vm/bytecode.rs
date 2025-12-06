@@ -132,6 +132,7 @@ pub enum Bytecode {
     Flat,
     First,
     Last,
+    Transpose,
 }
 
 const _: () = {
@@ -252,6 +253,7 @@ impl Bytecode {
                 Method::Flat => Bytecode::Flat,
                 Method::First => Bytecode::First,
                 Method::Last => Bytecode::Last,
+                Method::Transpose => Bytecode::Transpose,
             },
         };
 

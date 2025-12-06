@@ -117,6 +117,35 @@ impl RuntimeList {
         new_vec.extend_from_slice(&other.0.borrow());
         Self::from_vec(new_vec)
     }
+
+    pub fn transpose(&self) -> Result<Self, RuntimeError> {
+        let rows: Vec<Self> = self
+            .as_slice()
+            .iter()
+            .map(|row| match row {
+                RuntimeValue::List(l) => Ok(l.clone()),
+                _ => Err(RuntimeError::TypeMismatch(
+                    "Cannot transpose: all elements must be lists".to_string(),
+                )),
+            })
+            .collect::<Result<_, _>>()?;
+
+        let col_count = rows.first().map(|l| l.len()).unwrap_or(0);
+        if rows.iter().any(|r| r.len() != col_count) {
+            return Err(RuntimeError::TypeMismatch(
+                "Cannot transpose: all rows must have the same length".to_string(),
+            ));
+        }
+
+        let result = (0..col_count)
+            .map(|col| {
+                let new_row = rows.iter().map(|r| r.as_slice()[col].clone()).collect();
+                RuntimeValue::List(Self::from_vec(new_row))
+            })
+            .collect();
+
+        Ok(Self::from_vec(result))
+    }
 }
 
 impl Default for RuntimeList {

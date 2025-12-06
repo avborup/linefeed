@@ -550,6 +550,16 @@ impl RuntimeValue {
         }
     }
 
+    pub fn transpose(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::List(list) = self else {
+            return Err(RuntimeError::TypeMismatch(format!(
+                "Cannot transpose '{}'",
+                self.kind_str()
+            )));
+        };
+        Ok(RuntimeValue::List(list.transpose()?))
+    }
+
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {

@@ -165,3 +165,31 @@ eval_and_assert!(
     equals("1"),
     empty()
 );
+
+eval_and_assert!(
+    transpose_2x3,
+    r#"print([[1,2,3],[4,5,6]].transpose());"#,
+    equals("[[1, 4], [2, 5], [3, 6]]"),
+    empty()
+);
+
+eval_and_assert!(
+    transpose_3x2,
+    r#"print([[1,2],[3,4],[5,6]].transpose());"#,
+    equals("[[1, 3, 5], [2, 4, 6]]"),
+    empty()
+);
+
+eval_and_assert!(
+    transpose_empty,
+    r#"print([].transpose());"#,
+    equals("[]"),
+    empty()
+);
+
+eval_and_assert!(
+    transpose_stdlib,
+    r#"print(transpose([[1,2],[3,4]]));"#,
+    equals("[[1, 3], [2, 4]]"),
+    empty()
+);
