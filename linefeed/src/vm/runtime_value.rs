@@ -624,6 +624,7 @@ impl RuntimeValue {
             RuntimeValue::Tuple(xs) => RuntimeValue::Tuple(xs.clone()),
             RuntimeValue::Vec2(v) => RuntimeValue::Vec2(*v),
             RuntimeValue::Map(m) => RuntimeValue::Map(m.deep_clone()),
+            RuntimeValue::Set(s) => RuntimeValue::Set(s.deep_clone()),
             RuntimeValue::Counter(c) => RuntimeValue::Counter(c.deep_clone()),
             RuntimeValue::Function(_) => self.clone(),
             RuntimeValue::Regex(r) => RuntimeValue::Regex(r.clone()),

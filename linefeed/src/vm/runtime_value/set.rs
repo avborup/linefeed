@@ -78,6 +78,10 @@ impl RuntimeSet {
     pub fn remove(&mut self, value: RuntimeValue) {
         self.0.borrow_mut().remove(&value);
     }
+
+    pub fn deep_clone(&self) -> Self {
+        Self::from_set(self.0.borrow().iter().map(|v| v.deep_clone()).collect())
+    }
 }
 
 impl Default for RuntimeSet {
