@@ -195,6 +195,24 @@ pub fn abs(val: RuntimeValue) -> RuntimeResult {
     }
 }
 
+pub fn sqrt(val: RuntimeValue) -> RuntimeResult {
+    match val {
+        RuntimeValue::Num(n) => {
+            let f = n.float();
+            if f < 0.0 {
+                return Err(RuntimeError::Plain(
+                    "Cannot compute square root of negative number".to_string(),
+                ));
+            }
+            Ok(RuntimeValue::Num(RuntimeNumber::Float(f.sqrt())))
+        }
+        _ => Err(RuntimeError::TypeMismatch(format!(
+            "Cannot compute square root of type {}",
+            val.kind_str()
+        ))),
+    }
+}
+
 pub fn manhattan(args: Vec<RuntimeValue>) -> RuntimeResult {
     let diff = match (args.first(), args.get(1)) {
         (Some(a), None) => a.clone(),

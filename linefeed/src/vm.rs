@@ -555,6 +555,7 @@ where
             Bytecode::Max(num_args) => stdlib_fn!(self, max, *num_args),
             Bytecode::Min(num_args) => stdlib_fn!(self, min, *num_args),
             Bytecode::Abs => stdlib_fn!(self, abs),
+            Bytecode::Sqrt => stdlib_fn!(self, sqrt),
             Bytecode::Manhattan(num_args) => stdlib_fn!(self, manhattan, *num_args),
             Bytecode::ModInv(num_args) => stdlib_fn!(self, mod_inv, *num_args),
 

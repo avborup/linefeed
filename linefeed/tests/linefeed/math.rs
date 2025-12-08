@@ -177,3 +177,38 @@ eval_and_assert!(
     equals("1"),
     empty()
 );
+
+eval_and_assert!(
+    sqrt_perfect_square,
+    "print(sqrt(16))",
+    equals("4"),
+    empty()
+);
+
+eval_and_assert!(
+    sqrt_non_perfect_square,
+    "print(sqrt(2))",
+    equals("1.4142135623730951"),
+    empty()
+);
+
+eval_and_assert!(
+    sqrt_zero,
+    "print(sqrt(0))",
+    equals("0"),
+    empty()
+);
+
+eval_and_assert!(
+    sqrt_negative_error,
+    "print(sqrt(-1))",
+    empty(),
+    contains("Cannot compute square root of negative number")
+);
+
+eval_and_assert!(
+    sqrt_type_error,
+    "print(sqrt(\"hello\"))",
+    empty(),
+    contains("Cannot compute square root of type str")
+);
