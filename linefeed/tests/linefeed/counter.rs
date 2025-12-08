@@ -56,3 +56,15 @@ eval_and_assert!(
     "#}),
     empty()
 );
+
+eval_and_assert!(
+    counter_to_list,
+    indoc! {r#"
+        c = counter("aabbbc");
+        print(list(c));
+    "#},
+    equals(indoc! {r#"
+        [("a", 2), ("b", 3), ("c", 1)]
+    "#}),
+    empty()
+);

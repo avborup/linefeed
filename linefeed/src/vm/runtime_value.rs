@@ -362,6 +362,7 @@ impl RuntimeValue {
             RuntimeValue::Str(s) => RuntimeIterator::from(s.clone()),
             RuntimeValue::Map(m) => RuntimeIterator::from(m.clone()),
             RuntimeValue::Set(s) => RuntimeIterator::from(s.clone()),
+            RuntimeValue::Counter(c) => RuntimeIterator::from(c.clone()),
             _ => {
                 return Err(RuntimeError::TypeMismatch(format!(
                     "Cannot iterate over '{}'",
