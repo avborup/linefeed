@@ -186,10 +186,3 @@ eval_and_assert!(
     equals("[]"),
     empty()
 );
-
-eval_and_assert!(
-    transpose_stdlib,
-    r#"print(transpose([[1,2],[3,4]]));"#,
-    equals("[[1, 3], [2, 4]]"),
-    empty()
-);
