@@ -950,6 +950,9 @@ impl RuntimeValue {
                 let values: Vec<RuntimeValue> = map.borrow().values().cloned().collect();
                 Ok(RuntimeValue::List(RuntimeList::from_vec(values)))
             }
+            RuntimeValue::Counter(counter) => {
+                Ok(RuntimeValue::List(RuntimeList::from_vec(counter.values())))
+            }
             _ => Err(RuntimeError::invalid_method_for_type(Method::Values, self)),
         }
     }

@@ -88,6 +88,13 @@ impl RuntimeCounter {
     pub fn contains_key(&self, key: &RuntimeValue) -> bool {
         self.borrow().contains_key(key)
     }
+
+    pub fn values(&self) -> Vec<RuntimeValue> {
+        self.borrow()
+            .values()
+            .map(|&v| RuntimeValue::Num(RuntimeNumber::from(v)))
+            .collect()
+    }
 }
 
 impl std::ops::Deref for InnerRuntimeCounter {
