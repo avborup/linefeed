@@ -561,6 +561,14 @@ impl RuntimeValue {
         Ok(RuntimeValue::List(list.transpose()?))
     }
 
+    pub fn reverse(&self) -> Result<Self, RuntimeError> {
+        let RuntimeValue::List(list) = self else {
+            return Err(RuntimeError::invalid_method_for_type(Method::Reverse, self));
+        };
+        list.reverse();
+        Ok(self.clone())
+    }
+
     pub fn range(&self, other: &Self) -> Result<Self, RuntimeError> {
         let range = match (self, other) {
             (RuntimeValue::Num(start), RuntimeValue::Num(end)) => {

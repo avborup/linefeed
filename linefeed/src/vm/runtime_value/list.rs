@@ -87,6 +87,10 @@ impl RuntimeList {
             .sort_by(|a, b| a.partial_cmp(b).expect("unhandled uncomparable value"));
     }
 
+    pub fn reverse(&self) {
+        self.0.borrow_mut().reverse();
+    }
+
     pub fn sort_by_key(
         &self,
         mut key_fn: impl FnMut(&RuntimeValue) -> Result<RuntimeValue, RuntimeError>,

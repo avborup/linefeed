@@ -538,6 +538,7 @@ where
             Bytecode::First => unary_mapper_method!(self, first),
             Bytecode::Last => unary_mapper_method!(self, last),
             Bytecode::Transpose => unary_mapper_method!(self, transpose),
+            Bytecode::Reverse => unary_mapper_method!(self, reverse),
 
             Bytecode::ParseInt => stdlib_fn!(self, parse_int),
             Bytecode::ToList => stdlib_fn!(self, to_list),

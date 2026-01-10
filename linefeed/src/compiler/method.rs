@@ -29,6 +29,7 @@ pub enum Method {
     First,
     Last,
     Transpose,
+    Reverse,
 }
 
 impl Method {
@@ -60,6 +61,7 @@ impl Method {
         First => "first",
         Last => "last",
         Transpose => "transpose",
+        Reverse => "reverse",
     }
 
     /// Returns the number of arguments this method expects.
@@ -92,6 +94,7 @@ impl Method {
             Self::First => 0..=0,
             Self::Last => 0..=0,
             Self::Transpose => 0..=0,
+            Self::Reverse => 0..=0,
         }
     }
 }

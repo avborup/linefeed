@@ -186,3 +186,17 @@ eval_and_assert!(
     equals("[]"),
     empty()
 );
+
+eval_and_assert!(
+    reverse_list,
+    r#"print([1, 2, 3].reverse());"#,
+    equals("[3, 2, 1]"),
+    empty()
+);
+
+eval_and_assert!(
+    reverse_empty,
+    r#"print([].reverse());"#,
+    equals("[]"),
+    empty()
+);
