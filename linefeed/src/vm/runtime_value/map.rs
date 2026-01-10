@@ -67,6 +67,14 @@ impl RuntimeMap {
     }
 
     pub fn get(&self, key: &RuntimeValue) -> RuntimeValue {
+        // Fast-path
+        {
+            let inner = self.0.borrow();
+            if let Some(value) = inner.map.get(key) {
+                return value.clone();
+            }
+        }
+
         self.insert_default_value_if_missing(key);
 
         self.borrow()
